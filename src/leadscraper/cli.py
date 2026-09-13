@@ -256,6 +256,49 @@ def demo(out: Path = typer.Option(Path("output/demo_leads.xlsx"), "--out", "-o")
     console.print(f"\n[green]✔[/] Demo-Excel: [bold]{out}[/]")
 
 
+@app.command(name="enrich-list")
+def enrich_list(
+    input_file: Path = typer.Argument(
+        ..., help="CSV/XLSX mit Spalten Firma, Website (optional Telefon, PLZ, Ort)"
+    ),
+    min_employees: int | None = typer.Option(5, help="Untergrenze Mitarbeiterzahl"),
+    max_employees: int | None = typer.Option(50, help="Obergrenze Mitarbeiterzahl"),
+    require_mobile: bool = typer.Option(False, help="Nur Leads mit gefundener Handynummer exportieren"),
+    out: Path | None = typer.Option(None, "--out", "-o", help="Ziel-Excel"),
+    verbose: bool = typer.Option(False, "-v", help="Debug-Logging"),
+) -> None:
+    """Eigene Firmenliste (ohne Google) durch die Pipeline schicken: Websites → Entscheider/Handy → Excel."""
+    logging.basicConfig(level=logging.DEBUG if verbose else logging.WARNING)
+    from leadscraper.cache import Cache
+    from leadscraper.dedupe import dedupe_companies
+    from leadscraper.importer import read_company_list
+
+    settings = get_settings()
+    companies = dedupe_companies(read_company_list(input_file))
+    if not companies:
+        raise typer.Exit(code=_err(f"Keine Firmen in {input_file} gefunden (Spalten Firma/Website?)"))
+    console.print(f"[bold]{len(companies)} Firmen[/] aus {input_file}")
+    spec = SearchSpec(
+        queries=[f"Liste: {input_file.name}"],
+        min_employees=min_employees,
+        max_employees=max_employees,
+        require_mobile=require_mobile,
+    )
+    cache = Cache(settings.cache_path)
+    try:
+        leads = asyncio.run(
+            pipeline.build_leads(
+                companies, spec, settings, cache, progress=lambda m: console.print(f"[dim]{m}[/]")
+            )
+        )
+    finally:
+        cache.close()
+    target = out or _default_out(settings, input_file.stem)
+    write_workbook(leads, spec, target, funding_rows=funding.funding_reference_rows())
+    _print_summary(leads)
+    console.print(f"\n[green]✔[/] Excel gespeichert: [bold]{target}[/]")
+
+
 @app.command()
 def profiles() -> None:
     """Verfügbare Branchen-Profile anzeigen."""
