@@ -11,6 +11,7 @@ from leadscraper import funding, scoring
 from leadscraper.cache import Cache
 from leadscraper.crawler import CrawlResult, Page, SiteCrawler
 from leadscraper.dedupe import dedupe_companies
+from leadscraper.exclusions import filter_chains
 from leadscraper.extract import impressum as impressum_mod
 from leadscraper.extract import people as people_mod
 from leadscraper.extract import phones as phones_mod
@@ -43,8 +44,16 @@ _SOCIAL = {
 
 
 def _dedupe_phones(phones: list[PhoneNumber]) -> list[PhoneNumber]:
-    """Pro e164 eine Nummer behalten – Vorrang: mit Person > mit Label > Rest; Quelle impressum/kontakt vorn."""
-    rank_src = {"impressum": 0, "kontakt": 1, "team": 2, "vcard": 2, "whatsapp": 3, "tel-link": 4, "places": 5}
+    """Pro e164 eine Nummer behalten – Vorrang: mit Person > mit Label > Rest; Impressum/Kontakt zuerst."""
+    rank_src = {
+        "impressum": 0,
+        "kontakt": 1,
+        "team": 2,
+        "vcard": 2,
+        "whatsapp": 3,
+        "tel-link": 4,
+        "places": 5,
+    }
     best: dict[str, PhoneNumber] = {}
     for p in phones:
         cur = best.get(p.e164)
@@ -115,7 +124,9 @@ def build_enrichment(company: Company, crawl: CrawlResult) -> Enrichment:
     for page in crawl.pages:
         if page.kind == "impressum":
             continue
-        page_people.extend(people_mod.find_people(page.lines, page.links, source_url=page.final_url, page_kind=page.kind))
+        page_people.extend(
+            people_mod.find_people(page.lines, page.links, source_url=page.final_url, page_kind=page.kind)
+        )
 
     # 3) vCards
     vcard_people: list[Person] = []
@@ -156,7 +167,9 @@ def build_enrichment(company: Company, crawl: CrawlResult) -> Enrichment:
 
     # 6) Größe
     team_pages = [p for p in crawl.pages if p.kind == "team"]
-    team_count = len({p.name for p in page_people if p.source_url in {tp.final_url for tp in team_pages}}) or None
+    team_count = (
+        len({p.name for p in page_people if p.source_url in {tp.final_url for tp in team_pages}}) or None
+    )
     enr.size = estimate_size(
         [(p.final_url, p.text) for p in crawl.pages],
         team_member_count=team_count,
@@ -173,7 +186,9 @@ async def enrich_company(company: Company, crawler: SiteCrawler) -> Enrichment:
     if not company.website:
         enr = Enrichment(errors=["keine Website bei Google Places"])
         if company.phone:
-            pn = phones_mod.classify_number(company.phone, source="places", source_url=company.google_maps_uri)
+            pn = phones_mod.classify_number(
+                company.phone, source="places", source_url=company.google_maps_uri
+            )
             if pn:
                 enr.phones = [pn]
         enr.size = estimate_size([], user_rating_count=company.user_rating_count)
@@ -192,7 +207,9 @@ async def enrich_company(company: Company, crawler: SiteCrawler) -> Enrichment:
     return build_enrichment(company, crawl)
 
 
-def finalize_lead(company: Company, enrichment: Enrichment | None, spec: SearchSpec, funding_cfg: dict) -> Lead:
+def finalize_lead(
+    company: Company, enrichment: Enrichment | None, spec: SearchSpec, funding_cfg: dict
+) -> Lead:
     lead = Lead(company=company, enrichment=enrichment, scraped_at=datetime.now())
     size = enrichment.size if enrichment else None
     lead.funding = funding.assess(size, company.bundesland, config=funding_cfg) if size else None
@@ -210,7 +227,9 @@ def passes_filters(lead: Lead, spec: SearchSpec) -> bool:
     return True
 
 
-async def search_companies(spec: SearchSpec, places: PlacesClient, progress: ProgressFn | None = None) -> list[Company]:
+async def search_companies(
+    spec: SearchSpec, places: PlacesClient, progress: ProgressFn | None = None
+) -> list[Company]:
     lat, lng = spec.lat, spec.lng
     if (lat is None or lng is None) and spec.city:
         coords = await places.geocode(spec.city, language=spec.language, region=spec.region)
@@ -236,8 +255,14 @@ async def search_companies(spec: SearchSpec, places: PlacesClient, progress: Pro
         if progress:
             progress(f"Suche „{text}“: {len(found)} Treffer")
     deduped = dedupe_companies(companies)
+    dropped: list = []
+    if spec.exclude_chains:
+        deduped, dropped = filter_chains(deduped)
     if progress:
-        progress(f"{len(companies)} Treffer, {len(deduped)} nach Deduplizierung")
+        msg = f"{len(companies)} Treffer, {len(deduped)} nach Deduplizierung"
+        if dropped:
+            msg += f", {len(dropped)} Ketten/Franchise ausgeschlossen"
+        progress(msg)
     return deduped
 
 
@@ -264,7 +289,11 @@ async def enrich_all(
             if progress:
                 enr = results[i]
                 dm = next((p for p in enr.decision_makers if p.mobile), None) if enr else None
-                info = f"Entscheider-Handy: {dm.name}" if dm else f"{len(enr.mobiles) if enr else 0} Handynummer(n)"
+                info = (
+                    f"Entscheider-Handy: {dm.name}"
+                    if dm
+                    else f"{len(enr.mobiles) if enr else 0} Handynummer(n)"
+                )
                 progress(f"[{done}/{len(companies)}] {c.name} – {info}")
 
     try:
@@ -278,7 +307,9 @@ async def run(spec: SearchSpec, settings: Settings, progress: ProgressFn | None 
     if not settings.google_places_api_key:
         raise RuntimeError("GOOGLE_PLACES_API_KEY fehlt (.env anlegen, siehe .env.example)")
     cache = Cache(settings.cache_path)
-    places = PlacesClient(settings.google_places_api_key, cache=cache, cache_ttl_days=settings.places_cache_ttl_days)
+    places = PlacesClient(
+        settings.google_places_api_key, cache=cache, cache_ttl_days=settings.places_cache_ttl_days
+    )
     try:
         companies = await search_companies(spec, places, progress)
     finally:
@@ -303,6 +334,7 @@ async def build_leads(
     if progress:
         with_mobile = sum(1 for ld in leads if ld.best_mobile)
         dm_mobile = sum(1 for ld in leads if ld.best_contact and ld.best_contact.mobile)
-        progress(f"{len(leads)} Leads, davon {with_mobile} mit Handynummer, {dm_mobile} Entscheider mit Handy")
+        progress(
+            f"{len(leads)} Leads, davon {with_mobile} mit Handynummer, {dm_mobile} Entscheider mit Handy"
+        )
     return leads
-

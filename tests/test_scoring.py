@@ -97,3 +97,34 @@ def test_sort_key():
     b = Lead(company=Company(place_id="2", name="alpha"), score=50)
     c = Lead(company=Company(place_id="3", name="Beta"), score=90)
     assert [ld.company.name for ld in sorted([a, b, c], key=sort_key)] == ["Beta", "alpha", "Zeta"]
+
+
+def test_owner_signal_bonus():
+    from leadscraper.scoring import owner_signal
+
+    gf = Person(name="Thomas Berger", role="Geschäftsführer", role_category="geschaeftsfuehrung")
+    enr = Enrichment(
+        pages_crawled=["https://x"], people=[gf], phones=[_mobile(None, "kontakt")], size=SizeEstimate()
+    )
+    lead = Lead(
+        company=Company(place_id="7", name="Berger Immobilien GmbH", website="https://x"), enrichment=enr
+    )
+    assert "Berger" in owner_signal(lead)
+    score, reasons = score_lead(lead, SPEC)
+    assert score == 25 + 15 + 10  # Handy ohne Name, Entscheider bekannt, inhabergeführt (mit Handy → +10)
+    assert any("inhabergeführt" in r for r in reasons)
+
+    enr2 = Enrichment(pages_crawled=["https://y"], rechtsform="e.K.", size=SizeEstimate())
+    lead2 = Lead(company=Company(place_id="8", name="Elektro Kaminski", website="https://y"), enrichment=enr2)
+    assert owner_signal(lead2) == "inhabergeführt: Rechtsform e.K."
+    assert score_lead(lead2, SPEC)[0] == 5
+
+    enr3 = Enrichment(
+        pages_crawled=["https://z"],
+        people=[Person(name="Anna Lang", role_category="hr")],
+        size=SizeEstimate(),
+    )
+    lead3 = Lead(
+        company=Company(place_id="9", name="Lang Logistik GmbH", website="https://z"), enrichment=enr3
+    )
+    assert owner_signal(lead3) is None  # HR zählt nicht als Inhaber-Signal

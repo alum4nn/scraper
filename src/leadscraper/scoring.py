@@ -5,6 +5,29 @@ from __future__ import annotations
 from leadscraper.models import Lead, SearchSpec
 
 _DECIDERS = {"geschaeftsfuehrung", "inhaber", "vorstand"}
+_OWNER_FORMS = {"e.K.", "GbR", "Einzelunternehmen", "Freiberufler", "PartG mbB", "PartG"}
+
+
+def _surname(name: str) -> str:
+    tokens = [t for t in name.replace(",", " ").split() if t and not t.endswith(".")]
+    return tokens[-1].lower() if tokens else ""
+
+
+def owner_signal(lead: Lead) -> str | None:
+    """Inhabergeführt? Nachname eines Entscheiders im Firmennamen oder personenbezogene Rechtsform."""
+    enr = lead.enrichment
+    if not enr:
+        return None
+    haystack = " ".join(filter(None, [lead.company.name, enr.legal_name])).lower()
+    for p in enr.decision_makers:
+        if p.role_category not in _DECIDERS:
+            continue
+        sn = _surname(p.name)
+        if len(sn) >= 4 and sn in haystack:
+            return f"inhabergeführt: „{p.name}“ im Firmennamen"
+    if enr.rechtsform in _OWNER_FORMS:
+        return f"inhabergeführt: Rechtsform {enr.rechtsform}"
+    return None
 
 
 def in_target_size(lead: Lead, spec: SearchSpec) -> bool | None:
@@ -53,6 +76,10 @@ def score_lead(lead: Lead, spec: SearchSpec) -> tuple[int, list[str]]:
         if hr:
             score += 10
             reasons.append(f"HR/Ausbildung: {hr[0].name}")
+        owner = owner_signal(lead)
+        if owner:
+            score += 10 if mobiles else 5
+            reasons.append(owner)
 
         fit = enr.size.in_range(spec.min_employees, spec.max_employees)
         conf = enr.size.confidence

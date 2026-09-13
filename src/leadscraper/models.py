@@ -211,5 +211,6 @@ class SearchSpec(BaseModel):
     min_employees: int | None = 5
     max_employees: int | None = 50
     require_mobile: bool = False
+    exclude_chains: bool = True  # Ketten/Franchise/Portale (config/ausschluss.yaml) aussortieren
     language: str = "de"
     region: str = "DE"

@@ -18,7 +18,10 @@ from leadscraper.excel import write_workbook
 from leadscraper.models import Company, Lead, SearchSpec
 from leadscraper.settings import CONFIG_DIR, Settings, get_settings
 
-app = typer.Typer(help="B2B-Leads (Entscheider + Handynummer) aus Google Places & Firmenwebsites → Excel", no_args_is_help=True)
+app = typer.Typer(
+    help="B2B-Leads (Entscheider + Handynummer) aus Google Places & Firmenwebsites → Excel",
+    no_args_is_help=True,
+)
 console = Console()
 
 
@@ -34,8 +37,16 @@ def _default_out(settings: Settings, stem: str) -> Path:
 
 
 def _spec_from_args(
-    query: list[str], profile: str | None, city: str | None, radius_km: float, included_type: str | None,
-    max_results: int, min_employees: int | None, max_employees: int | None, require_mobile: bool,
+    query: list[str],
+    profile: str | None,
+    city: str | None,
+    radius_km: float,
+    included_type: str | None,
+    max_results: int,
+    min_employees: int | None,
+    max_employees: int | None,
+    require_mobile: bool,
+    exclude_chains: bool = True,
 ) -> SearchSpec:
     queries = list(query)
     if profile:
@@ -54,6 +65,7 @@ def _spec_from_args(
         min_employees=min_employees,
         max_employees=max_employees,
         require_mobile=require_mobile,
+        exclude_chains=exclude_chains,
     )
 
 
@@ -79,29 +91,55 @@ def _print_summary(leads: list[Lead], limit: int = 25) -> None:
 
 @app.command()
 def run(
-    query: list[str] = typer.Option([], "--query", "-q", help="Suchbegriff (mehrfach möglich), z. B. 'Immobilienmakler'"),
+    query: list[str] = typer.Option(
+        [], "--query", "-q", help="Suchbegriff (mehrfach möglich), z. B. 'Immobilienmakler'"
+    ),
     profile: str | None = typer.Option(None, "--profile", "-p", help="Profil aus config/branchen.yaml"),
-    city: str | None = typer.Option(None, "--city", "-c", help="Ort/Region, z. B. 'Köln' oder 'Landkreis Rosenheim'"),
+    city: str | None = typer.Option(
+        None, "--city", "-c", help="Ort/Region, z. B. 'Köln' oder 'Landkreis Rosenheim'"
+    ),
     radius_km: float = typer.Option(25.0, help="Suchradius um den Ort (max 50)"),
     included_type: str | None = typer.Option(None, help="Google-Place-Type, z. B. real_estate_agency"),
     max_results: int = typer.Option(60, help="Max. Treffer pro Suchbegriff (API-Limit 60)"),
     min_employees: int | None = typer.Option(5, help="Untergrenze Mitarbeiterzahl"),
     max_employees: int | None = typer.Option(50, help="Obergrenze Mitarbeiterzahl"),
     require_mobile: bool = typer.Option(False, help="Nur Leads mit gefundener Handynummer exportieren"),
+    chain_filter: bool = typer.Option(
+        True,
+        "--chain-filter/--no-chain-filter",
+        help="Ketten/Franchise/Portale (config/ausschluss.yaml) aussortieren",
+    ),
     out: Path | None = typer.Option(None, "--out", "-o", help="Ziel-Excel (Default: output/leads_<…>.xlsx)"),
     json_out: Path | None = typer.Option(None, help="Zusätzlich Roh-Leads als JSON speichern"),
     verbose: bool = typer.Option(False, "-v", help="Debug-Logging"),
 ) -> None:
     """Kompletter Lauf: Google Places → Websites → Excel."""
-    logging.basicConfig(level=logging.DEBUG if verbose else logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
+    logging.basicConfig(
+        level=logging.DEBUG if verbose else logging.WARNING, format="%(levelname)s %(name)s: %(message)s"
+    )
     settings = get_settings()
-    spec = _spec_from_args(query, profile, city, radius_km, included_type, max_results, min_employees, max_employees, require_mobile)
-    console.print(f"[bold]Suche:[/] {', '.join(spec.queries)}  [dim]({spec.city or 'ohne Ort'}, {spec.radius_km:.0f} km)[/]")
+    spec = _spec_from_args(
+        query,
+        profile,
+        city,
+        radius_km,
+        included_type,
+        max_results,
+        min_employees,
+        max_employees,
+        require_mobile,
+        chain_filter,
+    )
+    where = f"{spec.city or 'ohne Ort'}, {spec.radius_km:.0f} km"
+    console.print(f"[bold]Suche:[/] {', '.join(spec.queries)}  [dim]({where})[/]")
     leads = asyncio.run(pipeline.run(spec, settings, progress=lambda m: console.print(f"[dim]{m}[/]")))
     target = out or _default_out(settings, profile or spec.queries[0])
     write_workbook(leads, spec, target, funding_rows=funding.funding_reference_rows())
     if json_out:
-        json_out.write_text(json.dumps([ld.model_dump(mode="json") for ld in leads], ensure_ascii=False, indent=2), encoding="utf-8")
+        json_out.write_text(
+            json.dumps([ld.model_dump(mode="json") for ld in leads], ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
     _print_summary(leads)
     console.print(f"\n[green]✔[/] Excel gespeichert: [bold]{target}[/]")
 
@@ -123,8 +161,16 @@ def search(
     async def go() -> list[Company]:
         client = PlacesClient(settings.google_places_api_key)
         try:
-            spec = SearchSpec(queries=[query], city=city, radius_km=radius_km, included_type=included_type, max_results_per_query=max_results)
-            return await pipeline.search_companies(spec, client, progress=lambda m: console.print(f"[dim]{m}[/]"))
+            spec = SearchSpec(
+                queries=[query],
+                city=city,
+                radius_km=radius_km,
+                included_type=included_type,
+                max_results_per_query=max_results,
+            )
+            return await pipeline.search_companies(
+                spec, client, progress=lambda m: console.print(f"[dim]{m}[/]")
+            )
         finally:
             await client.close()
 
@@ -133,7 +179,16 @@ def search(
     for col in ("Firma", "Telefon", "Website", "PLZ", "Ort", "Bundesland", "Typ", "Bewertungen"):
         table.add_column(col)
     for c in companies:
-        table.add_row(c.name[:40], c.phone or "", (c.domain or c.website or "")[:40], c.plz or "", c.city or "", c.bundesland or "", c.primary_type or "", str(c.user_rating_count or ""))
+        table.add_row(
+            c.name[:40],
+            c.phone or "",
+            (c.domain or c.website or "")[:40],
+            c.plz or "",
+            c.city or "",
+            c.bundesland or "",
+            c.primary_type or "",
+            str(c.user_rating_count or ""),
+        )
     console.print(table)
 
 
@@ -158,13 +213,25 @@ def enrich(
 
     enr = asyncio.run(go())
     console.print(f"[bold]{name}[/] – {len(enr.pages_crawled)} Seiten: {', '.join(enr.pages_crawled)}")
-    console.print(f"Impressum: {enr.impressum_url}  Rechtsform: {enr.rechtsform}  Register: {enr.handelsregister}")
-    console.print(f"Größe: {enr.size.point_estimate} ({enr.size.employees_min}-{enr.size.employees_max}, {enr.size.confidence}) {enr.size.evidence[:2]}")
+    console.print(
+        f"Impressum: {enr.impressum_url}  Rechtsform: {enr.rechtsform}  Register: {enr.handelsregister}"
+    )
+    sz = enr.size
+    console.print(f"Größe: {sz.point_estimate} ({sz.employees_min}-{sz.employees_max}, {sz.confidence})")
+    for ev in sz.evidence[:2]:
+        console.print(f"  [dim]{ev}[/]")
     table = Table(title="Personen")
     for col in ("Name", "Rolle", "Kategorie", "Handy", "E-Mail", "Quelle"):
         table.add_column(col)
     for p in enr.people:
-        table.add_row(p.name, p.role or "", p.role_category, p.mobile.national if p.mobile else "", p.email or "", p.source_url or "")
+        table.add_row(
+            p.name,
+            p.role or "",
+            p.role_category,
+            p.mobile.national if p.mobile else "",
+            p.email or "",
+            p.source_url or "",
+        )
     console.print(table)
     table = Table(title="Telefonnummern")
     for col in ("Nummer", "Art", "Label", "Person", "Quelle", "URL"):

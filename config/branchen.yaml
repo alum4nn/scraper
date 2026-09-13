@@ -4,6 +4,22 @@
 #
 # included_type (optional) = offizieller Google-Place-Type (Tabelle A). Nur EIN Typ pro Suche möglich.
 profiles:
+  makler:
+    beschreibung: "Immobilienmakler – höchste Handy-Trefferquote (Nummer auf jeder Objektseite), inhabergeführt"
+    queries:
+      - "Immobilienmakler"
+      - "Immobilienbüro"
+      - "Immobilienvermittlung"
+      - "Makler Wohnung Haus"
+    included_types: [real_estate_agency]
+  versicherung:
+    beschreibung: "Versicherungs-/Finanzmakler – Vertriebler mit Handy, Büro-Personal mit Verwaltungsaufwand"
+    queries:
+      - "Versicherungsmakler"
+      - "Versicherungsbüro"
+      - "Finanzberatung"
+      - "Versicherungsagentur"
+    included_types: [insurance_agency]
   handwerk:
     beschreibung: "Handwerksbetriebe (Elektro, SHK, Bau, Schreiner, Maler) – meist Inhaber-geführt, oft Handynummer auf der Website"
     queries:

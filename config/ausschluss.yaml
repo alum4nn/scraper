@@ -1,0 +1,84 @@
+# Ketten, Franchise-Systeme, Portale und Konzerne, deren Google-Treffer keine eigenständigen
+# Kleinbetriebe sind (Impressum zeigt die Zentrale, Entscheidung fällt nicht vor Ort).
+# Abgleich: Domain (registered domain, exakt) oder Firmenname (Teilstring, case-insensitiv).
+# Ausschalten: leadscraper run --no-chain-filter
+domains:
+  # Immobilien
+  - engelvoelkers.com
+  - remax.de
+  - von-poll.com
+  - mcmakler.de
+  - homeday.de
+  - dahlercompany.com
+  - immobilienscout24.de
+  - immowelt.de
+  - immonet.de
+  - sparkassen-immobilien.de
+  - lbs.de
+  - postbank-immobilien.de
+  # Versicherung / Finanzen (Konzernagenturen)
+  - allianz.de
+  - ergo.de
+  - huk.de
+  - debeka.de
+  - wuestenrot.de
+  - dvag.de
+  - swisslife-select.de
+  - mlp.de
+  - tecis.de
+  # Kfz-Ketten
+  - atu.de
+  - pitstop.de
+  - euromaster.de
+  - vergoelst.de
+  - carglass.de
+  # Handel / Gastro / Sonstige Ketten
+  - obi.de
+  - hornbach.de
+  - bauhaus.info
+  - toom.de
+  - fielmann.de
+  - apollo.de
+  - mcdonalds.de
+  - burgerking.de
+  - subway.com
+  - rewe.de
+  - edeka.de
+  - lidl.de
+  - aldi-sued.de
+  - aldi-nord.de
+  - dm.de
+  - rossmann.de
+  - tuev-sued.de
+  - tuv.com
+  - dekra.de
+names:
+  - "Engel & Völkers"
+  - "RE/MAX"
+  - "REMAX"
+  - "VON POLL"
+  - "McMakler"
+  - "Homeday"
+  - "Sparkasse"
+  - "Volksbank"
+  - "Raiffeisenbank"
+  - "Allianz "
+  - "ERGO "
+  - "HUK-COBURG"
+  - "Debeka"
+  - "DVAG"
+  - "Deutsche Vermögensberatung"
+  - "A.T.U"
+  - "pitstop"
+  - "Euromaster"
+  - "Fielmann"
+  - "Apollo-Optik"
+  - "McDonald"
+  - "Burger King"
+  - "REWE"
+  - "EDEKA"
+  - "Lidl"
+  - "ALDI"
+  - "Rossmann"
+  - "TÜV"
+  - "DEKRA"
