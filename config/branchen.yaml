@@ -1,0 +1,78 @@
+# Suchprofile: ein Profil = mehrere Google-Places-Textsuchen.
+# Ziel: kleine Betriebe (5-50 Mitarbeitende) mit hoher Förderquote (§82 SGB III) und
+# realistischem KI-Weiterbildungsbedarf. Aufruf: leadscraper run --profile handwerk --city Köln
+#
+# included_type (optional) = offizieller Google-Place-Type (Tabelle A). Nur EIN Typ pro Suche möglich.
+profiles:
+  handwerk:
+    beschreibung: "Handwerksbetriebe (Elektro, SHK, Bau, Schreiner, Maler) – meist Inhaber-geführt, oft Handynummer auf der Website"
+    queries:
+      - "Elektrotechnik Betrieb"
+      - "Sanitär Heizung Klima Betrieb"
+      - "Schreinerei"
+      - "Malerbetrieb"
+      - "Dachdecker"
+      - "Bauunternehmen"
+      - "Metallbau"
+    included_types: [electrician, plumber, roofing_contractor, general_contractor, painter]
+  steuer_recht:
+    beschreibung: "Steuerberater, Wirtschaftsprüfer, Kanzleien – hoher Bürokratieanteil, KI-affin"
+    queries:
+      - "Steuerberater"
+      - "Steuerberatungsgesellschaft"
+      - "Rechtsanwaltskanzlei"
+      - "Wirtschaftsprüfer"
+    included_types: [accounting, lawyer]
+  gesundheit:
+    beschreibung: "Praxen, Pflegedienste, Physiotherapie, Apotheken – Dokumentationslast, viele Angestellte"
+    queries:
+      - "Pflegedienst"
+      - "Physiotherapie Praxis"
+      - "Zahnarztpraxis"
+      - "Apotheke"
+      - "Augenoptiker"
+    included_types: [physiotherapist, dentist, pharmacy, home_health_care_service]
+  auto_technik:
+    beschreibung: "Autohäuser, Kfz-Werkstätten – Inhaber-geführt, 10-50 MA typisch"
+    queries:
+      - "Autohaus"
+      - "Kfz-Werkstatt"
+      - "Autolackiererei"
+    included_types: [car_dealer, car_repair]
+  agenturen_it:
+    beschreibung: "Werbeagenturen, IT-Dienstleister, Softwarehäuser – KI-Nachfrage sehr hoch"
+    queries:
+      - "Werbeagentur"
+      - "IT-Dienstleister"
+      - "Softwareentwicklung"
+      - "Digitalagentur"
+  logistik_handel:
+    beschreibung: "Spedition, Großhandel, Lager – Prozessdigitalisierung"
+    queries:
+      - "Spedition"
+      - "Großhandel"
+      - "Logistikunternehmen"
+      - "Kurierdienst"
+    included_types: [moving_company, courier_service]
+  produktion:
+    beschreibung: "Kleine Industrie/Maschinenbau/Zulieferer"
+    queries:
+      - "Maschinenbau"
+      - "Metallverarbeitung"
+      - "Kunststoffverarbeitung"
+      - "Werkzeugbau"
+      - "Feinmechanik"
+  immobilien_finanzen:
+    beschreibung: "Makler, Hausverwaltungen, Versicherungsbüros"
+    queries:
+      - "Immobilienmakler"
+      - "Hausverwaltung"
+      - "Versicherungsbüro"
+    included_types: [real_estate_agency, insurance_agency]
+  gastro_hotel:
+    beschreibung: "Hotels & größere Gastronomie (nur bedingt KI-affin, aber Personalstärke passt)"
+    queries:
+      - "Hotel"
+      - "Restaurant"
+      - "Catering"
+    included_types: [hotel, restaurant]

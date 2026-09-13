@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+.env
+output/
+*.xlsx
+!tests/fixtures/**/*.xlsx
+cache/
+*.sqlite
+*.sqlite3
+.DS_Store

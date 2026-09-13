@@ -1,0 +1,81 @@
+# Förderlogik für den Pitch. Stand-Datum pflegen! Werte werden durch Recherche validiert
+# (siehe README "Förderung"). Quelle Bund: § 82 SGB III (Qualifizierungschancengesetz / Weiterbildungsgesetz).
+stand: "2026-09"
+bund:
+  gesetz: "§ 82 SGB III"
+  groessenklassen:
+    - band: "<10"
+      min: 0
+      max: 9
+      lehrgangskosten_pct: 100
+      arbeitsentgeltzuschuss_pct: 75
+    - band: "10-49"
+      min: 10
+      max: 49
+      lehrgangskosten_pct: 50
+      arbeitsentgeltzuschuss_pct: 50
+    - band: "50-249"
+      min: 50
+      max: 249
+      lehrgangskosten_pct: 50
+      arbeitsentgeltzuschuss_pct: 50
+    - band: "250-2499"
+      min: 250
+      max: 2499
+      lehrgangskosten_pct: 25
+      arbeitsentgeltzuschuss_pct: 25
+    - band: ">=2500"
+      min: 2500
+      max: null
+      lehrgangskosten_pct: 15
+      arbeitsentgeltzuschuss_pct: 25
+  bonus:
+    - "+5 % Lehrgangskosten bei Betriebsvereinbarung oder Tarifvertrag zur Weiterbildung"
+    - "+10 % Lehrgangskosten für Beschäftigte ab 45 Jahren oder mit Schwerbehinderung (bei <250 Beschäftigten bis zu 100 %)"
+    - "Bis zu 100 % Lehrgangskosten und 75 % Arbeitsentgeltzuschuss bei Betrieben unter 10 Beschäftigten"
+  voraussetzungen:
+    - "Maßnahme > 120 Stunden, AZAV-zugelassener Träger und Maßnahme"
+    - "Vermittlung von Kenntnissen, die über arbeitsplatzbezogene Anpassungsfortbildung hinausgehen"
+    - "Letzter Berufsabschluss oder letzte geförderte Weiterbildung liegt i. d. R. mind. 4 Jahre zurück"
+    - "Antrag vor Beginn der Maßnahme beim Arbeitgeberservice der Agentur für Arbeit"
+laender:
+  Nordrhein-Westfalen:
+    programm: "Bildungsscheck NRW"
+    hinweis: "50 % der Kurskosten, max. 500 € pro Scheck; betrieblicher Zugang für Betriebe < 250 Beschäftigte"
+    url: "https://www.mags.nrw/bildungsscheck"
+  Hamburg:
+    programm: "Hamburger Weiterbildungsbonus PLUS"
+    hinweis: "Zuschuss zu Weiterbildungskosten für KMU-Beschäftigte"
+    url: "https://www.hamburg.de/weiterbildungsbonus"
+  Sachsen:
+    programm: "Weiterbildungsscheck betrieblich (SAB)"
+    hinweis: "Zuschuss für betriebliche Weiterbildung, KMU-Fokus"
+    url: "https://www.sab.sachsen.de"
+  Brandenburg:
+    programm: "Weiterbildungsrichtlinie Brandenburg"
+    hinweis: "Zuschuss zu betrieblicher Weiterbildung (ILB)"
+    url: "https://www.ilb.de"
+  Rheinland-Pfalz:
+    programm: "QualiScheck"
+    hinweis: "Individuelle Weiterbildung, 60 % bis 1.500 €"
+    url: "https://www.qualischeck.rlp.de"
+  Schleswig-Holstein:
+    programm: "Weiterbildungsbonus Schleswig-Holstein"
+    hinweis: "Zuschuss für Beschäftigte in KMU"
+    url: "https://www.ib-sh.de"
+  Thüringen:
+    programm: "Weiterbildungsscheck Thüringen"
+    hinweis: "Zuschuss für Beschäftigte in KMU"
+    url: "https://www.gfaw-thueringen.de"
+  Bremen:
+    programm: "Weiterbildung-Scheck Bremen"
+    hinweis: "Zuschuss zu betrieblicher Weiterbildung"
+    url: "https://www.weiterbildung-bremen.de"
+  Mecklenburg-Vorpommern:
+    programm: "Bildungsschecks M-V"
+    hinweis: "Zuschuss zu beruflicher Weiterbildung"
+    url: "https://www.weiterbildung-mv.de"
+  Sachsen-Anhalt:
+    programm: "Sachsen-Anhalt WEITERBILDUNG BETRIEB"
+    hinweis: "Zuschuss für betriebliche Weiterbildung (IB Sachsen-Anhalt)"
+    url: "https://www.ib-sachsen-anhalt.de"
