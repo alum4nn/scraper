@@ -213,10 +213,13 @@ class Lead(BaseModel):
 
     @property
     def best_contact(self) -> Person | None:
+        """Bester Ansprechpartner: Entscheider MIT Handy zuerst, dann Rollen-Priorität."""
         if not self.enrichment:
             return None
         dms = self.enrichment.decision_makers
-        return dms[0] if dms else (self.enrichment.people[0] if self.enrichment.people else None)
+        if dms:
+            return sorted(dms, key=lambda p: (0 if p.mobile else 1, ROLE_PRIORITY.get(p.role_category, 9)))[0]
+        return self.enrichment.people[0] if self.enrichment.people else None
 
 
 class SearchSpec(BaseModel):
