@@ -22,6 +22,24 @@ funding.py (Förderquote §82 SGB III + Landesprogramm)  →  scoring.py  →  e
    Person im Text zugeordnet (gleiche Karte / ±4 Zeilen / vCard-Datensatz).
 4. Lead-Score bevorzugt: Entscheider **mit** Handynummer > Firma mit Handynummer ohne Namen > nur Festnetz.
 
+## Betriebsgröße und Beschäftigte ohne Zahlenangabe
+Die wenigsten Makler schreiben ihre Mitarbeiterzahl auf die Website. `extract/size.py` wertet deshalb
+zuerst explizite Angaben („Team aus 14 Mitarbeitern“, Konfidenz *hoch*) und sonst Indizien
+(`headcount_from_indicators`): namentliche Mitarbeitende auf Team-/Kontaktseiten, persönliche Postfächer
+(`vorname.nachname@`), eigene Durchwahlen – die höchste dieser Zahlen ist die Untergrenze, Konfidenz
+*mittel*. Bewertungsquoten („4,5/5 Mitarbeiter Zufriedenheit“), Auszeichnungen („TOP-5 Makler“) und
+Haushaltsgrößen („optimal für 2 Personen“) sind ausgeschlossen.
+
+`pipeline.employment_signal` beantwortet getrennt davon, ob es **sozialversicherungspflichtig**
+Beschäftigte gibt (§ 82 SGB III fördert keine freien Handelsvertreter): Fundstellen wie Festanstellung,
+Innendienst, Assistenz, Azubis – oder als Indiz mehrere Mitarbeitende neben der Geschäftsführung.
+
+## Nachbearbeitung ohne neue Google-Anfragen
+- `pipeline.refresh_lead` bewertet einen gespeicherten Lead neu (Indizien, Score, Premium, Zuordnung der
+  Handynummer) – rein aus der JSONL-Datei, ohne Netz.
+- `leadscraper rebuild` liest die Websites erneut aus (HTML-Cache, 14 Tage) und lässt damit auch
+  Verbesserungen an Impressum-, Personen- und Telefon-Erkennung auf bereits abgearbeitete Orte wirken.
+
 ## Datenfluss / Verträge
 Alle Module tauschen nur `leadscraper.models`-Typen aus. Siehe Docstrings in den Modulen.
 

@@ -73,6 +73,18 @@ leadscraper run --profile versicherung --city "Landkreis Rosenheim"
 # Eigene Firmenliste ohne Google
 leadscraper enrich-list firmen.csv --out output/liste.xlsx
 
+# Bundesweit, Ort für Ort, unterbrechungssicher (erneuter Aufruf setzt fort)
+leadscraper run --deutschland -b "Nordrhein-Westfalen" --state output/de.jsonl
+
+# Ergebnisse ausgeben: Excel, nur Premium; mehrere Zustandsdateien werden zusammengeführt
+leadscraper export output/de.jsonl output/de_bayern.jsonl --premium -o output/premium.xlsx
+# CSV für den Trello-Import: Spalte 1 Unternehmensname, Spalte 2 alle Infos
+leadscraper trello output/de.jsonl -o output/trello.csv
+
+# Nach Regel-/Extraktor-Verbesserungen ohne neue Google-Anfragen nachziehen
+leadscraper refresh output/de.jsonl     # nur neu bewerten (Indizien, Score, Premium)
+leadscraper rebuild output/de.jsonl     # Websites erneut auslesen (HTML-Cache) und neu bewerten
+
 # Nur Google-Suche testen / eine Website prüfen / Beispiel-Excel
 leadscraper search "Immobilienmakler" --city Leverkusen
 leadscraper enrich https://www.beispiel-makler.de
@@ -84,17 +96,36 @@ leadscraper demo --out output/demo.xlsx
 |---|---|
 | `--query/-q`, `--profile/-p` | Suchbegriffe bzw. Profil aus `config/branchen.yaml`; ohne Angabe: Profil `makler` |
 | `--city/-c`, `--radius-km` | Ort/Region und Radius (max. 50 km); `-c` mehrfach für mehrere Orte (Google liefert max. 60 Treffer je Suchbegriff und Ort – Stadtteile/Nachbarstädte einzeln angeben) |
-| `--premium` | Nur Diamanten: aktiver Betrieb, Website erreichbar, Entscheider aus dem Impressum, Handynummer **namentlich** bei diesem Entscheider, Mitarbeiterzahl belegt (hoch/mittel) und im Zielbereich. Ohne `--premium` zeigt die Spalte „Premium-Check“, was jeweils fehlt |
+| `--premium` | Nur Diamanten: aktiver Betrieb, Website erreichbar, Entscheider aus dem Impressum, Handynummer diesem Entscheider zugeordnet, Betriebsgröße nicht belegt außerhalb, Beschäftigte plausibel. Ohne `--premium` zeigt die Spalte „Premium-Check“, was jeweils fehlt |
+| `--deutschland`, `-b` | Ortsraster aus `config/orte.yaml` abarbeiten, optional auf Bundesländer beschränkt; `--state` speichert Zwischenstand und erlaubt Fortsetzen |
 | `--min-employees/--max-employees` | Zielgröße (Default 5–50); sicher außerhalb liegende Firmen fliegen raus, unbekannte bleiben (abgewertet) |
 | `--require-mobile` | Nur Firmen mit gefundener Handynummer |
 | `--included-type` | Google-Place-Type, z. B. `real_estate_agency` (nur ein Typ) |
 | `--no-chain-filter` | Ketten/Franchise/Portale (`config/ausschluss.yaml`) nicht aussortieren |
 | `--json-out` | Rohdaten zusätzlich als JSON |
 
+## Premium – wann gilt ein Lead als sofort terminierbar?
+1. Betrieb aktiv und Website erreichbar.
+2. Entscheider (Geschäftsführung/Inhaber/Vorstand) bekannt – aus dem Impressum, aus „Inhaber: …“ auf der
+   Kontaktseite, aus dem Fließtext („… ist Gründer und Inhaber …“) oder als im Impressum Verantwortlicher,
+   der den Firmennamen trägt.
+3. Handynummer diesem Entscheider zugeordnet. Die Spalte **Handy-Zuordnung** sagt, wie sicher:
+   *namentlich* (Name stand neben der Nummer) oder *eindeutig* (einzige Handynummer der Website bei genau
+   einem Entscheider).
+4. Betriebsgröße im Zielbereich. **Eine Zahl auf der Website ist nicht nötig** – es zählen Indizien:
+   namentliche Mitarbeitende auf Team-/Kontaktseiten, persönliche Postfächer (`vorname.nachname@`), eigene
+   Durchwahlen, Rechtsform. Aussortiert wird nur, wer belegt zu groß oder zu klein ist.
+5. Sozialversicherungspflichtige Beschäftigte plausibel (§ 82 SGB III): Festanstellung/Innendienst/Assistenz/
+   Azubis, mehrere Mitarbeitende neben der Geschäftsführung oder belegte Größe – und keine Hinweise auf
+   ausschließlich freie Handelsvertreter, Franchise oder Provisionsbasis.
+
+`leadscraper export --near-premium` nimmt zusätzlich die Fälle auf, bei denen nur der Beleg für die
+Beschäftigten fehlt – im Telefonat ohnehin zu klären.
+
 ## Die Excel-Datei
 | Blatt | Inhalt |
 |---|---|
-| **Leads** | Eine Zeile pro Firma: Score, Firma, **Entscheider, Rolle, Handy, Fundstelle-URL**, weitere Handys, Festnetz, E-Mail, Mitarbeiter (Schätzung/min/max/Konfidenz/**Beleg-Zitat**), Förderband, Lehrgangskosten %, AEZ %, Landesprogramm, **Pitch**, **Anruf-Indikatoren**, Adresse, Rechtsform, Register, Links … plus CRM-Spalten (Status Akquise als Dropdown, Termin, Notizen) |
+| **Leads** | Eine Zeile pro Firma, vorn die Spalten fürs Telefonat: **Name, Unternehmensname, E-Mail, Nummer, Webseite**; danach Score, Premium-Check, Rolle, **Handy-Zuordnung**, Fundstelle-URL, weitere Handys, Festnetz, E-Mail, Mitarbeiter (Schätzung/min/max/Konfidenz/**Beleg-Zitat**), Förderband, Lehrgangskosten %, AEZ %, Landesprogramm, **Pitch**, **Anruf-Indikatoren**, Adresse, Rechtsform, Register, Links … plus CRM-Spalten (Status Akquise als Dropdown, Termin, Notizen) |
 | **Entscheider** | Eine Zeile pro Person (Handy zuerst, dann Rollen-Priorität) |
 | **Alle Nummern** | Jede Nummer mit Art (mobil/festnetz), Label (Mobil/WhatsApp/Notdienst …), Person, Quelle, URL |
 | **Förderung** | Referenztabelle § 82 SGB III + Landesprogramme (aus `config/foerderung.yaml`) |
