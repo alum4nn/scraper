@@ -23,7 +23,12 @@ from leadscraper.extract import people as people_mod
 from leadscraper.extract import phones as phones_mod
 from leadscraper.extract.htmlutil import decode_cloudflare_email
 from leadscraper.extract.names import surname
-from leadscraper.extract.size import estimate_size, headcount_from_indicators, is_rating_text
+from leadscraper.extract.size import (
+    estimate_size,
+    evidence_still_holds,
+    headcount_from_indicators,
+    is_rating_text,
+)
 from leadscraper.extract.staff import count_staff, personal_mailboxes
 from leadscraper.models import (
     Company,
@@ -625,6 +630,11 @@ def refresh_lead(lead: Lead, spec: SearchSpec, funding_cfg: dict) -> Lead:
         return finalize_lead(lead.company, None, spec, funding_cfg)
     promote_responsible_owner(enr, lead.company.name)
     attribute_sole_mobile(enr)
+    # Zuerst die gespeicherte Fundstelle gegen die heutigen Regeln prüfen: Portalbewertungen,
+    # Aktenzeichen und Berufsbezeichnungen ohne Besitzbezug belegen keine Belegschaft.
+    erste = enr.size.evidence[0] if enr.size.evidence else ""
+    if erste and (is_rating_text(erste) or not evidence_still_holds(erste)):
+        enr.size = SizeEstimate()
     staff_urls = set(enr.pages_crawled)
     stated = enr.size.point_estimate if enr.size.confidence == "high" else None
     enr.staff = count_staff(
@@ -635,9 +645,6 @@ def refresh_lead(lead: Lead, spec: SearchSpec, funding_cfg: dict) -> Lead:
         stated=stated,
         stated_evidence=enr.size.evidence[0] if stated and enr.size.evidence else None,
     )
-    if enr.size.evidence and any(is_rating_text(ev) for ev in enr.size.evidence[:1]):  # Portalbewertung
-        # Fundstelle war eine Portalbewertung („4,5/5 Mitarbeiter Zufriedenheit“) – verwerfen und neu schätzen
-        enr.size = SizeEstimate()
     if enr.size.confidence in ("none", "low"):
         team_count = len({p.name for p in enr.people if p.source_url in set(enr.pages_crawled)}) or None
         indicator = headcount_from_indicators(

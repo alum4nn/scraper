@@ -433,3 +433,35 @@ def test_location_portal_counts_only_its_own_branch():
     # Eine gewöhnliche Firmenseite bleibt unangetastet
     normal = {"https://makler.de/team/", "https://makler.de/kontakt/"}
     assert _scope_to_own_location(normal, "https://makler.de/") == normal
+
+
+def test_refresh_drops_evidence_that_no_longer_holds():
+    """Verschärfte Textregeln wirken auch auf gespeicherte Läufe, ohne jede Website neu zu laden."""
+    from leadscraper import funding
+    from leadscraper.models import SizeEstimate
+
+    def lead_mit(beleg: str) -> Lead:
+        return Lead(
+            company=Company(place_id="p", name="X GmbH", website="https://x.de"),
+            enrichment=Enrichment(
+                pages_crawled=["https://x.de/"],
+                size=SizeEstimate(
+                    point_estimate=17,
+                    employees_min=17,
+                    employees_max=17,
+                    confidence="high",
+                    evidence=[beleg],
+                ),
+            ),
+        )
+
+    spec = SearchSpec(queries=["x"], min_employees=5, max_employees=50)
+    cfg = funding.load_funding_config()
+    veraltet = pipeline.refresh_lead(
+        lead_mit("Text: „1.271 Urteile wurden für die 17 Makler berücksichtigt“ (https://x.de/)"), spec, cfg
+    )
+    assert veraltet.enrichment.staff.headcount == 0
+    gueltig = pipeline.refresh_lead(
+        lead_mit("Text: „Unser Team aus 17 Mitarbeitern betreut Sie“ (https://x.de/)"), spec, cfg
+    )
+    assert gueltig.enrichment.staff.headcount == 17

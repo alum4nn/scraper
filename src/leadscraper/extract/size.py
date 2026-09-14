@@ -258,6 +258,23 @@ def is_rating_text(text: str) -> bool:
     return bool(_RATING_RE.search(text))
 
 
+_EVIDENCE_SNIPPET_RE = re.compile(r"„(.+?)“")
+
+
+def evidence_still_holds(evidence: str) -> bool:
+    """Trägt eine gespeicherte Fundstelle die Kopfzahl auch nach den heutigen Regeln noch?
+
+    So wirken Verschärfungen an der Texterkennung (Aktenzeichen, Vergleichsportale, schwache
+    Berufsbezeichnungen) auch auf bereits ausgewertete Läufe, ohne jede Website erneut zu laden.
+    """
+    if not evidence.startswith("Text:"):
+        return True  # Indizien-Belege (Namen, Postfächer, Durchwahlen) prüft count_staff selbst
+    treffer = _EVIDENCE_SNIPPET_RE.search(evidence)
+    if not treffer:
+        return True
+    return bool(_scan("", treffer.group(1)))
+
+
 def headcount_from_indicators(
     team_member_count: int | None, staff_mailboxes: int | None, staff_phones: int | None
 ) -> tuple[int, str] | None:
