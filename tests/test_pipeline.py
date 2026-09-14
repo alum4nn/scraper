@@ -267,3 +267,45 @@ def test_load_orte_filter():
     assert orte and {o["bundesland"] for o in orte} == {"Nordrhein-Westfalen", "Bremen"}
     assert any(o["name"] == "Köln" for o in orte)
     assert len(pipeline.load_orte()) > 400
+
+
+def test_read_leads_jsonl_skips_truncated_last_line(tmp_path: Path):
+    """Ein abgebrochener Lauf hinterlässt oft eine halbe Zeile – der Neustart muss trotzdem fortsetzen."""
+    from leadscraper.demo import demo_leads
+
+    leads = demo_leads(SearchSpec(queries=["x"]))
+    path = tmp_path / "de.jsonl"
+    body = "\n".join(ld.model_dump_json() for ld in leads)
+    path.write_text(body + "\n" + leads[0].model_dump_json()[:200], encoding="utf-8")
+    assert len(pipeline.read_leads_jsonl(path)) == len(leads)
+
+
+def test_refresh_lead_applies_indicators_without_crawl():
+    """Gespeicherte Leads werden mit neuen Regeln bewertet – ohne Netz, ohne Google-Anfragen."""
+    from leadscraper import funding
+    from leadscraper.models import Person, PhoneNumber
+
+    url = "https://b.de/team"
+    gf = Person(name="Thomas Berger", role_category="geschaeftsfuehrung", source_url=url)
+    staff = [
+        Person(name=n, role="Immobilienmakler", source_url=url)
+        for n in ("Julia Kranz", "Anna Heck", "Nina Lenz")
+    ]
+    mobile = PhoneNumber(
+        raw="0171 5550123", e164="+491715550123", national="0171 5550123", kind="mobile", source="kontakt"
+    )
+    lead = Lead(
+        company=Company(place_id="p", name="Berger Immobilien", website="https://b.de"),
+        enrichment=Enrichment(
+            pages_crawled=[url], people=[gf, *staff], phones=[mobile], emails=["t.berger@b.de"]
+        ),
+    )
+    spec = SearchSpec(queries=["x"], min_employees=5, max_employees=50)
+    out = pipeline.refresh_lead(lead, spec, funding.load_funding_config())
+    assert out.enrichment.size.confidence == "medium"
+    assert out.enrichment.size.employees_min == 4  # vier namentliche Personen belegen mindestens vier
+    assert out.enrichment.employment_signal == "angestellt"
+    # einzige Handynummer + genau ein Entscheider → eindeutig diesem zugeordnet
+    assert out.enrichment.mobile_assignment == "eindeutig"
+    assert out.enrichment.people[0].mobile is not None
+    assert out.premium is True and out.premium_missing == []

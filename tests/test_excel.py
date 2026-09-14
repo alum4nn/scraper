@@ -50,3 +50,23 @@ def test_lead_rows_and_empty_workbook(tmp_path: Path):
     wb = load_workbook(out)
     assert [c.value for c in wb["Leads"][1]] == list(LEAD_COLUMNS)
     assert wb["Förderung"]["A1"].value  # Hinweis statt Tabelle
+
+
+def test_trello_csv_has_two_columns_and_all_infos(tmp_path: Path):
+    import csv
+
+    from leadscraper.excel import write_trello_csv
+
+    leads = demo_leads(SPEC)
+    out = write_trello_csv(leads, tmp_path / "trello.csv")
+    with open(out, encoding="utf-8-sig", newline="") as fh:
+        rows = list(csv.reader(fh))
+    assert rows[0] == ["Unternehmensname", "Beschreibung"]
+    assert len(rows) == len(leads) + 1
+    assert all(len(r) == 2 for r in rows)
+    titles = [r[0] for r in rows[1:]]
+    assert titles == [ld.display_name for ld in sorted(leads, key=lambda x: -x.score)][: len(titles)]
+    body = rows[1][1]
+    for label in ("Ansprechpartner", "Handy", "Webseite", "Förderung § 82 SGB III", "Pitch"):
+        assert f"**{label}:**" in body
+    assert "\n" in body  # mehrzeilige Beschreibung bleibt in einer CSV-Zelle

@@ -149,33 +149,36 @@ def test_premium_check_all_criteria():
     )
     assert premium_check(ok, SPEC) == []
 
-    # Status unklar + nur Team-Seite gezählt → kein Beleg für sozialversicherungspflichtige Mitarbeiter
-    unclear = ok.model_copy(deep=True)
-    unclear.enrichment.employment_signal = "unklar"
-    assert premium_check(unclear, SPEC) == ["sozialversicherungspflichtige Beschäftigte nicht belegt"]
-    unclear.enrichment.size = SizeEstimate(
-        point_estimate=8, employees_min=8, employees_max=8, confidence="high"
-    )
-    assert premium_check(unclear, SPEC) == []  # explizite Mitarbeiterzahl reicht als Beleg
-
-    # anonyme Firmen-Handynummer reicht nicht
-    anon = ok.model_copy(deep=True)
-    anon.enrichment.people[0].phones = []
-    assert premium_check(anon, SPEC) == ["keine Handynummer namentlich beim Entscheider"]
-
-    # Mitarbeiterzahl nur aus Rechtsform (low) → nicht belegt
+    # Größe nur indiziert (Rechtsform, niedrige Konfidenz) reicht – eine Zahl auf der Website ist nicht nötig
     weak = ok.model_copy(deep=True)
+    weak.enrichment.employment_signal = "unklar"
     weak.enrichment.size = SizeEstimate(
         point_estimate=12, employees_min=5, employees_max=49, confidence="low"
     )
-    assert premium_check(weak, SPEC) == ["Mitarbeiterzahl nicht belegt"]
+    assert premium_check(weak, SPEC) == []
 
-    # zu groß
+    # gar kein Anhaltspunkt für Beschäftigte (keine Größe, kein Beschäftigten-Signal) → kein Premium
+    bare = ok.model_copy(deep=True)
+    bare.enrichment.employment_signal = "unklar"
+    bare.enrichment.size = SizeEstimate()
+    assert premium_check(bare, SPEC) == ["keine Anhaltspunkte für Beschäftigte (Ein-Personen-Betrieb?)"]
+
+    # freie Handelsvertreter: § 82 SGB III fördert keine Selbstständigen
+    frei = ok.model_copy(deep=True)
+    frei.enrichment.employment_signal = "frei"
+    assert premium_check(frei, SPEC)[0].startswith("freie Handelsvertreter")
+
+    # Handynummer ohne jede Zuordnung reicht nicht
+    anon = ok.model_copy(deep=True)
+    anon.enrichment.people[0].phones = []
+    assert premium_check(anon, SPEC) == ["keine Handynummer beim Entscheider"]
+
+    # belegt zu groß
     big = ok.model_copy(deep=True)
     big.enrichment.size = SizeEstimate(
         point_estimate=80, employees_min=80, employees_max=80, confidence="high"
     )
-    assert premium_check(big, SPEC) == ["Mitarbeiterzahl außerhalb 5–50"]
+    assert premium_check(big, SPEC) == ["Betriebsgröße belegt außerhalb 5–50"]
 
     # HR mit Handy ist kein Entscheider im Premium-Sinn
     hr = ok.model_copy(deep=True)

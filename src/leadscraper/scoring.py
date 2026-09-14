@@ -120,11 +120,14 @@ def premium_check(lead: Lead, spec: SearchSpec) -> list[str]:
     Kriterien:
     1. Betrieb aktiv (Google-Status OPERATIONAL oder unbekannt) und Website erreichbar
     2. Entscheider (Geschäftsführung/Inhaber/Vorstand) aus dem Impressum bekannt
-    3. Handynummer namentlich diesem Entscheider zugeordnet (Team-/Objektseite, vCard, tel:-Link) –
-       eine anonyme Firmen-Handynummer reicht nicht
-    4. Mitarbeiterzahl belegt (explizite Angabe oder Team-Seite, Konfidenz hoch/mittel) und im Zielbereich
-    5. Sozialversicherungspflichtige Beschäftigte erkennbar (Festanstellung/Innendienst/Assistenz/Azubis oder
-       explizite Mitarbeiterzahl) und keine Hinweise auf freie Handelsvertreter/Franchise/Provisionsbasis
+    3. Handynummer diesem Entscheider zugeordnet – entweder namentlich (Team-/Objektseite, vCard,
+       tel:-Link) oder eindeutig (einzige Handynummer der Website bei genau einem Entscheider)
+    4. Betriebsgröße im Zielbereich. Eine Zahl auf der Website ist NICHT nötig: es zählen auch Indizien
+       (namentliche Mitarbeitende, persönliche Postfächer, eigene Durchwahlen, Rechtsform). Ausgeschlossen
+       werden nur Betriebe, die belegt zu groß/zu klein sind.
+    5. Sozialversicherungspflichtige Beschäftigte plausibel (§ 82 SGB III): Festanstellung/Innendienst/
+       Assistenz/Azubis, mehrere namentliche Mitarbeitende oder belegte Größe – und keine Hinweise auf
+       ausschließlich freie Handelsvertreter/Franchise/Provisionsbasis.
     """
     missing: list[str] = []
     company = lead.company
@@ -138,15 +141,13 @@ def premium_check(lead: Lead, spec: SearchSpec) -> list[str]:
     if not deciders:
         missing.append("kein Entscheider im Impressum erkannt")
     elif not any(p.mobile for p in deciders):
-        missing.append("keine Handynummer namentlich beim Entscheider")
+        missing.append("keine Handynummer beim Entscheider")
     size = enr.size
-    if size.confidence not in ("high", "medium"):
-        missing.append("Mitarbeiterzahl nicht belegt")
-    elif size.in_range(spec.min_employees, spec.max_employees) is not True:
-        missing.append(f"Mitarbeiterzahl außerhalb {spec.min_employees}–{spec.max_employees}")
+    if size.in_range(spec.min_employees, spec.max_employees) is False:
+        missing.append(f"Betriebsgröße belegt außerhalb {spec.min_employees}–{spec.max_employees}")
     # § 82 SGB III fördert nur sozialversicherungspflichtig Beschäftigte – freie Handelsvertreter zählen nicht
     if enr.employment_signal == "frei":
         missing.append("freie Handelsvertreter/Franchise – keine förderfähigen Beschäftigten erkennbar")
-    elif enr.employment_signal != "angestellt" and size.confidence != "high":
-        missing.append("sozialversicherungspflichtige Beschäftigte nicht belegt")
+    elif enr.employment_signal != "angestellt" and size.confidence == "none":
+        missing.append("keine Anhaltspunkte für Beschäftigte (Ein-Personen-Betrieb?)")
     return missing

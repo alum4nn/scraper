@@ -58,7 +58,25 @@ def test_group_only_is_medium():
 
 def test_team_page_count_fallback():
     est = estimate_size([(U, "Herzlich willkommen")], team_member_count=7)
-    assert (est.point_estimate, est.employees_min, est.employees_max, est.confidence) == (7, 7, 10, "medium")
+    assert est.confidence == "medium" and est.employees_min == 7 and est.point_estimate >= 7
+    assert "7 namentliche Mitarbeitende" in est.evidence[0]
+
+
+def test_indicator_fallbacks_personal_mailboxes_and_extensions():
+    """Ohne Zahl auf der Website zählen Indizien: persönliche Postfächer / eigene Durchwahlen."""
+    est = estimate_size([(U, "Willkommen")], staff_mailboxes=6)
+    assert est.confidence == "medium" and est.employees_min == 6
+    assert "persönliche E-Mail-Postfächer" in est.evidence[0]
+    est = estimate_size([(U, "Willkommen")], staff_phones=4, team_member_count=2)
+    assert est.employees_min == 4 and "eigener Telefonnummer" in est.evidence[0]
+    # Ein einzelner Name ist kein Indiz für einen Betrieb
+    assert estimate_size([(U, "Willkommen")], team_member_count=1).confidence == "none"
+
+
+def test_indicator_added_as_extra_evidence_to_explicit_count():
+    est = estimate_size([(U, "Unser Team aus 14 Mitarbeitern")], team_member_count=9)
+    assert est.point_estimate == 14 and est.confidence == "high"
+    assert any("Indiz" in e for e in est.evidence)
 
 
 def test_rechtsform_prior_and_rating_fallback():

@@ -146,6 +146,10 @@ class Enrichment(BaseModel):
     call_indicators: list[str] = Field(
         default_factory=list
     )  # Anhaltspunkte für mutmaßliches Interesse (§ 7 UWG)
+    # Wie sicher gehört die Handynummer dem Entscheider? "namentlich" = Name stand daneben (vCard, Team-
+    # Karte, tel:-Link), "eindeutig" = einzige Handynummer + einziger Entscheider, "unklar" = keine.
+    mobile_assignment: Literal["namentlich", "eindeutig", "unklar"] = "unklar"
+    mobile_assignment_note: str | None = None
     # Beschäftigtenstatus: "angestellt" (sozialversicherungspflichtige Mitarbeiter erkennbar), "frei" (freie
     # Handelsvertreter/Franchise/Provisionsbasis – nicht nach § 82 SGB III förderfähig), "unklar"
     employment_signal: Literal["angestellt", "frei", "unklar"] = "unklar"

@@ -10,6 +10,8 @@ from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
+from pydantic import ValidationError
+
 from leadscraper import funding, scoring
 from leadscraper.cache import Cache
 from leadscraper.crawler import CrawlResult, Page, SiteCrawler
@@ -20,12 +22,23 @@ from leadscraper.extract import people as people_mod
 from leadscraper.extract import phones as phones_mod
 from leadscraper.extract.htmlutil import decode_cloudflare_email
 from leadscraper.extract.names import surname
-from leadscraper.extract.size import estimate_size
-from leadscraper.models import Company, Enrichment, Lead, Person, PhoneNumber, PhoneSource, SearchSpec
+from leadscraper.extract.size import estimate_size, headcount_from_indicators
+from leadscraper.models import (
+    Company,
+    Enrichment,
+    Lead,
+    Person,
+    PhoneNumber,
+    PhoneSource,
+    SearchSpec,
+    SizeEstimate,
+)
 from leadscraper.places import PlacesClient
 from leadscraper.settings import Settings
 
 log = logging.getLogger(__name__)
+
+_DECIDER_ROLES = {"geschaeftsfuehrung", "inhaber", "vorstand"}
 
 ProgressFn = Callable[[str], None]
 
@@ -198,10 +211,13 @@ def build_enrichment(company: Company, crawl: CrawlResult) -> Enrichment:
     enr.size = estimate_size(
         [(p.final_url, p.text) for p in crawl.pages],
         team_member_count=team_count,
+        staff_mailboxes=count_personal_mailboxes(enr.emails, people),
+        staff_phones=len({ph.person for ph in enr.phones if ph.person}) or None,
         rechtsform=enr.rechtsform,
         user_rating_count=company.user_rating_count,
     )
-    enr.employment_signal, enr.employment_evidence = employment_signal(crawl, enr)
+    attribute_sole_mobile(enr)
+    enr.employment_signal, enr.employment_evidence = employment_signal(crawl, enr)  # nach size/Zuordnung
     enr.call_indicators = call_indicators(crawl, enr)
     if len(crawl.pages) == 1 and len(crawl.pages[0].lines) < 15 and "wenig Text" not in " ".join(enr.errors):
         enr.errors.append("wenig Text (SPA oder Cookie-Wall?)")
@@ -240,6 +256,52 @@ _EMPLOYED_ROLE_RE = re.compile(
 )
 
 
+_PERSONAL_MAILBOX_RE = re.compile(r"^[a-zäöüß]{1,20}[._-][a-zäöüß-]{2,25}$|^[a-zäöüß]\.[a-zäöüß-]{2,25}$")
+_ROLE_MAILBOX_RE = re.compile(
+    r"^(?:info|kontakt|mail|office|buero|büro|service|verwaltung|immobilien|makler|team|post|zentrale|"
+    r"anfrage|beratung|vertrieb|marketing|presse|datenschutz|webmaster|noreply|no-reply|bewerbung|jobs|"
+    r"karriere|support|hallo|moin)\b",
+    re.I,
+)
+
+
+def count_personal_mailboxes(emails: list[str], people: list[Person]) -> int | None:
+    """Persönliche Postfächer (m.mustermann@, anna.schmidt@) – ein Indiz je Mitarbeitendem."""
+    locals_seen: set[str] = set()
+    for addr in emails:
+        local = addr.split("@", 1)[0].strip().lower()
+        if _ROLE_MAILBOX_RE.match(local):
+            continue
+        if _PERSONAL_MAILBOX_RE.match(local) or any(
+            surname(p.name).casefold() in local for p in people if len(surname(p.name)) >= 4
+        ):
+            locals_seen.add(local)
+    return len(locals_seen) or None
+
+
+def attribute_sole_mobile(enr: Enrichment) -> None:
+    """Eine einzige Handynummer auf der ganzen Website + genau ein Entscheider, sonst niemand mit Handy:
+    Dann gehört sie diesem Entscheider (Ein-Personen-Maklerbüro). Wird als Zuordnung „eindeutig“ vermerkt,
+    damit im Telefonat klar ist, dass der Name nicht direkt neben der Nummer stand."""
+    deciders = [p for p in enr.decision_makers if p.role_category in _DECIDER_ROLES]
+    if any(p.mobile for p in deciders):
+        enr.mobile_assignment = "namentlich"
+        return
+    if len(deciders) != 1:
+        return
+    mobiles = [m for m in enr.mobiles if m.source != "places"]
+    if len(mobiles) != 1 or mobiles[0].person:
+        return
+    decider = deciders[0]
+    mobiles[0].person = decider.name
+    decider.phones.append(mobiles[0])
+    enr.mobile_assignment = "eindeutig"
+    enr.mobile_assignment_note = (
+        f"einzige Handynummer der Website, einziger Entscheider ({decider.name}) – Name stand nicht "
+        f"unmittelbar neben der Nummer ({mobiles[0].source_url or ''})"
+    )
+
+
 def employment_signal(crawl: CrawlResult, enr: Enrichment) -> tuple[str, list[str]]:
     """Sozialversicherungspflichtige Beschäftigte erkennbar (§ 82 SGB III) oder freie Vertreter?"""
     positive: list[str] = []
@@ -260,6 +322,14 @@ def employment_signal(crawl: CrawlResult, enr: Enrichment) -> tuple[str, list[st
     for person in enr.people:
         if person.role and _EMPLOYED_ROLE_RE.search(person.role):
             positive.append(f"Rolle „{person.role}“: {person.name}")
+    # Indiz statt Fundstelle: Mehrere namentliche Mitarbeitende neben dem/den Entscheidern bedeuten
+    # Beschäftigte – ein Ein-Mann-Büro mit freien Partnern führt keine sechs Leute mit Firmen-E-Mail.
+    staff = [p for p in enr.people if p.role_category not in _DECIDER_ROLES]
+    if len(staff) >= 2:
+        names = ", ".join(p.name for p in staff[:3])
+        positive.append(f"{len(staff)} Mitarbeitende neben der Geschäftsführung ({names} …)")
+    if (enr.size.employees_min or 0) >= 5 and enr.size.confidence in ("high", "medium"):
+        positive.append(f"belegte Betriebsgröße ab {enr.size.employees_min} Personen")
     evidence = [f"+ {x}" for x in positive[:3]] + [f"− {x}" for x in negative[:3]]
     if negative and not positive:
         return "frei", evidence
@@ -492,14 +562,63 @@ def load_orte(path: Path | None = None, bundeslaender: list[str] | None = None) 
     return orte
 
 
+def refresh_lead(lead: Lead, spec: SearchSpec, funding_cfg: dict) -> Lead:
+    """Einen gespeicherten Lead ohne neuen Crawl neu bewerten: Größen-Indizien, Beschäftigtenstatus,
+    Handy-Zuordnung, Förderung, Score, Premium. Nutzt nur, was in der JSONL-Datei steht – so wirken
+    Verbesserungen an den Regeln auch auf Orte, die schon abgearbeitet sind (ohne Google-Kosten)."""
+    enr = lead.enrichment
+    if enr is None:
+        return finalize_lead(lead.company, None, spec, funding_cfg)
+    attribute_sole_mobile(enr)
+    if enr.size.confidence in ("none", "low"):
+        staff_urls = {u for u in enr.pages_crawled}
+        team_count = len({p.name for p in enr.people if p.source_url in staff_urls}) or None
+        indicator = headcount_from_indicators(
+            team_count,
+            count_personal_mailboxes(enr.emails, enr.people),
+            len({ph.person for ph in enr.phones if ph.person}) or None,
+        )
+        if indicator is not None:
+            n, why = indicator
+            enr.size = SizeEstimate(
+                employees_min=n,
+                employees_max=max(n + 2, round(n * 1.8)),
+                point_estimate=max(n, round(n * 1.3)),
+                confidence="medium" if n >= 3 else "low",
+                evidence=[f"Indiz: {why} (mindestens so viele Beschäftigte)", *enr.size.evidence[:2]],
+            )
+    staff = [p for p in enr.people if p.role_category not in _DECIDER_ROLES]
+    extra = []
+    if len(staff) >= 2:
+        names = ", ".join(p.name for p in staff[:3])
+        extra.append(f"+ {len(staff)} Mitarbeitende neben der Geschäftsführung ({names} …)")
+    if (enr.size.employees_min or 0) >= 5 and enr.size.confidence in ("high", "medium"):
+        extra.append(f"+ belegte Betriebsgröße ab {enr.size.employees_min} Personen")
+    for line in extra:
+        if line not in enr.employment_evidence:
+            enr.employment_evidence.append(line)
+    if extra and enr.employment_signal == "unklar":
+        enr.employment_signal = "angestellt"
+    return finalize_lead(lead.company, enr, spec, funding_cfg)
+
+
 def read_leads_jsonl(path: Path) -> list[Lead]:
+    """Gespeicherte Leads lesen. Eine abgeschnittene letzte Zeile (Abbruch mitten im Schreiben) wird
+    übersprungen, damit ein unterbrochener Lauf wieder aufgenommen werden kann."""
     if not path.exists():
         return []
-    return [
-        Lead.model_validate_json(line)
-        for line in path.read_text(encoding="utf-8").splitlines()
-        if line.strip()
-    ]
+    leads: list[Lead] = []
+    broken = 0
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            leads.append(Lead.model_validate_json(line))
+        except ValidationError:
+            broken += 1
+    if broken:
+        log.warning("%s: %d unvollständige Zeile(n) übersprungen", path, broken)
+    return leads
 
 
 async def run_cities(

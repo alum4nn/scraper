@@ -37,6 +37,7 @@ Spaltenlogik "Name" / "Nummer" (Leads-Blatt):
 
 from __future__ import annotations
 
+import csv
 from collections.abc import Collection, Iterable, Sequence
 from datetime import datetime
 from pathlib import Path
@@ -77,6 +78,7 @@ LEAD_COLUMNS: tuple[str, ...] = (
     "Premium",
     "Premium-Check",
     "Rolle",
+    "Handy-Zuordnung",
     "Handy Fundstelle",
     "Weitere Handynummern",
     "Festnetz (Places)",
@@ -178,6 +180,7 @@ _LEAD_WRAP_COLUMNS = frozenset(
         "Anruf-Indikatoren",
         "Premium-Check",
         "Beschäftigte Beleg",
+        "Handy-Zuordnung",
     }
 )
 
@@ -281,6 +284,7 @@ def _lead_row(lead: Lead) -> dict[str, Any]:
         "Name": person.name if person else "",
         "Rolle": _role_label(person) if person else "",
         "Nummer": mobile.national if mobile else "",
+        "Handy-Zuordnung": _mobile_assignment_label(enr),
         "Handy Fundstelle": (mobile.source_url or "") if mobile else "",
         "Weitere Handynummern": ", ".join(_other_mobiles(enr, mobile)),
         "Festnetz (Places)": company.phone or "",
@@ -620,3 +624,76 @@ def _display_len(value: Any) -> int:
     if isinstance(value, datetime):
         return len(DATE_FORMAT)
     return max(len(line) for line in str(value).splitlines() or [""])
+
+
+# --- Trello-Import --------------------------------------------------------------------------------
+
+TRELLO_COLUMNS: tuple[str, str] = ("Unternehmensname", "Beschreibung")
+
+
+def trello_rows(leads: Iterable[Lead]) -> list[tuple[str, str]]:
+    """Eine Karte je Firma: Titel = Unternehmensname, Beschreibung = alle Angaben als Markdown-Liste.
+
+    Trello importiert CSV mit genau diesen zwei Spalten als Kartenname und Kartenbeschreibung.
+    """
+    rows: list[tuple[str, str]] = []
+    for lead in _sorted_leads(list(leads)):
+        row = _lead_row(lead)
+        street, plz, city = lead.address
+        adresse = " ".join(x for x in [street, plz, city] if x)
+        funding = lead.funding or FundingAssessment()
+        foerderung = ""
+        if funding.lehrgangskosten_pct is not None:
+            foerderung = (
+                f"{funding.lehrgangskosten_pct} % Lehrgangskosten, "
+                f"{funding.arbeitsentgeltzuschuss_pct} % Arbeitsentgeltzuschuss ({funding.size_band})"
+            )
+        enr = lead.enrichment
+        fields: list[tuple[str, Any]] = [
+            ("Ansprechpartner", f"{row['Name']} ({row['Rolle']})" if row["Name"] else ""),
+            ("Handy", row["Nummer"]),
+            ("Handy-Zuordnung", _mobile_assignment_label(enr)),
+            ("Festnetz", row["Festnetz (Website)"] or row["Festnetz (Places)"]),
+            ("E-Mail", row["E-Mail"]),
+            ("Webseite", row["Webseite"]),
+            ("Adresse", adresse),
+            ("Mitarbeiter (Schätzung)", _employee_text(row)),
+            ("Beleg Mitarbeiterzahl", (row["MA Beleg"] or "").replace("\n", " | ")),
+            ("Beschäftigte", row["Beschäftigte"]),
+            ("Förderung § 82 SGB III", foerderung),
+            ("Landesprogramm", row["Landesprogramm"]),
+            ("Rechtsform / Register", " ".join(x for x in [row["Rechtsform"], row["Register"]] if x)),
+            ("Impressum", row["Impressum-URL"]),
+            ("Score", str(row["Score"])),
+            ("Anruf-Indikatoren", (row["Anruf-Indikatoren"] or "").replace("\n", " | ")),
+            ("Pitch", row["Pitch"]),
+        ]
+        body = "\n".join(f"- **{label}:** {value}" for label, value in fields if value)
+        rows.append((lead.display_name, body))
+    return rows
+
+
+def _employee_text(row: dict[str, Any]) -> str:
+    if row["Mitarbeiter (Schätzung)"] is None:
+        return ""
+    spanne = f" ({row['MA min']}–{row['MA max']})" if row["MA min"] is not None else ""
+    return f"{row['Mitarbeiter (Schätzung)']}{spanne}, Konfidenz {row['MA Konfidenz']}"
+
+
+def _mobile_assignment_label(enr: Enrichment | None) -> str:
+    if enr is None or enr.mobile_assignment == "unklar":
+        return ""
+    if enr.mobile_assignment == "namentlich":
+        return "namentlich neben der Nummer"
+    return f"eindeutig – {enr.mobile_assignment_note or ''}".strip(" –")
+
+
+def write_trello_csv(leads: list[Lead], path: Path) -> Path:
+    """CSV für den Trello-Import (UTF-8 mit BOM, damit Umlaute in Trello/Excel stimmen)."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8-sig", newline="") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(TRELLO_COLUMNS)
+        writer.writerows(trello_rows(leads))
+    return path

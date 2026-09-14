@@ -215,10 +215,28 @@ def _evidence(hit: _Hit) -> str:
     return f"Text: „{hit.snippet}“{tag} ({hit.url})"
 
 
+def headcount_from_indicators(
+    team_member_count: int | None, staff_mailboxes: int | None, staff_phones: int | None
+) -> tuple[int, str] | None:
+    """Belegte Köpfe ohne Zahlenangabe auf der Website: namentliche Mitarbeitende, persönliche
+    Postfächer (vorname.nachname@) und eigene Durchwahlen. Rückgabe: (Anzahl, Beleg) oder None."""
+    candidates = [
+        (team_member_count or 0, "{n} namentliche Mitarbeitende auf Team-/Kontaktseiten"),
+        (staff_mailboxes or 0, "{n} persönliche E-Mail-Postfächer (vorname.nachname@)"),
+        (staff_phones or 0, "{n} Personen mit eigener Telefonnummer/Durchwahl"),
+    ]
+    best, template = max(candidates, key=lambda c: c[0])
+    if best < 2:
+        return None
+    return best, template.format(n=best)
+
+
 def estimate_size(
     pages: list[tuple[str, str]],
     *,
     team_member_count: int | None = None,
+    staff_mailboxes: int | None = None,
+    staff_phones: int | None = None,
     rechtsform: str | None = None,
     user_rating_count: int | None = None,
 ) -> SizeEstimate:
@@ -251,13 +269,16 @@ def estimate_size(
     evidence += [_evidence(h) for h in hits if h is not chosen][:4]
     est.evidence = evidence[:5]
 
-    if chosen is None and team_member_count and team_member_count >= 3:
+    indicator = headcount_from_indicators(team_member_count, staff_mailboxes, staff_phones)
+    if chosen is None and indicator is not None:
+        # Namentliche Mitarbeitende sind die Untergrenze: Innendienst/Backoffice steht selten auf der Website.
+        n, why = indicator
         est = SizeEstimate(
-            employees_min=team_member_count,
-            employees_max=round(team_member_count * 1.5),
-            point_estimate=team_member_count,
-            confidence="medium",
-            evidence=[f"Team-Seite: {team_member_count} Personen aufgeführt"],
+            employees_min=n,
+            employees_max=max(n + 2, round(n * 1.8)),
+            point_estimate=max(n, round(n * 1.3)),
+            confidence="medium" if n >= 3 else "low",
+            evidence=[f"Indiz: {why} (mindestens so viele Beschäftigte)"],
         )
     elif chosen is None and rechtsform in _FORM_PRIOR:
         lo, hi, point = _FORM_PRIOR[rechtsform]
@@ -282,6 +303,6 @@ def estimate_size(
             confidence="low",
             evidence=[f"{user_rating_count} Google-Bewertungen (schwaches Signal)"],
         )
-    elif chosen is None and team_member_count:
-        est.evidence.append(f"Team-Seite: {team_member_count} Personen aufgeführt")
+    if chosen is not None and indicator is not None:
+        est.evidence.append(f"Indiz: {indicator[1]}")
     return est

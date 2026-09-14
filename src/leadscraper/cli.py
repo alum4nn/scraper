@@ -14,7 +14,7 @@ from rich.console import Console
 from rich.table import Table
 
 from leadscraper import funding, pipeline
-from leadscraper.excel import write_workbook
+from leadscraper.excel import write_trello_csv, write_workbook
 from leadscraper.models import Company, Lead, SearchSpec
 from leadscraper.places import PlacesError
 from leadscraper.settings import CONFIG_DIR, Settings, get_settings
@@ -426,6 +426,52 @@ def export(
     _print_summary(leads)
     n_prem = sum(1 for ld in leads if ld.premium)
     console.print(f"\n[green]✔[/] {len(leads)} Leads (davon {n_prem} Premium) → [bold]{target}[/]")
+
+
+@app.command()
+def refresh(
+    jsonl: list[Path] = typer.Argument(..., help="JSONL-Datei(en) aus --deutschland"),
+    out: Path | None = typer.Option(None, "--out", "-o", help="Ziel-JSONL (Default: Datei ersetzen)"),
+    min_employees: int | None = typer.Option(5, help="Untergrenze Mitarbeiterzahl"),
+    max_employees: int | None = typer.Option(50, help="Obergrenze Mitarbeiterzahl"),
+) -> None:
+    """Gespeicherte Leads mit den aktuellen Regeln neu bewerten – ohne Crawl, ohne Google-Anfragen.
+
+    Nach Verbesserungen an Größen-Indizien, Beschäftigtenstatus oder Handy-Zuordnung wirken diese damit
+    auch auf bereits abgearbeitete Orte. Ein laufender Lauf darf dieselbe Datei nicht gleichzeitig
+    beschreiben – vorher beenden oder mit --out in eine neue Datei schreiben.
+    """
+    spec = SearchSpec(queries=["refresh"], min_employees=min_employees, max_employees=max_employees)
+    cfg = funding.load_funding_config()
+    for path in jsonl:
+        leads = pipeline.read_leads_jsonl(path)
+        before = sum(1 for ld in leads if ld.premium)
+        refreshed = [pipeline.refresh_lead(ld, spec, cfg) for ld in leads]
+        target = out or path
+        target.write_text("".join(ld.model_dump_json() + "\n" for ld in refreshed), encoding="utf-8")
+        after = sum(1 for ld in refreshed if ld.premium)
+        console.print(
+            f"[green]✔[/] {path.name}: {len(refreshed)} Leads neu bewertet, "
+            f"Premium {before} → [bold]{after}[/] → {target}"
+        )
+
+
+@app.command()
+def trello(
+    jsonl: list[Path] = typer.Argument(..., help="JSONL-Datei(en) aus --deutschland"),
+    out: Path = typer.Option(Path("output/trello.csv"), "--out", "-o", help="Ziel-CSV für Trello-Import"),
+    premium: bool = typer.Option(True, "--premium/--alle", help="Nur Premium-Leads (Default: ja)"),
+    limit: int | None = typer.Option(None, help="Höchstens so viele Karten (beste Scores zuerst)"),
+) -> None:
+    """CSV für den Trello-Import: Spalte 1 = Unternehmensname (Kartenname), Spalte 2 = alle Infos."""
+    leads = _load_leads(jsonl)
+    if premium:
+        leads = [ld for ld in leads if ld.premium]
+    if limit:
+        leads = leads[:limit]
+    out.parent.mkdir(parents=True, exist_ok=True)
+    write_trello_csv(leads, out)
+    console.print(f"[green]✔[/] {len(leads)} Karten → [bold]{out}[/]  (Trello: Import → CSV)")
 
 
 @app.command()
