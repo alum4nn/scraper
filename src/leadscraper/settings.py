@@ -12,7 +12,9 @@ CONFIG_DIR = PROJECT_ROOT / "config"
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", extra="ignore", populate_by_name=True
+    )
 
     google_places_api_key: str | None = Field(default=None, alias="GOOGLE_PLACES_API_KEY")
 
@@ -29,7 +31,9 @@ class Settings(BaseSettings):
     max_html_bytes: int = Field(default=2_000_000, alias="LEADSCRAPER_MAX_HTML_BYTES")
 
     # Cache (Google-Nutzungsbedingungen: nur place_id dauerhaft, Rest max. 30 Tage)
-    cache_path: Path = Field(default=PROJECT_ROOT / "cache" / "leadscraper.sqlite", alias="LEADSCRAPER_CACHE_PATH")
+    cache_path: Path | None = Field(
+        default=PROJECT_ROOT / "cache" / "leadscraper.sqlite", alias="LEADSCRAPER_CACHE_PATH"
+    )
     places_cache_ttl_days: int = Field(default=30, alias="LEADSCRAPER_PLACES_CACHE_TTL_DAYS")
     html_cache_ttl_days: int = Field(default=14, alias="LEADSCRAPER_HTML_CACHE_TTL_DAYS")
 
