@@ -38,6 +38,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -93,6 +94,11 @@ _HINT_400 = (
     "und Request-Body validieren"
 )
 _HINT_403 = "Places API (New) im Google-Cloud-Projekt aktivieren / API-Key-Beschränkungen prüfen"
+_QUOTA_HINT = (
+    "Tageskontingent erschöpft. Es setzt sich um Mitternacht Pacific Time zurück; danach mit "
+    "./resume.sh fortsetzen. Mehr Kontingent: Google Cloud Console → APIs & Dienste → Kontingente."
+)
+_QUOTA_RE = re.compile(r"quota|rate[_ ]limit|resource[_ ]exhausted", re.I)
 _COUNTRY_NAMES_DE = frozenset({"deutschland", "germany"})
 
 _extract = tldextract.TLDExtract(suffix_list_urls=())  # offline, keine Netzabfrage der Suffix-Liste
@@ -100,6 +106,14 @@ _extract = tldextract.TLDExtract(suffix_list_urls=())  # offline, keine Netzabfr
 
 class PlacesError(Exception):
     """Lesbarer Fehler der Places API (Konfiguration, Quota, dauerhaft fehlgeschlagene Anfrage)."""
+
+
+class QuotaExceededError(PlacesError):
+    """Das Tages- oder Minutenkontingent ist erschöpft.
+
+    Kein Fehler im Aufruf: weitere Versuche sind sinnlos, bis das Kontingent zurückgesetzt wird
+    (Tageskontingent um Mitternacht Pacific Time). Ein bundesweiter Lauf wird deshalb geordnet beendet
+    und später mit derselben Zustandsdatei fortgesetzt."""
 
 
 class _RetryableStatus(Exception):
@@ -390,9 +404,12 @@ class PlacesClient:
         try:
             response = await retrying(self._send, url, body, headers)
         except _RetryableStatus as exc:
+            message = _api_error_message(exc.response)
+            if exc.response.status_code == 429 or _QUOTA_RE.search(message):
+                raise QuotaExceededError(f"Google Places: {message} – {_QUOTA_HINT}") from exc
             raise PlacesError(
                 f"Google Places antwortet nach {RETRY_ATTEMPTS} Versuchen weiterhin mit "
-                f"HTTP {exc.response.status_code}: {_api_error_message(exc.response)}"
+                f"HTTP {exc.response.status_code}: {message}"
             ) from exc
         except httpx.TransportError as exc:
             raise PlacesError(
@@ -417,6 +434,8 @@ class PlacesClient:
             )
         if status == 403:
             message = _api_error_message(response)
+            if _QUOTA_RE.search(message):
+                raise QuotaExceededError(f"Google Places: {message} – {_QUOTA_HINT}")
             raise PlacesError(
                 f"Google Places: Zugriff verweigert (HTTP 403): {message} – Hinweis: {_HINT_403}"
             )

@@ -16,8 +16,11 @@ from rich.table import Table
 from leadscraper import funding, pipeline
 from leadscraper.excel import write_trello_csv, write_workbook
 from leadscraper.models import Company, Lead, SearchSpec
-from leadscraper.places import PlacesError
+from leadscraper.places import PlacesError, QuotaExceededError
 from leadscraper.settings import CONFIG_DIR, Settings, get_settings
+
+# Rückgabewert bei erschöpftem Google-Kontingent: die Slot-Skripte beenden sich dann, statt zu wiederholen.
+_QUOTA_EXIT_CODE = 3
 
 app = typer.Typer(
     help="B2B-Leads (Entscheider + Handynummer) aus Google Places & Firmenwebsites → Excel",
@@ -190,6 +193,11 @@ def run(
                     checkpoint=checkpoint,
                 )
             )
+        except QuotaExceededError as exc:
+            # Eigener Rückgabewert, damit die Slot-Skripte nicht sinnlos neu starten.
+            console.print(f"[yellow]Kontingent erschöpft:[/] {exc}")
+            console.print(f"[dim]Stand gesichert in {state} – Fortsetzen mit ./resume.sh[/]")
+            raise typer.Exit(code=_QUOTA_EXIT_CODE) from None
         except (PlacesError, RuntimeError) as exc:
             raise typer.Exit(code=_err(str(exc))) from None
         write_workbook(leads, spec, target, funding_rows=funding.funding_reference_rows())

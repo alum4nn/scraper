@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 from typing import Any
@@ -822,3 +823,59 @@ async def test_injizierter_http_client_bleibt_offen(httpx_mock: HTTPXMock) -> No
         await client.text_search("Makler")
         await client.close()
         assert not http.is_closed
+
+
+def test_quota_exhausted_is_its_own_error(httpx_mock, monkeypatch):
+    """Ein erschöpftes Tageskontingent ist kein Konfigurationsfehler – der Lauf soll pausieren."""
+    from leadscraper import places as places_mod
+    from leadscraper.places import PlacesClient, QuotaExceededError
+
+    monkeypatch.setattr(places_mod, "RETRY_WAIT", wait_none())
+    httpx_mock.add_response(
+        status_code=429,
+        json={
+            "error": {
+                "code": 429,
+                "status": "RESOURCE_EXHAUSTED",
+                "message": (
+                    "Quota exceeded for quota metric 'SearchTextRequest' and limit "
+                    "'SearchTextRequest per day' of service 'places.googleapis.com'."
+                ),
+            }
+        },
+        is_reusable=True,
+    )
+
+    async def go():
+        client = PlacesClient("test-key")
+        try:
+            await client.text_search("Immobilienmakler Köln")
+        finally:
+            await client.close()
+
+    with pytest.raises(QuotaExceededError) as err:
+        asyncio.run(go())
+    assert "Tageskontingent" in str(err.value)
+    assert "resume.sh" in str(err.value)
+
+
+def test_forbidden_without_quota_hint_stays_a_config_error(httpx_mock):
+    from leadscraper.places import PlacesClient, PlacesError, QuotaExceededError
+
+    httpx_mock.add_response(
+        status_code=403,
+        json={"error": {"code": 403, "status": "PERMISSION_DENIED", "message": "API not enabled"}},
+        is_reusable=True,
+    )
+
+    async def go():
+        client = PlacesClient("test-key")
+        try:
+            await client.text_search("Immobilienmakler Köln")
+        finally:
+            await client.close()
+
+    with pytest.raises(PlacesError) as err:
+        asyncio.run(go())
+    assert not isinstance(err.value, QuotaExceededError)
+    assert "Places API (New)" in str(err.value)
