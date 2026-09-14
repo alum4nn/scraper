@@ -88,6 +88,7 @@ LEAD_COLUMNS: tuple[str, ...] = (
     "AEZ %",
     "Landesprogramm",
     "Pitch",
+    "Anruf-Indikatoren",
     "Branche (Places)",
     "Straße",
     "PLZ",
@@ -108,6 +109,7 @@ LEAD_COLUMNS: tuple[str, ...] = (
     "Score-Begründung",
     "Fehler",
     "Gescrapt am",
+    "Firmenname Quelle",
     *CRM_COLUMNS,
 )
 PEOPLE_COLUMNS: tuple[str, ...] = (
@@ -143,8 +145,9 @@ MIN_WIDTH = 8
 MAX_WIDTH = 60
 
 TOS_NOTE = (
-    "Google-ToS: Places-Daten (alles außer place_id) höchstens 30 Tage nutzen/cachen. Diese Datei ist das "
-    "interne Arbeitsdokument des Vertriebs – Places-Daten daraus nicht weiterverbreiten."
+    "Google Maps Platform: Firmenname, Adresse und Telefon stammen aus dem Impressum der Firmenwebsite; "
+    "Google-Daten (Spalten 'Firmenname Quelle = Google', 'Festnetz (Places)', Bewertung, Google Maps) sind "
+    "nur Fallback/Referenz und dürfen nicht dauerhaft gespeichert oder weitergegeben werden."
 )
 UWG_NOTE = (
     "§ 7 UWG: Telefonanrufe bei Unternehmen (B2B) nur bei mutmaßlichem Interesse zulässig – bei geförderter "
@@ -160,7 +163,9 @@ _LEAD_TEXT_COLUMNS = frozenset(
 _LEAD_LINK_COLUMNS = frozenset(
     {"Handy Fundstelle", "Website", "Impressum-URL", "Google Maps", "LinkedIn", "XING", "WhatsApp"}
 )
-_LEAD_WRAP_COLUMNS = frozenset({"Pitch", "MA Beleg", "Score-Begründung", "Notizen", "Fehler"})
+_LEAD_WRAP_COLUMNS = frozenset(
+    {"Pitch", "MA Beleg", "Score-Begründung", "Notizen", "Fehler", "Anruf-Indikatoren"}
+)
 
 _KIND_LABEL = {"mobile": "mobil", "landline": "festnetz", "voip": "voip", "unknown": "unbekannt"}
 _CONFIDENCE_LABEL = {"high": "hoch", "medium": "mittel", "low": "niedrig", "none": ""}
@@ -253,9 +258,10 @@ def _lead_row(lead: Lead) -> dict[str, Any]:
     funding = lead.funding or FundingAssessment()
     person = _primary_person(lead)
     mobile = _primary_mobile(lead, person)
+    street, plz, city = lead.address
     row: dict[str, Any] = {
         "Score": lead.score,
-        "Firma": company.name,
+        "Firma": lead.display_name,
         "Entscheider": person.name if person else "",
         "Rolle": _role_label(person) if person else "",
         "Handy Entscheider": mobile.national if mobile else "",
@@ -275,10 +281,11 @@ def _lead_row(lead: Lead) -> dict[str, Any]:
         "AEZ %": funding.arbeitsentgeltzuschuss_pct,
         "Landesprogramm": funding.landesprogramm or "",
         "Pitch": funding.pitch or "",
+        "Anruf-Indikatoren": "\n".join(enr.call_indicators) if enr else "",
         "Branche (Places)": company.primary_type or "",
-        "Straße": company.street or "",
-        "PLZ": company.plz or "",
-        "Ort": company.city or "",
+        "Straße": street or "",
+        "PLZ": plz or "",
+        "Ort": city or "",
         "Bundesland": company.bundesland or "",
         "Website": company.website or (enr.website if enr else None) or "",
         "Impressum-URL": (enr.impressum_url if enr else None) or "",
@@ -295,6 +302,9 @@ def _lead_row(lead: Lead) -> dict[str, Any]:
         "Score-Begründung": "\n".join(lead.score_reasons),
         "Fehler": "\n".join(enr.errors) if enr else "",
         "Gescrapt am": lead.scraped_at,
+        "Firmenname Quelle": "Impressum"
+        if enr and enr.legal_name
+        else ("Liste" if company.place_id.startswith("list-") else "Google"),
     }
     row.update(dict.fromkeys(CRM_COLUMNS, ""))
     return row
@@ -318,8 +328,8 @@ def _people_rows(leads: list[Lead]) -> list[list[Any]]:
                 (
                     sort_key,
                     [
-                        company.name,
-                        company.city or "",
+                        lead.display_name,
+                        lead.address[2] or "",
                         person.name,
                         _role_label(person),
                         person.role_category,
@@ -341,7 +351,7 @@ def _phone_rows(leads: list[Lead]) -> Iterable[list[Any]]:
             continue
         for phone in lead.enrichment.phones:
             yield [
-                lead.company.name,
+                lead.display_name,
                 phone.national,
                 phone.e164,
                 _KIND_LABEL.get(phone.kind, phone.kind),

@@ -61,20 +61,20 @@ def score_lead(lead: Lead, spec: SearchSpec) -> tuple[int, list[str]]:
         est = enr.size.point_estimate or enr.size.employees_max
 
         if decider_with_mobile:
-            score += 40
+            score += 50
             reasons.append(f"Entscheider mit Handy: {decider_with_mobile.name}")
         elif mobiles:
             if est is not None and est <= 10:
-                score += 30
+                score += 25
                 reasons.append("Handynummer (Kleinbetrieb – vermutlich Inhaber)")
             else:
-                score += 25
+                score += 20
                 reasons.append("Handynummer ohne Namenszuordnung")
         if deciders and not decider_with_mobile:
-            score += 15
+            score += 10
             reasons.append(f"Entscheider bekannt: {deciders[0].name}")
         if hr:
-            score += 10
+            score += 5
             reasons.append(f"HR/Ausbildung: {hr[0].name}")
         owner = owner_signal(lead)
         if owner:
@@ -95,10 +95,10 @@ def score_lead(lead: Lead, spec: SearchSpec) -> tuple[int, list[str]]:
             reasons.append("Größe unbekannt")
 
         if enr.emails:
-            score += 5
+            score += 3
             reasons.append("E-Mail")
         if enr.linkedin_url or enr.xing_url:
-            score += 3
+            score += 2
             reasons.append("LinkedIn/XING")
 
     return max(0, min(100, score)), reasons

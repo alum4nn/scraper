@@ -1,0 +1,3 @@
+User-agent: *
+Disallow: /intern/
+Sitemap: https://www.rheinblick-immobilien-koeln.de/sitemap.xml

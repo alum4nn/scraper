@@ -50,6 +50,12 @@ _KIND_PATTERNS: list[tuple[int, PageKind, re.Pattern[str]]] = [
         ),
     ),
     (3, "karriere", re.compile(r"karriere|jobs|stellen|ausbildung|career|bewerb", re.I)),
+    # Objekt-/Angebotsseiten: bei Maklern steht dort die "Ihr Ansprechpartner"-Box mit Handynummer
+    (
+        4,
+        "sonstige",
+        re.compile(r"immobilien|objekt|angebot|expos[eé]|referenz|leistung|verkauf|vermiet", re.I),
+    ),
 ]
 _SKIP_EXT_RE = re.compile(
     r"\.(?:pdf|jpe?g|png|gif|svg|webp|avif|bmp|ico|zip|rar|7z|docx?|xlsx?|pptx?|mp[34]|m4a|mov|avi|wmv|css|js|json|xml|rss|"

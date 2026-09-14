@@ -30,11 +30,12 @@ class Settings(BaseSettings):
     respect_robots_txt: bool = Field(default=True, alias="LEADSCRAPER_RESPECT_ROBOTS")
     max_html_bytes: int = Field(default=2_000_000, alias="LEADSCRAPER_MAX_HTML_BYTES")
 
-    # Cache (Google-Nutzungsbedingungen: nur place_id dauerhaft, Rest max. 30 Tage)
+    # Cache. Google-Nutzungsbedingungen: dauerhaft nur place_id, Koordinaten max. 30 Tage, alles andere nicht
+    # vorhalten → Places-Antworten nur kurz (Wiederholung desselben Laufs am selben Tag) zwischenspeichern.
     cache_path: Path | None = Field(
         default=PROJECT_ROOT / "cache" / "leadscraper.sqlite", alias="LEADSCRAPER_CACHE_PATH"
     )
-    places_cache_ttl_days: int = Field(default=30, alias="LEADSCRAPER_PLACES_CACHE_TTL_DAYS")
+    places_cache_ttl_days: int = Field(default=1, alias="LEADSCRAPER_PLACES_CACHE_TTL_DAYS")
     html_cache_ttl_days: int = Field(default=14, alias="LEADSCRAPER_HTML_CACHE_TTL_DAYS")
 
     output_dir: Path = Field(default=PROJECT_ROOT / "output", alias="LEADSCRAPER_OUTPUT_DIR")

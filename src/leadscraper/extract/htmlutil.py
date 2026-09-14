@@ -81,10 +81,29 @@ def _walk(node: Node, out: list[str]) -> None:
             out.append("\t")
         elif tag == "a":
             out.append(" ")
+            before = len(out)
             _walk(child, out)
+            number = _number_from_href(child.attributes.get("href") or "")
+            if number and not any(ch.isdigit() for ch in "".join(out[before:])):
+                out.append(f" {number}")  # "Mobil" → "Mobil +49171…": Nummer steht im Textkontext
             out.append(" ")
         else:
             _walk(child, out)
+
+
+def _number_from_href(href: str) -> str | None:
+    """Rufnummer aus tel:-/WhatsApp-Links (nur Ziffern und führendes +)."""
+    low = href.strip().lower()
+    if low.startswith(("tel:", "callto:")):
+        raw = html_mod.unescape(href.split(":", 1)[1])
+        digits = re.sub(r"[^\d+]", "", raw.replace("%20", ""))
+        if digits.startswith("00"):
+            digits = "+" + digits[2:]
+        return digits if len(re.sub(r"\D", "", digits)) >= 7 else None
+    m = re.search(r"wa\.me/(\d{8,15})|[?&]phone=(?:%2b|\+)?(\d{8,15})", low)
+    if m:
+        return "+" + (m.group(1) or m.group(2))
+    return None
 
 
 def extract_text(html: str) -> str:

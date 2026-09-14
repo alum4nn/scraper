@@ -1,0 +1,239 @@
+{
+ "places": [
+  {
+   "id": "ChIJ-rheinblick",
+   "displayName": {
+    "text": "Rheinblick Immobilien GmbH",
+    "languageCode": "de"
+   },
+   "formattedAddress": "Rheinuferstraße 12, 50667 Köln, Deutschland",
+   "addressComponents": [
+    {
+     "longText": "12",
+     "shortText": "12",
+     "types": [
+      "street_number"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Rheinuferstraße",
+     "shortText": "Rheinuferstraße",
+     "types": [
+      "route"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Köln",
+     "shortText": "Köln",
+     "types": [
+      "locality",
+      "political"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Nordrhein-Westfalen",
+     "shortText": "NRW",
+     "types": [
+      "administrative_area_level_1",
+      "political"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Deutschland",
+     "shortText": "DE",
+     "types": [
+      "country",
+      "political"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "50667",
+     "shortText": "50667",
+     "types": [
+      "postal_code"
+     ],
+     "languageCode": "de"
+    }
+   ],
+   "location": {
+    "latitude": 50.93,
+    "longitude": 6.95
+   },
+   "nationalPhoneNumber": "0221 5550000",
+   "internationalPhoneNumber": "+49 221 5550000",
+   "websiteUri": "https://www.rheinblick-immobilien-koeln.de/",
+   "primaryType": "real_estate_agency",
+   "types": [
+    "real_estate_agency",
+    "point_of_interest",
+    "establishment"
+   ],
+   "rating": 4.9,
+   "userRatingCount": 120,
+   "businessStatus": "OPERATIONAL",
+   "googleMapsUri": "https://maps.google.com/?cid=854910334818"
+  },
+  {
+   "id": "ChIJ-sonnenhof",
+   "displayName": {
+    "text": "Sonnenhof Immobilien",
+    "languageCode": "de"
+   },
+   "formattedAddress": "Poppelsdorfer Allee 8, 53115 Bonn, Deutschland",
+   "addressComponents": [
+    {
+     "longText": "8",
+     "shortText": "8",
+     "types": [
+      "street_number"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Poppelsdorfer Allee",
+     "shortText": "Poppelsdorfer Allee",
+     "types": [
+      "route"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Bonn",
+     "shortText": "Bonn",
+     "types": [
+      "locality",
+      "political"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Nordrhein-Westfalen",
+     "shortText": "NRW",
+     "types": [
+      "administrative_area_level_1",
+      "political"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Deutschland",
+     "shortText": "DE",
+     "types": [
+      "country",
+      "political"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "53115",
+     "shortText": "53115",
+     "types": [
+      "postal_code"
+     ],
+     "languageCode": "de"
+    }
+   ],
+   "location": {
+    "latitude": 50.93,
+    "longitude": 6.95
+   },
+   "nationalPhoneNumber": "0228 5550300",
+   "internationalPhoneNumber": "+49 228 5550300",
+   "websiteUri": "https://www.sonnenhof-immobilien-bonn.de",
+   "primaryType": "real_estate_agency",
+   "types": [
+    "real_estate_agency",
+    "point_of_interest",
+    "establishment"
+   ],
+   "rating": 4.7,
+   "userRatingCount": 34,
+   "businessStatus": "OPERATIONAL",
+   "googleMapsUri": "https://maps.google.com/?cid=91343945385"
+  },
+  {
+   "id": "ChIJ-ev",
+   "displayName": {
+    "text": "Engel & Völkers Köln",
+    "languageCode": "de"
+   },
+   "formattedAddress": "Domstraße 1, 50668 Köln, Deutschland",
+   "addressComponents": [
+    {
+     "longText": "1",
+     "shortText": "1",
+     "types": [
+      "street_number"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Domstraße",
+     "shortText": "Domstraße",
+     "types": [
+      "route"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Köln",
+     "shortText": "Köln",
+     "types": [
+      "locality",
+      "political"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Nordrhein-Westfalen",
+     "shortText": "NRW",
+     "types": [
+      "administrative_area_level_1",
+      "political"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Deutschland",
+     "shortText": "DE",
+     "types": [
+      "country",
+      "political"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "50668",
+     "shortText": "50668",
+     "types": [
+      "postal_code"
+     ],
+     "languageCode": "de"
+    }
+   ],
+   "location": {
+    "latitude": 50.93,
+    "longitude": 6.95
+   },
+   "nationalPhoneNumber": "0221 5559999",
+   "internationalPhoneNumber": "+49 221 5559999",
+   "websiteUri": "https://www.engelvoelkers.com/de/koeln/",
+   "primaryType": "real_estate_agency",
+   "types": [
+    "real_estate_agency",
+    "point_of_interest",
+    "establishment"
+   ],
+   "rating": 4.5,
+   "userRatingCount": 210,
+   "businessStatus": "OPERATIONAL",
+   "googleMapsUri": "https://maps.google.com/?cid=505766060301"
+  }
+ ],
+ "nextPageToken": "TOKEN-PAGE-2"
+}

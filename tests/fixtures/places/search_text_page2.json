@@ -1,0 +1,315 @@
+{
+ "places": [
+  {
+   "id": "ChIJ-weber",
+   "displayName": {
+    "text": "Weber & Lind Steuerberater",
+    "languageCode": "de"
+   },
+   "formattedAddress": "Kettwiger Straße 45, 45127 Essen, Deutschland",
+   "addressComponents": [
+    {
+     "longText": "45",
+     "shortText": "45",
+     "types": [
+      "street_number"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Kettwiger Straße",
+     "shortText": "Kettwiger Straße",
+     "types": [
+      "route"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Essen",
+     "shortText": "Essen",
+     "types": [
+      "locality",
+      "political"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Nordrhein-Westfalen",
+     "shortText": "NRW",
+     "types": [
+      "administrative_area_level_1",
+      "political"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Deutschland",
+     "shortText": "DE",
+     "types": [
+      "country",
+      "political"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "45127",
+     "shortText": "45127",
+     "types": [
+      "postal_code"
+     ],
+     "languageCode": "de"
+    }
+   ],
+   "location": {
+    "latitude": 50.93,
+    "longitude": 6.95
+   },
+   "nationalPhoneNumber": "0201 5550900",
+   "internationalPhoneNumber": "+49 201 5550900",
+   "websiteUri": "https://www.weber-lind-steuerberater.de",
+   "primaryType": "accounting",
+   "types": [
+    "accounting",
+    "point_of_interest",
+    "establishment"
+   ],
+   "rating": 4.8,
+   "userRatingCount": 15,
+   "businessStatus": "OPERATIONAL",
+   "googleMapsUri": "https://maps.google.com/?cid=180462981500"
+  },
+  {
+   "id": "ChIJ-pixelwerk",
+   "displayName": {
+    "text": "Pixelwerk Digital GmbH",
+    "languageCode": "de"
+   },
+   "formattedAddress": "Hansaring 20, 50670 Köln, Deutschland",
+   "addressComponents": [
+    {
+     "longText": "20",
+     "shortText": "20",
+     "types": [
+      "street_number"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Hansaring",
+     "shortText": "Hansaring",
+     "types": [
+      "route"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Köln",
+     "shortText": "Köln",
+     "types": [
+      "locality",
+      "political"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Nordrhein-Westfalen",
+     "shortText": "NRW",
+     "types": [
+      "administrative_area_level_1",
+      "political"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Deutschland",
+     "shortText": "DE",
+     "types": [
+      "country",
+      "political"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "50670",
+     "shortText": "50670",
+     "types": [
+      "postal_code"
+     ],
+     "languageCode": "de"
+    }
+   ],
+   "location": {
+    "latitude": 50.93,
+    "longitude": 6.95
+   },
+   "nationalPhoneNumber": "0221 5550200",
+   "internationalPhoneNumber": "+49 221 5550200",
+   "websiteUri": "https://www.pixelwerk-digital-agentur.de",
+   "primaryType": "corporate_office",
+   "types": [
+    "corporate_office",
+    "point_of_interest",
+    "establishment"
+   ],
+   "rating": 4.6,
+   "userRatingCount": 8,
+   "businessStatus": "OPERATIONAL",
+   "googleMapsUri": "https://maps.google.com/?cid=425213548584"
+  },
+  {
+   "id": "ChIJ-nowebsite",
+   "displayName": {
+    "text": "Makler Müller",
+    "languageCode": "de"
+   },
+   "formattedAddress": "Venloer Straße 300, 50823 Köln, Deutschland",
+   "addressComponents": [
+    {
+     "longText": "300",
+     "shortText": "300",
+     "types": [
+      "street_number"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Venloer Straße",
+     "shortText": "Venloer Straße",
+     "types": [
+      "route"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Köln",
+     "shortText": "Köln",
+     "types": [
+      "locality",
+      "political"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Nordrhein-Westfalen",
+     "shortText": "NRW",
+     "types": [
+      "administrative_area_level_1",
+      "political"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Deutschland",
+     "shortText": "DE",
+     "types": [
+      "country",
+      "political"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "50823",
+     "shortText": "50823",
+     "types": [
+      "postal_code"
+     ],
+     "languageCode": "de"
+    }
+   ],
+   "location": {
+    "latitude": 50.93,
+    "longitude": 6.95
+   },
+   "nationalPhoneNumber": "0170 5550999",
+   "internationalPhoneNumber": "+49 170 5550999",
+   "primaryType": "real_estate_agency",
+   "types": [
+    "real_estate_agency",
+    "point_of_interest",
+    "establishment"
+   ],
+   "rating": 4.0,
+   "userRatingCount": 3,
+   "businessStatus": "OPERATIONAL",
+   "googleMapsUri": "https://maps.google.com/?cid=292766018172"
+  },
+  {
+   "id": "ChIJ-rheinblick",
+   "displayName": {
+    "text": "Rheinblick Immobilien GmbH",
+    "languageCode": "de"
+   },
+   "formattedAddress": "Rheinuferstraße 12, 50667 Köln, Deutschland",
+   "addressComponents": [
+    {
+     "longText": "12",
+     "shortText": "12",
+     "types": [
+      "street_number"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Rheinuferstraße",
+     "shortText": "Rheinuferstraße",
+     "types": [
+      "route"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Köln",
+     "shortText": "Köln",
+     "types": [
+      "locality",
+      "political"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Nordrhein-Westfalen",
+     "shortText": "NRW",
+     "types": [
+      "administrative_area_level_1",
+      "political"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "Deutschland",
+     "shortText": "DE",
+     "types": [
+      "country",
+      "political"
+     ],
+     "languageCode": "de"
+    },
+    {
+     "longText": "50667",
+     "shortText": "50667",
+     "types": [
+      "postal_code"
+     ],
+     "languageCode": "de"
+    }
+   ],
+   "location": {
+    "latitude": 50.93,
+    "longitude": 6.95
+   },
+   "nationalPhoneNumber": "0221 5550000",
+   "internationalPhoneNumber": "+49 221 5550000",
+   "websiteUri": "https://www.rheinblick-immobilien-koeln.de/",
+   "primaryType": "real_estate_agency",
+   "types": [
+    "real_estate_agency",
+    "point_of_interest",
+    "establishment"
+   ],
+   "rating": 4.9,
+   "userRatingCount": 120,
+   "businessStatus": "OPERATIONAL",
+   "googleMapsUri": "https://maps.google.com/?cid=854910334818"
+  }
+ ]
+}

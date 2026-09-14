@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from collections.abc import Callable
 from datetime import datetime
 
@@ -72,9 +73,26 @@ def _dedupe_phones(phones: list[PhoneNumber]) -> list[PhoneNumber]:
     return list(best.values())
 
 
+_EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", re.I)
+_OBFUSCATED_RE = re.compile(
+    r"([\w.+-]+)\s*(?:\[at\]|\(at\)|\{at\}|\s@\s|\sat\s|\[ät\])\s*([\w-]+(?:\s*(?:\[dot\]|\(dot\)|\[punkt\]|\(punkt\)|\.)\s*[\w-]+)+)",
+    re.I,
+)
+
+
+def _emails_in_text(text: str) -> list[str]:
+    found = [m.group(0).lower() for m in _EMAIL_RE.finditer(text)]
+    for m in _OBFUSCATED_RE.finditer(text):
+        domain = re.sub(r"\s*(?:\[dot\]|\(dot\)|\[punkt\]|\(punkt\))\s*", ".", m.group(2), flags=re.I)
+        found.append(f"{m.group(1)}@{domain}".lower().replace(" ", ""))
+    return [e for e in found if not e.endswith((".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp"))]
+
+
 def _collect_emails(pages: list[Page]) -> list[str]:
     seen: dict[str, None] = {}
     for page in pages:
+        for addr in _emails_in_text(page.text):
+            seen.setdefault(addr, None)
         for link in page.links:
             if link.kind == "mailto":
                 addr = link.href.split(":", 1)[1].split("?", 1)[0].strip().lower()
@@ -117,6 +135,8 @@ def build_enrichment(company: Company, crawl: CrawlResult) -> Enrichment:
         enr.handelsregister = enr.handelsregister or data.register
         enr.amtsgericht = enr.amtsgericht or data.amtsgericht
         enr.ustid = enr.ustid or data.ustid
+        if data.plz and not enr.impressum_plz:
+            enr.impressum_street, enr.impressum_plz, enr.impressum_city = data.street, data.plz, data.city
         imp_people.extend(data.people)
 
     # 2) Personen von Team-/Kontakt-/sonstigen Seiten
@@ -161,9 +181,13 @@ def build_enrichment(company: Company, crawl: CrawlResult) -> Enrichment:
     enr.emails = _collect_emails(crawl.pages)
     for key, val in _collect_social(crawl.pages).items():
         setattr(enr, key, val)
-    wa = next((p for p in enr.phones if p.source == "whatsapp"), None)
-    if wa:
-        enr.whatsapp_url = f"https://wa.me/{wa.e164.lstrip('+')}"
+    for page in crawl.pages:
+        for link in page.links:
+            if link.kind == "whatsapp" and (num := phones_mod.parse_whatsapp_link(link.href)):
+                enr.whatsapp_url = f"https://wa.me/{num.lstrip('+')}"
+                break
+        if enr.whatsapp_url:
+            break
 
     # 6) Größe
     team_pages = [p for p in crawl.pages if p.kind == "team"]
@@ -176,9 +200,40 @@ def build_enrichment(company: Company, crawl: CrawlResult) -> Enrichment:
         rechtsform=enr.rechtsform,
         user_rating_count=company.user_rating_count,
     )
-    if len(crawl.pages) == 1 and len(crawl.pages[0].lines) < 15:
+    enr.call_indicators = call_indicators(crawl, enr)
+    if len(crawl.pages) == 1 and len(crawl.pages[0].lines) < 15 and "wenig Text" not in " ".join(enr.errors):
         enr.errors.append("wenig Text (SPA oder Cookie-Wall?)")
     return enr
+
+
+_KI_RE = re.compile(
+    r"\bKI\b|künstliche[nr]? intelligenz|artificial intelligence|\bAI\b|chatgpt|digitalisierung|"
+    r"automatisierung",
+    re.I,
+)
+_WEITERBILDUNG_RE = re.compile(r"weiterbildung|fortbildung|schulung|qualifizierung|seminar", re.I)
+_JOBS_RE = re.compile(
+    r"stellenangebot|stellenanzeige|wir suchen|bewirb|bewerbung|job|offene stellen|verstärkung", re.I
+)
+
+
+def call_indicators(crawl: CrawlResult, enr: Enrichment) -> list[str]:
+    """Anhaltspunkte für sachliches Interesse an KI-Weiterbildung (Doku für § 7 Abs. 2 Nr. 1 UWG)."""
+    out: list[str] = []
+    texts = [(p.kind, p.text) for p in crawl.pages]
+    if any(k == "karriere" for k, _ in texts):
+        out.append("Karriere-/Stellenseite vorhanden")
+    if any(_JOBS_RE.search(t) for k, t in texts if k == "karriere"):
+        out.append("sucht Personal")
+    if any(_KI_RE.search(t) for _, t in texts):
+        out.append("KI/Digitalisierung auf der Website erwähnt")
+    if any(_WEITERBILDUNG_RE.search(t) for _, t in texts):
+        out.append("Weiterbildung auf der Website erwähnt")
+    if any(p.role_category in ("hr", "ausbildung") for p in enr.people):
+        out.append("HR-/Ausbildungsverantwortliche benannt")
+    if enr.size.employees_max is not None and enr.size.employees_max <= 49:
+        out.append("Betriebsgröße < 50 → 100 % Lehrgangskosten möglich (§ 82 SGB III)")
+    return out
 
 
 async def enrich_company(company: Company, crawler: SiteCrawler) -> Enrichment:

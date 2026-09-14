@@ -140,6 +140,12 @@ class Enrichment(BaseModel):
     instagram_url: str | None = None
     facebook_url: str | None = None
     size: SizeEstimate = Field(default_factory=SizeEstimate)
+    impressum_street: str | None = None
+    impressum_plz: str | None = None
+    impressum_city: str | None = None
+    call_indicators: list[str] = Field(
+        default_factory=list
+    )  # Anhaltspunkte für mutmaßliches Interesse (§ 7 UWG)
     pages_crawled: list[str] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
 
@@ -176,6 +182,21 @@ class Lead(BaseModel):
     scraped_at: datetime = Field(default_factory=datetime.now)
 
     # --- Convenience für Export/Scoring -------------------------------------------------
+    @property
+    def display_name(self) -> str:
+        """Firmenname aus dem Impressum (eigene Website) – Google-Name nur als Fallback."""
+        if self.enrichment and self.enrichment.legal_name:
+            return self.enrichment.legal_name
+        return self.company.name
+
+    @property
+    def address(self) -> tuple[str | None, str | None, str | None]:
+        """(Straße, PLZ, Ort) – bevorzugt aus dem Impressum."""
+        e = self.enrichment
+        if e and e.impressum_plz:
+            return e.impressum_street, e.impressum_plz, e.impressum_city
+        return self.company.street, self.company.plz, self.company.city
+
     @property
     def best_mobile(self) -> PhoneNumber | None:
         if not self.enrichment:

@@ -1,0 +1,11 @@
+BEGIN:VCARD
+VERSION:3.0
+N:Berger;Thomas;;;
+FN:Thomas Berger
+ORG:Rheinblick Immobilien GmbH
+TITLE:Geschäftsführer
+TEL;TYPE=WORK,VOICE:+49 221 5550000
+TEL;TYPE=CELL:+49 171 5550123
+EMAIL;TYPE=INTERNET:t.berger@rheinblick-immobilien-koeln.de
+URL:https://www.rheinblick-immobilien-koeln.de
+END:VCARD

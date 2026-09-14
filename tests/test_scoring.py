@@ -40,7 +40,7 @@ def test_decider_with_mobile_scores_highest():
         enrichment=enr,
     )
     score, reasons = score_lead(lead, SPEC)
-    assert score == 40 + 20 + 5
+    assert score == 50 + 20 + 3
     assert any("Entscheider mit Handy" in r for r in reasons)
     assert in_target_size(lead, SPEC) is True
 
@@ -53,7 +53,7 @@ def test_mobile_without_name_small_company():
     )
     lead = Lead(company=Company(place_id="2", name="B", website="https://b.example"), enrichment=enr)
     score, reasons = score_lead(lead, SPEC)
-    assert score == 30 + 20
+    assert score == 25 + 20
     assert any("Kleinbetrieb" in r for r in reasons)
 
 
@@ -71,7 +71,7 @@ def test_out_of_range_and_closed_penalised():
         enrichment=enr,
     )
     score, reasons = score_lead(lead, SPEC)
-    assert score == 0  # -40 -30 +15 → geklemmt auf 0
+    assert score == 0  # -40 -30 +10 → geklemmt auf 0
     assert in_target_size(lead, SPEC) is False
     assert any("außerhalb" in r for r in reasons)
 
@@ -80,7 +80,7 @@ def test_no_website_only_places_phone():
     enr = Enrichment(phones=[_mobile(None, "places")], size=SizeEstimate())
     lead = Lead(company=Company(place_id="4", name="D", phone="0171 5550123"), enrichment=enr)
     score, reasons = score_lead(lead, SPEC)
-    assert score == -20 + 25 if False else score == 5
+    assert score == 0  # -20 keine Website, +20 Handy ohne Name
     assert "keine Website" in reasons
     assert in_target_size(lead, SPEC) is None
 
@@ -111,7 +111,7 @@ def test_owner_signal_bonus():
     )
     assert "Berger" in owner_signal(lead)
     score, reasons = score_lead(lead, SPEC)
-    assert score == 25 + 15 + 10  # Handy ohne Name, Entscheider bekannt, inhabergeführt (mit Handy → +10)
+    assert score == 20 + 10 + 10  # Handy ohne Name, Entscheider bekannt, inhabergeführt (mit Handy → +10)
     assert any("inhabergeführt" in r for r in reasons)
 
     enr2 = Enrichment(pages_crawled=["https://y"], rechtsform="e.K.", size=SizeEstimate())

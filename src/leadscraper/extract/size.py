@@ -57,7 +57,7 @@ _PATTERNS = [
         re.I,
     ),
     # "Team von 12", "Team aus 12 Mitarbeitern", "12-köpfiges Team", "wir sind 8"
-    re.compile(rf"team\s+(?:von|aus|mit)\s+{_QUAL}\s*{_NUM}\b", re.I),
+    re.compile(rf"team\s+(?:von|aus|mit)\s+{_QUAL}\s*(?:{_NUM}|({_WORDNUM}))\b", re.I),
     re.compile(rf"{_NUM}[-\s]?köpfige[sn]?\s+team", re.I),
     re.compile(rf"wir\s+sind\s+(?:ein\s+team\s+(?:von|aus)\s+)?{_QUAL}\s*{_NUM}(?:\s+(?:{_UNITS}))?", re.I),
     # "Mitarbeiterzahl: 25", "Beschäftigte: 48", "Mitarbeiter: ca. 30"
