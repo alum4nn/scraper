@@ -457,6 +457,48 @@ def refresh(
 
 
 @app.command()
+def rebuild(
+    jsonl: list[Path] = typer.Argument(..., help="JSONL-Datei(en) aus --deutschland"),
+    out: Path | None = typer.Option(None, "--out", "-o", help="Ziel-JSONL (Default: Datei ersetzen)"),
+    min_employees: int | None = typer.Option(5, help="Untergrenze Mitarbeiterzahl"),
+    max_employees: int | None = typer.Option(50, help="Obergrenze Mitarbeiterzahl"),
+    verbose: bool = typer.Option(False, "-v", help="Debug-Logging"),
+) -> None:
+    """Gespeicherte Firmen mit den aktuellen Extraktoren neu auswerten – ohne Google-Anfragen.
+
+    Anders als `refresh` werden die Websites erneut ausgelesen (aus dem HTML-Cache, sonst frisch geladen),
+    sodass auch Verbesserungen an Impressum-, Personen- und Telefon-Erkennung greifen. Kostet keine
+    Places-Anfragen, weil die Firmenliste schon vorliegt. Ein laufender Lauf darf dieselbe Datei nicht
+    gleichzeitig beschreiben.
+    """
+    logging.basicConfig(level=logging.DEBUG if verbose else logging.WARNING)
+    from leadscraper.cache import Cache
+
+    settings = get_settings()
+    spec = SearchSpec(queries=["rebuild"], min_employees=min_employees, max_employees=max_employees)
+    cfg = funding.load_funding_config()
+    for path in jsonl:
+        leads = pipeline.read_leads_jsonl(path)
+        before = sum(1 for ld in leads if ld.premium)
+        companies = [ld.company for ld in leads]
+        cache = Cache(settings.cache_path)
+        try:
+            enrichments = asyncio.run(pipeline.enrich_all(companies, settings, cache, progress=None))
+        finally:
+            cache.close()
+        rebuilt = [
+            pipeline.finalize_lead(c, e, spec, cfg) for c, e in zip(companies, enrichments, strict=True)
+        ]
+        target = out or path
+        target.write_text("".join(ld.model_dump_json() + "\n" for ld in rebuilt), encoding="utf-8")
+        after = sum(1 for ld in rebuilt if ld.premium)
+        console.print(
+            f"[green]✔[/] {path.name}: {len(rebuilt)} Firmen neu ausgewertet, "
+            f"Premium {before} → [bold]{after}[/] → {target}"
+        )
+
+
+@app.command()
 def trello(
     jsonl: list[Path] = typer.Argument(..., help="JSONL-Datei(en) aus --deutschland"),
     out: Path = typer.Option(Path("output/trello.csv"), "--out", "-o", help="Ziel-CSV für Trello-Import"),

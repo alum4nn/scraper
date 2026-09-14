@@ -102,3 +102,27 @@ def test_export_near_premium_merges_files_and_dedupes(tmp_path: Path):
     assert f"{2 + len(near)} Leads (davon 2 Premium)" in result.stdout
     result = runner.invoke(app, ["export", str(a), str(b)])
     assert f"{len(leads)} Leads" in result.stdout  # Duplikat aus b.jsonl nur einmal
+
+
+def test_rebuild_reruns_extractors_without_places(tmp_path: Path, fast_settings, fixture_web, monkeypatch):
+    """rebuild liest die Websites erneut aus (Cache/Netz), aber ohne Google-Places-Anfragen."""
+    from leadscraper.models import Company, Lead
+
+    monkeypatch.setattr("leadscraper.cli.get_settings", lambda: fast_settings)
+    jsonl = tmp_path / "de.jsonl"
+    lead = Lead(
+        company=Company(
+            place_id="p1",
+            name="Rheinblick",
+            website="https://www.rheinblick-immobilien-koeln.de/",
+            business_status="OPERATIONAL",
+        )
+    )
+    jsonl.write_text(lead.model_dump_json() + "\n", encoding="utf-8")
+    result = runner.invoke(app, ["rebuild", str(jsonl)])
+    assert result.exit_code == 0, result.stdout
+    assert "1 Firmen neu ausgewertet" in result.stdout
+    out = [Lead.model_validate_json(line) for line in jsonl.read_text(encoding="utf-8").splitlines()]
+    gf = next(p for p in out[0].enrichment.people if p.name == "Thomas Berger")
+    assert gf.mobile is not None and out[0].premium is True
+    assert not any("places.googleapis.com" in url for url in fixture_web)
