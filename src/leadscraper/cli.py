@@ -376,8 +376,12 @@ def is_near_premium(lead: Lead) -> bool:
     return bool(lead.premium_missing) and all(m in _NEAR_PREMIUM_OK for m in lead.premium_missing)
 
 
-def _load_leads(paths: list[Path]) -> list[Lead]:
-    """Leads aus einer oder mehreren Dateien; Duplikate (place_id/Domain, z. B. Grenzregionen) einmal."""
+def _load_leads(paths: list[Path], *, exclude_chains: bool = True) -> list[Lead]:
+    """Leads aus einer oder mehreren Dateien; Duplikate (place_id/Domain, z. B. Grenzregionen) einmal.
+
+    Die Ausschlussliste wird beim Export erneut angewandt: Sie wächst im Lauf der Recherche, und Treffer
+    aus früheren Läufen sollen nicht deshalb in der Liste bleiben, weil die Kette damals noch fehlte.
+    """
     leads: list[Lead] = []
     for path in paths:
         if path.suffix == ".json":
@@ -393,6 +397,14 @@ def _load_leads(paths: list[Path]) -> list[Lead]:
             continue
         seen.update(keys)
         unique.append(ld)
+    if exclude_chains:
+        from leadscraper.exclusions import filter_chains
+
+        by_place = {ld.company.place_id: ld for ld in unique}
+        keep, dropped = filter_chains([ld.company for ld in unique])
+        if dropped:
+            console.print(f"[dim]{len(dropped)} Ketten/Franchise/Portale aussortiert[/]")
+        unique = [by_place[c.place_id] for c in keep]
     return unique
 
 

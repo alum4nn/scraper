@@ -126,3 +126,19 @@ def test_rebuild_reruns_extractors_without_places(tmp_path: Path, fast_settings,
     gf = next(p for p in out[0].enrichment.people if p.name == "Thomas Berger")
     assert gf.mobile is not None and out[0].premium is True
     assert not any("places.googleapis.com" in url for url in fixture_web)
+
+
+def test_export_applies_current_chain_list(tmp_path: Path):
+    """Die Ausschlussliste wächst während der Recherche – beim Export gilt der aktuelle Stand."""
+    from leadscraper.models import Company, Lead
+
+    jsonl = tmp_path / "de.jsonl"
+    leads = [
+        Lead(company=Company(place_id="a", name="Colliers International Hamburg", domain="colliers.de")),
+        Lead(company=Company(place_id="b", name="Müller Immobilien GmbH", domain="mueller-immo.de")),
+    ]
+    jsonl.write_text("\n".join(ld.model_dump_json() for ld in leads), encoding="utf-8")
+    result = runner.invoke(app, ["export", str(jsonl)])
+    assert result.exit_code == 0, result.stdout
+    assert "1 Ketten/Franchise/Portale aussortiert" in result.stdout
+    assert "1 Leads" in result.stdout
