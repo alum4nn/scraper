@@ -7,6 +7,7 @@ import re
 from leadscraper.extract.htmlutil import Link
 from leadscraper.extract.names import (
     find_names,
+    find_plausible_names,
     is_plausible_person_name,
     is_probable_person_name,
     normalize_name,
@@ -48,6 +49,23 @@ _ANSPRECH_RE = re.compile(
     re.I,
 )
 _YEAR_RE = re.compile(r"\b(?:19|20)\d{2}\b")
+_DECIDER_WORDS = (
+    r"geschäftsführ(?:er(?:in)?|ung)|geschäftsleitung|inhaber(?:in)?|eigentümer(?:in)?|"
+    r"vorstand|gründer(?:in)?|prokurist(?:in)?|betriebsinhaber(?:in)?"
+)
+# „Inhaber: Rainer Lang“ / „Geschäftsführer – Anna Schmidt“ (außerhalb des Impressums)
+_ROLE_LABEL_LINE_RE = re.compile(rf"^\s*({_DECIDER_WORDS})\s*[:\-–]\s*(.+)$", re.I)
+# „Seit 2007 ist Thomas Steffens Gründer und Inhaber der …“ / „Inhaberin Claudia Sonnenhof berät Sie“
+_PROSE_AFTER_RE = re.compile(
+    rf"({_DECIDER_WORDS})\s+(?:ist\s+|der\s+|des\s+)?([A-ZÄÖÜ][^,.;:()]{{2,40}})", re.I
+)
+_PROSE_BEFORE_RE = re.compile(
+    rf"([A-ZÄÖÜ][^,.;:()]{{2,40}}?)\s+(?:ist|war|als)\s+(?:der\s+|die\s+)?({_DECIDER_WORDS})", re.I
+)
+# „Seit 2007 ist Thomas Steffens Gründer und Inhaber …“ – Name zwischen Hilfsverb und Funktion
+_PROSE_MIDDLE_RE = re.compile(
+    rf"\b(?:ist|war)\s+([A-ZÄÖÜ][^,.;:()]{{2,40}}?)\s+(?:der\s+|die\s+)?({_DECIDER_WORDS})", re.I
+)
 # Kontaktdaten in den Zeilen unter einem Namen (Team-Karte): E-Mail, Telefonnummer, Tel/Mobil-Label
 _CONTACT_RE = re.compile(r"@|(?:\+49|\b0)[\d\s\-–/.()]{6,}\d|\b(?:tel|mobil|handy|fon|phone)\b", re.I)
 
@@ -105,6 +123,15 @@ def find_people(
         people[key] = Person(name=normalize_name(name), role=role, role_category=cat, source_url=source_url)
 
     for i, line in enumerate(lines):
+        if m := _ROLE_LABEL_LINE_RE.match(line):
+            for name in find_plausible_names(m.group(2)):
+                add(name, m.group(1).strip())
+            continue
+        for pat, name_group in ((_PROSE_AFTER_RE, 2), (_PROSE_BEFORE_RE, 1), (_PROSE_MIDDLE_RE, 1)):
+            for m in pat.finditer(line):
+                role = m.group(1 if name_group == 2 else 2).strip()
+                for name in find_plausible_names(m.group(name_group)):
+                    add(name, role)
         if m := _ANSPRECH_RE.search(line):
             for name in find_names(m.group(1)):
                 role = None

@@ -159,3 +159,33 @@ def test_generic_representation_label_becomes_readable_role():
     assert person.role == "Geschäftsführung" and person.role_category == "geschaeftsfuehrung"
     data2 = parse_impressum(["Inhaber: Claudia Sonnenhof"], "https://y.de/impressum")
     assert data2.people[0].role == "Inhaber"  # konkrete Bezeichnung bleibt erhalten
+
+
+def test_decider_in_footer_after_legal_blocks():
+    """Baukästen wiederholen die Geschäftsführung erst im Footer – hinter Haftung/Datenschutz."""
+    lines = [
+        "Impressum",
+        "Ludewig Immobilien GmbH",
+        "Musterweg 3",
+        "70173 Stuttgart",
+        "Vertreten durch:",
+        "E-Mail: info@ludewig-immobilien.de",
+        "Haftung für Inhalte",
+        "Als Diensteanbieter sind wir für eigene Inhalte verantwortlich.",
+        "Datenschutzerklärung",
+        "Wir verarbeiten Daten nach der DSGVO.",
+        "Ludewig Immobilien GmbH",
+        "Geschäftsführer: Arne Ludewig",
+        "Mobil: +49 (0) 152/29115639",
+    ]
+    data = parse_impressum(lines, "https://x.de/impressum/")
+    assert [(p.name, p.role_category) for p in data.people] == [("Arne Ludewig", "geschaeftsfuehrung")]
+    assert data.rechtsform == "GmbH"
+
+
+def test_street_is_not_read_as_person():
+    data = parse_impressum(
+        ["Inhaltlich verantwortlich:", "Patrick Hoffmann", "Leidenhausener Str 12", "51147 Köln"],
+        "https://y.de/impressum",
+    )
+    assert [p.name for p in data.people] == ["Patrick Hoffmann"]

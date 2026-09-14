@@ -256,22 +256,8 @@ def _find_cut(lines: list[str]) -> int:
     return len(lines)
 
 
-def parse_impressum(lines: list[str], url: str | None = None) -> ImpressumData:
-    data = ImpressumData()
-    lines = [ln.strip() for ln in lines if ln and ln.strip()]
-    cut = _find_cut(lines)
-    scope = lines[:cut]
-
-    # Firmenname / Rechtsform: erste Zeile mit Rechtsform, die kein Label ist
-    for line in scope[:40]:
-        if _match_label(line) or _STOP_LABEL_RE.match(line):
-            continue
-        form = detect_rechtsform(line)
-        if form and len(line) <= 90:
-            data.legal_name = line.strip(" :")
-            data.rechtsform = form
-            break
-
+def _people_in(scope: list[str], url: str | None) -> tuple[dict[str, Person], bool]:
+    """Personen mit Rollen-Label im gegebenen Ausschnitt; zweiter Wert: Entscheider dabei?"""
     seen: dict[str, Person] = {}
     for i, line in enumerate(scope):
         hit = _match_label(line)
@@ -291,10 +277,34 @@ def parse_impressum(lines: list[str], url: str | None = None) -> ImpressumData:
                 if category != "sonstige" and existing.role_category == "sonstige":
                     existing.role, existing.role_category = role_text, category
                 continue
-            if category == "sonstige":
-                seen[key] = Person(name=name, role=role_text, role_category="sonstige", source_url=url)
-            else:
-                seen[key] = Person(name=name, role=role_text, role_category=category, source_url=url)
+            seen[key] = Person(name=name, role=role_text, role_category=category, source_url=url)
+    has_decider = any(p.role_category in ("geschaeftsfuehrung", "inhaber", "vorstand") for p in seen.values())
+    return seen, has_decider
+
+
+def parse_impressum(lines: list[str], url: str | None = None) -> ImpressumData:
+    data = ImpressumData()
+    lines = [ln.strip() for ln in lines if ln and ln.strip()]
+    cut = _find_cut(lines)
+    scope = lines[:cut]
+
+    # Firmenname / Rechtsform: erste Zeile mit Rechtsform, die kein Label ist
+    for line in scope[:40]:
+        if _match_label(line) or _STOP_LABEL_RE.match(line):
+            continue
+        form = detect_rechtsform(line)
+        if form and len(line) <= 90:
+            data.legal_name = line.strip(" :")
+            data.rechtsform = form
+            break
+
+    seen, has_decider = _people_in(scope, url)
+    if not has_decider and cut < len(lines):
+        # Viele Baukästen wiederholen „Geschäftsführer: …“ erst im Footer, also hinter Haftungs-/
+        # Datenschutzblöcken. Ohne Treffer im Kopfteil deshalb die ganze Seite auswerten.
+        full, full_decider = _people_in(lines, url)
+        if full_decider:
+            seen = full
     data.people = list(seen.values())
 
     full = "\n".join(scope)

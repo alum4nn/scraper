@@ -47,7 +47,7 @@ _WORDNUMS = {
 _WORDNUM = "|".join(_WORDNUMS)
 _QUAL = (
     r"(?P<qual>über|mehr\s+als|rund|ca\.?|circa|etwa|knapp|fast|bis\s+zu|nahezu|gut|~|>|inzwischen|mittlerweile|"
-    r"aktuell|derzeit|heute)?"
+    r"aktuell|derzeit|heute|insgesamt|zurzeit|momentan)?"
 )
 
 _PATTERNS = [

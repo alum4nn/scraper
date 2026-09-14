@@ -130,3 +130,8 @@ def test_team_besteht_aus_personen_counts():
 def test_ratings_are_not_headcounts(text):
     est = estimate_size([(U, text)])
     assert est.point_estimate is None and est.confidence == "none"
+
+
+def test_team_von_insgesamt_wordnumber():
+    est = estimate_size([(U, "Sohn Christoph verstärkt das Team von insgesamt fünf Mitarbeitern.")])
+    assert est.point_estimate == 5 and est.confidence == "high"

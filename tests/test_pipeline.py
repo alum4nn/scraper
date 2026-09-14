@@ -332,3 +332,31 @@ def test_refresh_lead_discards_rating_as_headcount():
     out = pipeline.refresh_lead(lead, SearchSpec(queries=["x"]), funding.load_funding_config())
     assert out.enrichment.size.point_estimate is None
     assert out.premium is False
+
+
+def test_responsible_person_with_company_name_counts_as_owner():
+    """Kleine Büros nennen im Impressum nur den Verantwortlichen nach § 18 MStV."""
+    from leadscraper.models import Person
+
+    enr = Enrichment(
+        pages_crawled=["https://imzh.de/impressum/"],
+        legal_name="Immobilienzentrum Hoffmann",
+        people=[
+            Person(name="Patrick Hoffmann", role="Inhaltlich verantwortlich", role_category="sonstige"),
+            Person(name="Lea Wagner", role="Inhaltlich verantwortlich", role_category="sonstige"),
+        ],
+    )
+    pipeline.promote_responsible_owner(enr, "IMZH Immobilienzentrum Hoffmann")
+    assert enr.people[0].role_category == "inhaber"
+    assert enr.people[1].role_category == "sonstige"  # fremder Nachname bleibt unverändert
+
+    # Steht bereits ein Geschäftsführer im Impressum, wird nichts befördert
+    enr2 = Enrichment(
+        pages_crawled=["https://x.de/"],
+        people=[
+            Person(name="Anna Berger", role="Geschäftsführerin", role_category="geschaeftsfuehrung"),
+            Person(name="Tim Berger", role="Verantwortlich", role_category="sonstige"),
+        ],
+    )
+    pipeline.promote_responsible_owner(enr2, "Berger Immobilien GmbH")
+    assert enr2.people[1].role_category == "sonstige"

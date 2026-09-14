@@ -135,3 +135,22 @@ def test_eigentuemer_is_customer_segment_not_role():
     assert categorize_role("Für Eigentümer") == "sonstige"
     assert categorize_role("inhabergeführt seit 1968") == "sonstige"
     assert categorize_role("Inhaberin") == "inhaber"
+
+
+def test_role_label_line_outside_impressum():
+    """Auf Kontaktseiten steht die Funktion oft in derselben Zeile wie der Name."""
+    lines = ["Lang Immobilien", "Inhaber: Rainer Lang", "rainer.lang@l-immobilien.de"]
+    people = find_people(lines, [], source_url="https://x.de/kontakt", page_kind="kontakt")
+    assert [(p.name, p.role_category) for p in people] == [("Rainer Lang", "inhaber")]
+
+
+def test_owner_named_in_prose_on_about_page():
+    lines = [
+        "Seit 2007 ist Thomas Steffens Gründer und Inhaber der Steffens & Roth Immobilien Unternehmung.",
+        "Seit Ende 2021 verstärkt Sohn Christoph Steffens das Team von insgesamt fünf Mitarbeitern.",
+        "Geschäftsführerin Sabine Klein leitet den Innendienst.",
+    ]
+    found = find_people(lines, [], source_url="https://x.de/ueber-uns", page_kind="team")
+    people = {p.name: p for p in found}
+    assert people["Thomas Steffens"].role_category in ("inhaber", "geschaeftsfuehrung")
+    assert people["Sabine Klein"].role_category == "geschaeftsfuehrung"

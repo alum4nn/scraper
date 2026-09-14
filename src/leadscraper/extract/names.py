@@ -36,7 +36,7 @@ _ROLE_SUFFIX = re.compile(
     re.I,
 )
 _STREET_SUFFIX = re.compile(
-    r"(straße|strasse|str\.|weg|platz|allee|gasse|ring|damm|ufer|chaussee|steig)$", re.I
+    r"(straße|strasse|str\.?|weg|platz|allee|gasse|ring|damm|ufer|chaussee|steig)$", re.I
 )
 # Abstrakta/Substantive, die nie Namen sind („Wohnflächenberechnung“, „Kompetenz“, „Präsentation“);
 # „-ung“ nur ab 9 Zeichen, damit Nachnamen wie Jung/Hartung bleiben.

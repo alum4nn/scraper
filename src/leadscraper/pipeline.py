@@ -191,6 +191,7 @@ def build_enrichment(company: Company, crawl: CrawlResult) -> Enrichment:
     enr.phones = _dedupe_phones(phones)
     people_mod.attach_phones(people, enr.phones)
     enr.people = people
+    promote_responsible_owner(enr, company.name)
 
     # 5) E-Mails, Social, WhatsApp
     enr.emails = _collect_emails(crawl.pages)
@@ -277,6 +278,25 @@ def count_personal_mailboxes(emails: list[str], people: list[Person]) -> int | N
         ):
             locals_seen.add(local)
     return len(locals_seen) or None
+
+
+_RESPONSIBLE_RE = re.compile(r"verantwortlich|redaktion|§\s*18|v\.\s*i\.\s*s\.\s*d\.", re.I)
+
+
+def promote_responsible_owner(enr: Enrichment, company_name: str) -> None:
+    """Kleine Maklerbüros nennen im Impressum nur den nach § 18 MStV Verantwortlichen. Trägt dieser den
+    Firmennamen (Immobilienzentrum **Hoffmann** → Patrick **Hoffmann**), ist er der Inhaber."""
+    if any(p.role_category in _DECIDER_ROLES for p in enr.people):
+        return
+    haystack = " ".join(filter(None, [company_name, enr.legal_name])).casefold()
+    for person in enr.people:
+        if person.role_category != "sonstige" or not _RESPONSIBLE_RE.search(person.role or ""):
+            continue
+        sn = surname(person.name).casefold()
+        if len(sn) >= 4 and sn in haystack:
+            person.role_category = "inhaber"
+            person.role = "Inhaber/-in (Firmenname, im Impressum verantwortlich)"
+            return
 
 
 def attribute_sole_mobile(enr: Enrichment) -> None:
@@ -569,6 +589,7 @@ def refresh_lead(lead: Lead, spec: SearchSpec, funding_cfg: dict) -> Lead:
     enr = lead.enrichment
     if enr is None:
         return finalize_lead(lead.company, None, spec, funding_cfg)
+    promote_responsible_owner(enr, lead.company.name)
     attribute_sole_mobile(enr)
     if enr.size.evidence and any(is_rating_text(ev) for ev in enr.size.evidence[:1]):
         # Fundstelle war eine Portalbewertung („4,5/5 Mitarbeiter Zufriedenheit“) – verwerfen und neu schätzen
