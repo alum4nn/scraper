@@ -138,6 +138,11 @@ def run(
         "--state",
         help="Ergebnisdatei für --deutschland; erneuter Aufruf setzt fort",
     ),
+    queries_per_city: int = typer.Option(
+        2,
+        "--queries-per-city",
+        help="Suchbegriffe je Ort bei --deutschland (jeder kostet eine Places-Anfrage)",
+    ),
     out: Path | None = typer.Option(None, "--out", "-o", help="Ziel-Excel (Default: output/leads_<…>.xlsx)"),
     json_out: Path | None = typer.Option(None, help="Zusätzlich Roh-Leads als JSON speichern"),
     verbose: bool = typer.Option(False, "-v", help="Debug-Logging"),
@@ -162,7 +167,8 @@ def run(
     )
     if deutschland:
         if not query:
-            spec.queries = spec.queries[:2]  # Kostenbremse: 2 Suchbegriffe je Ort reichen bei Maklern
+            # Kostenbremse: je Ort kostet jeder Suchbegriff eine Places-Anfrage.
+            spec.queries = spec.queries[:queries_per_city]
         orte = pipeline.load_orte(bundeslaender=bundesland)
         target = out or state.with_suffix(".xlsx")
         console.print(

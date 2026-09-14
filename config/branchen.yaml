@@ -5,9 +5,13 @@
 # included_type (optional) = offizieller Google-Place-Type (Tabelle A). Nur EIN Typ pro Suche möglich.
 profiles:
   makler:
-    beschreibung: "Immobilienmakler – höchste Handy-Trefferquote (Nummer auf jeder Objektseite), inhabergeführt"
+    beschreibung: "Immobilienmakler und Hausverwaltungen – Handynummer des Chefs auf der Website, Innendienst im Haus"
+    # Reihenfolge zählt: --deutschland nutzt je Ort nur die ersten Suchbegriffe (Kostenbremse).
+    # "Hausverwaltung" bringt ~80 % Firmen, die unter "Immobilienmakler" nicht auftauchen, und trifft
+    # das Zielsegment besser: Verwaltungen haben Buchhaltung und Innendienst, also echte Beschäftigte.
     queries:
       - "Immobilienmakler"
+      - "Hausverwaltung"
       - "Immobilienbüro"
       - "Immobilienvermittlung"
       - "Makler Wohnung Haus"

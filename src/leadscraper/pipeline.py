@@ -215,9 +215,7 @@ def build_enrichment(company: Company, crawl: CrawlResult) -> Enrichment:
     for page in crawl.pages:
         if page.kind in ("team", "kontakt"):
             karten_people.extend(
-                people_mod.staff_from_links_and_images(
-                    page.links, page.image_alts, source_url=page.final_url
-                )
+                people_mod.staff_from_links_and_images(page.links, page.image_alts, source_url=page.final_url)
             )
     staff_people = people_mod.merge_people(
         [p for p in page_people if p.source_url in staff_urls], karten_people
