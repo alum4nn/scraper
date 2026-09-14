@@ -19,6 +19,20 @@ NAME_RE: re.Pattern[str] = re.compile(
 _TITLE_RE = re.compile(rf"^(?:{_TITLE}\s+)+")
 _SALUTATION_RE = re.compile(r"^(?:Herrn?|Frau|Hr\.|Fr\.)\s+", re.IGNORECASE)
 _PARTICLES = set(_PARTICLE.strip("(?:)").split("|")) | {"und"}
+# Berufs-/Rollenwörter, die wie Namen aussehen ("Leitung Personal", "Anna Meister" verliert bewusst)
+_ROLE_SUFFIX = re.compile(
+    r"(leitung|leiter|leiterin|berater|beraterin|beratung|manager|managerin|kaufmann|kauffrau|assistenz|"
+    r"assistent|assistentin|abteilung|verwaltung|verwalter|verwalterin|makler|maklerin|buchhalter|buchhalterin|"
+    r"buchhaltung|sachbearbeiter|sachbearbeiterin|techniker|technikerin|mechaniker|meister|meisterin|monteur|"
+    r"planer|planerin|designer|designerin|entwickler|entwicklerin|betreuer|betreuerin|anwalt|anwältin|anwaelte|"
+    r"ärztin|arzt|therapeut|therapeutin|spezialist|spezialistin|experte|expertin|direktor|direktorin|"
+    r"vorsitzender|vorsitzende|mitarbeiter|mitarbeiterin|gesellschafter|gesellschafterin|führung|fuehrung|"
+    r"führer|führerin|inhaber|inhaberin|personal|marketing|vertrieb|verkauf|einkauf|controlling|sekretariat|"
+    r"empfang|rezeption|disposition|logistik|produktion|werkstatt|azubi|auszubildende|auszubildender|praktikant|"
+    r"praktikantin|werkstudent|werkstudentin|student|studentin|trainee|volontär|volontärin|referent|referentin|"
+    r"koordinator|koordinatorin|consultant|partner|partnerin|prokurist|prokuristin|vorstand|aufsichtsrat)$",
+    re.I,
+)
 _STREET_SUFFIX = re.compile(
     r"(straße|strasse|str\.|weg|platz|allee|gasse|ring|damm|ufer|chaussee|steig)$", re.I
 )
@@ -94,7 +108,7 @@ def is_probable_person_name(s: str) -> bool:
     for tok in tokens:
         if tok.lower().strip(".") in STOPWORDS:
             return False
-        if _STREET_SUFFIX.search(tok):
+        if _STREET_SUFFIX.search(tok) or _ROLE_SUFFIX.search(tok):
             return False
         if len(tok) > 3 and tok.isupper():
             return False
