@@ -373,13 +373,17 @@ def enrich_list(
     console.print(f"\n[green]✔[/] Excel gespeichert: [bold]{target}[/]")
 
 
-_NEAR_PREMIUM_OK = ("Mitarbeiterzahl nicht belegt", "sozialversicherungspflichtige Beschäftigte nicht belegt")
+_NEAR_PREMIUM_MIN = 3
 
 
 def is_near_premium(lead: Lead) -> bool:
-    """Fast-Premium: Entscheider mit namentlicher Handynummer, aktiv, keine freien Vertreter – es fehlt nur
-    der Beleg für Mitarbeiterzahl/Beschäftigte auf der Website (im Telefonat zu klären)."""
-    return bool(lead.premium_missing) and all(m in _NEAR_PREMIUM_OK for m in lead.premium_missing)
+    """Zweite Reihe: Entscheider mit Handynummer, aktiv, keine freien Vertreter – und drei oder vier
+    belegte Köpfe. Innendienst, Buchhaltung und Azubis stehen selten auf der Website, diese Betriebe
+    liegen also oft doch bei fünf und mehr. Im Telefonat mit einer Frage geklärt."""
+    if not lead.premium_missing or lead.enrichment is None:
+        return False
+    offen = [m for m in lead.premium_missing if not m.startswith("nur ")]
+    return not offen and lead.enrichment.staff.headcount >= _NEAR_PREMIUM_MIN
 
 
 def _load_leads(paths: list[Path], *, exclude_chains: bool = True) -> list[Lead]:

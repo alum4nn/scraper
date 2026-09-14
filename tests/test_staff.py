@@ -57,3 +57,18 @@ def test_stated_number_wins_and_is_first_evidence():
 
 def test_empty_input_is_zero():
     assert count_staff([], [], []).headcount == 0
+
+
+def test_decision_makers_count_as_staff():
+    """Auch der Chef arbeitet im Betrieb – er gehört in die Kopfzahl."""
+    from leadscraper.models import Person as P
+
+    gf = P(name="Robin Brandes", role="Inhaber & Geschäftsführer", role_category="inhaber")
+    prokurist = P(name="Ralf Brandes", role="Prokurist", role_category="prokura")
+    team = [P(name="Bianca Bertram"), P(name="Timo Tchoulah"), P(name="Dirk Krause")]
+    evidence = count_staff(team, [], [], all_people=[gf, prokurist, *team])
+    # drei aus dem Team plus die Familie Brandes – gleicher Nachname zählt nur einmal
+    assert evidence.headcount == 4
+    # Ohne Funktion im Betrieb zählt eine Person aus dem Impressum nicht mit
+    datenschutz = P(name="Jens Wagner", role="Datenschutzbeauftragter", role_category="sonstige")
+    assert count_staff(team, [], [], all_people=[datenschutz, *team]).headcount == 3

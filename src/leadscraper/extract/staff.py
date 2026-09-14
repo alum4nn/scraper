@@ -86,6 +86,17 @@ def extension_count(phones: list[PhoneNumber]) -> tuple[int, str | None]:
     return len(numbers), f"{len(numbers)} Durchwahlen unter einem Anschluss ({beispiel} …)"
 
 
+_ROLE_IS_STAFF = {
+    "geschaeftsfuehrung",
+    "inhaber",
+    "vorstand",
+    "prokura",
+    "hr",
+    "ausbildung",
+    "betriebsleitung",
+}
+
+
 def count_staff(
     staff_people: list[Person],
     emails: list[str],
@@ -96,11 +107,12 @@ def count_staff(
     stated_evidence: str | None = None,
 ) -> StaffEvidence:
     """Belegte Kopfzahl aus zusammengeführten Identitäten. `staff_people` sind Personen von
-    Team-/Kontaktseiten (dort stehen Mitarbeitende), `all_people` alle bekannten Personen (für die
-    Zuordnung von Postfächern)."""
+    Team-/Kontaktseiten (dort stehen Mitarbeitende), `all_people` alle bekannten Personen – aus ihnen
+    zählen zusätzlich die mit einer Funktion im Betrieb (Geschäftsführung, Prokura, Personal …), denn
+    auch der Chef arbeitet dort."""
     people = all_people if all_people is not None else staff_people
     named: dict[str, str] = {}
-    for person in staff_people:
+    for person in [*staff_people, *(p for p in people if p.role_category in _ROLE_IS_STAFF)]:
         key = _identity(surname(person.name))
         if len(key) >= 3:
             named.setdefault(key, person.name)
