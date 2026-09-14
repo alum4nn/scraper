@@ -79,3 +79,23 @@ def test_multiple_local_hits_take_median_of_best_unit():
     ]
     est = estimate_size(pages)
     assert est.point_estimate in (25, 27) and est.confidence == "high"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "CAPITAL TOP-5 Makler Köln (5 Sterne) – unabhängige Auszeichnung",
+        "F.A.Z. INSTITUT TOP 1.000 Makler Deutschlands",
+        "Platz 3 Makler des Jahres",
+        "Optimal für 2 Personen – Eckhaus in Bestform",
+        "Wir sind 2019 in neue Büroräume umgezogen",
+    ],
+)
+def test_ranks_and_household_sizes_are_not_headcounts(text):
+    est = estimate_size([(U, text)])
+    assert est.point_estimate is None and est.confidence == "none"
+
+
+def test_team_besteht_aus_personen_counts():
+    est = estimate_size([(U, "Unser Team besteht aus 12 Personen mit langjähriger Erfahrung.")])
+    assert est.point_estimate == 12 and est.confidence == "medium"

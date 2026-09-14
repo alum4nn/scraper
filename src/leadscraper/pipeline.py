@@ -191,11 +191,10 @@ def build_enrichment(company: Company, crawl: CrawlResult) -> Enrichment:
         if enr.whatsapp_url:
             break
 
-    # 6) Größe
-    team_pages = [p for p in crawl.pages if p.kind == "team"]
-    team_count = (
-        len({p.name for p in page_people if p.source_url in {tp.final_url for tp in team_pages}}) or None
-    )
+    # 6) Größe – Personen auf Team- UND Kontakt-/Standortseiten („Ihre Ansprechpartner in Köln-Süd“);
+    #    find_people ist dort streng (Rolle, bekannter Vorname oder Kontaktdaten); Bewertungen zählen nicht
+    staff_urls = {p.final_url for p in crawl.pages if p.kind in ("team", "kontakt")}
+    team_count = len({p.name for p in page_people if p.source_url in staff_urls}) or None
     enr.size = estimate_size(
         [(p.final_url, p.text) for p in crawl.pages],
         team_member_count=team_count,

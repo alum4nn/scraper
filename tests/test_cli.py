@@ -83,3 +83,22 @@ def test_export_from_jsonl(tmp_path: Path):
     assert result.exit_code == 0, result.stdout
     assert (tmp_path / "leads_premium.xlsx").exists()
     assert "2 Leads" in result.stdout
+
+
+def test_export_near_premium_merges_files_and_dedupes(tmp_path: Path):
+    from leadscraper.cli import is_near_premium
+    from leadscraper.demo import demo_leads
+    from leadscraper.models import SearchSpec
+
+    leads = demo_leads(SearchSpec(queries=["x"]))
+    a = tmp_path / "a.jsonl"
+    b = tmp_path / "b.jsonl"
+    a.write_text("\n".join(ld.model_dump_json() for ld in leads), encoding="utf-8")
+    b.write_text(leads[0].model_dump_json() + "\n", encoding="utf-8")  # Duplikat (gleiche place_id)
+    near = [ld for ld in leads if is_near_premium(ld)]
+    result = runner.invoke(app, ["export", str(a), str(b), "--near-premium"])
+    assert result.exit_code == 0, result.stdout
+    assert (tmp_path / "a_near_premium.xlsx").exists()
+    assert f"{2 + len(near)} Leads (davon 2 Premium)" in result.stdout
+    result = runner.invoke(app, ["export", str(a), str(b)])
+    assert f"{len(leads)} Leads" in result.stdout  # Duplikat aus b.jsonl nur einmal

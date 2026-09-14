@@ -367,27 +367,65 @@ def enrich_list(
     console.print(f"\n[green]✔[/] Excel gespeichert: [bold]{target}[/]")
 
 
+_NEAR_PREMIUM_OK = ("Mitarbeiterzahl nicht belegt", "sozialversicherungspflichtige Beschäftigte nicht belegt")
+
+
+def is_near_premium(lead: Lead) -> bool:
+    """Fast-Premium: Entscheider mit namentlicher Handynummer, aktiv, keine freien Vertreter – es fehlt nur
+    der Beleg für Mitarbeiterzahl/Beschäftigte auf der Website (im Telefonat zu klären)."""
+    return bool(lead.premium_missing) and all(m in _NEAR_PREMIUM_OK for m in lead.premium_missing)
+
+
+def _load_leads(paths: list[Path]) -> list[Lead]:
+    """Leads aus einer oder mehreren Dateien; Duplikate (place_id/Domain, z. B. Grenzregionen) einmal."""
+    leads: list[Lead] = []
+    for path in paths:
+        if path.suffix == ".json":
+            leads.extend(Lead.model_validate(item) for item in json.loads(path.read_text(encoding="utf-8")))
+        else:
+            leads.extend(pipeline.read_leads_jsonl(path))
+    leads.sort(key=lambda ld: (-ld.score, ld.display_name.lower()))
+    seen: set[str] = set()
+    unique: list[Lead] = []
+    for ld in leads:
+        keys = [ld.company.place_id] + ([ld.company.domain] if ld.company.domain else [])
+        if any(k in seen for k in keys):
+            continue
+        seen.update(keys)
+        unique.append(ld)
+    return unique
+
+
 @app.command()
 def export(
-    jsonl: Path = typer.Argument(..., help="JSONL-Datei aus --deutschland (oder --json-out)"),
+    jsonl: list[Path] = typer.Argument(
+        ..., help="JSONL-Datei(en) aus --deutschland (oder --json-out); mehrere werden zusammengeführt"
+    ),
     out: Path | None = typer.Option(None, "--out", "-o", help="Ziel-Excel"),
     premium: bool = typer.Option(False, "--premium", help="Nur Premium-Leads exportieren"),
+    near_premium: bool = typer.Option(
+        False,
+        "--near-premium",
+        help="Premium plus Fast-Premium: Entscheider mit Handy, nur Mitarbeiterzahl/Beschäftigte unbelegt",
+    ),
     min_score: int = typer.Option(0, help="Mindest-Score"),
 ) -> None:
     """Excel aus gespeicherten Leads bauen (z. B. nur Premium, ohne neuen Crawl)."""
-    if jsonl.suffix == ".json":
-        leads = [Lead.model_validate(item) for item in json.loads(jsonl.read_text(encoding="utf-8"))]
-    else:
-        leads = pipeline.read_leads_jsonl(jsonl)
-    if premium:
+    leads = _load_leads(jsonl)
+    if near_premium:
+        leads = [ld for ld in leads if ld.premium or is_near_premium(ld)]
+    elif premium:
         leads = [ld for ld in leads if ld.premium]
     leads = [ld for ld in leads if ld.score >= min_score]
-    leads.sort(key=lambda ld: (-ld.score, ld.display_name.lower()))
-    target = out or jsonl.with_name(jsonl.stem + ("_premium" if premium else "") + ".xlsx")
-    spec = SearchSpec(queries=[f"Export: {jsonl.name}"], premium=premium)
+    first = jsonl[0]
+    suffix = "_near_premium" if near_premium else ("_premium" if premium else "")
+    target = out or first.with_name(first.stem + suffix + ".xlsx")
+    names = ", ".join(p.name for p in jsonl)
+    spec = SearchSpec(queries=[f"Export: {names}"], premium=premium or near_premium)
     write_workbook(leads, spec, target, funding_rows=funding.funding_reference_rows())
     _print_summary(leads)
-    console.print(f"\n[green]✔[/] {len(leads)} Leads → [bold]{target}[/]")
+    n_prem = sum(1 for ld in leads if ld.premium)
+    console.print(f"\n[green]✔[/] {len(leads)} Leads (davon {n_prem} Premium) → [bold]{target}[/]")
 
 
 @app.command()

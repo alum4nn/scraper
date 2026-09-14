@@ -68,6 +68,13 @@ _SKIP_PATH_RE = re.compile(
     re.I,
 )
 _LANG_PREFIX_RE = re.compile(r"^/(?:en|fr|nl|es|it|pl|tr|ru|cs|da|sv|pt)(?:/|$)", re.I)
+# Seiten ohne Ansprechpartner-Nutzen, die sonst das Budget fressen (Bewertungen, Blog, Lexikon, News)
+_LOW_VALUE_RE = re.compile(
+    r"bewertung|kundenstimmen|testimonial|rezension|lexikon|glossar|ratgeber|blog|news|aktuelles|presse|"
+    r"faq|magazin|tagebuch|checkliste|datenschutz|agb|cookie|sitemap|newsletter|download",
+    re.I,
+)
+_MAX_SONSTIGE_PAGES = 3
 _PERSON_PATH_RE = re.compile(
     r"/(?:team|mitarbeiter|makler|berater|ansprechpartner|ueber-uns|about)/[a-z]+-[a-z-]+/?$", re.I
 )
@@ -123,6 +130,8 @@ def classify_url(url: str, anchor_text: str = "") -> tuple[int, PageKind]:
     penalty = 1 if _LANG_PREFIX_RE.match(path) else 0
     for prio, kind, pat in _KIND_PATTERNS:
         if pat.search(haystack):
+            if kind in ("team", "karriere", "sonstige") and _LOW_VALUE_RE.search(path):
+                return 9, "sonstige"  # /ueber-uns/kundenbewertungen/, /news/, /immobilienlexikon/
             return prio + penalty, kind
     return 9, "sonstige"
 
@@ -244,7 +253,10 @@ class SiteCrawler:
         if fetched is None:
             return None
         final_url, status, html = fetched
-        result.loaded.add(_norm_key(final_url))
+        final_key = _norm_key(final_url)
+        if final_key != key and final_key in result.loaded:
+            return None  # Redirect auf eine schon geladene Seite (Groß-/Kleinschreibung, Parameter)
+        result.loaded.add(final_key)
         if kind == "sonstige":
             kind = classify_url(final_url)[1]
         page = Page(
@@ -343,6 +355,13 @@ class SiteCrawler:
             if prio >= 9 and not only_hints and len(result.pages) >= max(3, budget - 2):
                 continue  # Restbudget für gezielte Seiten aufheben
             kind = classify_url(url, text)[1]
+            if (
+                kind == "sonstige"
+                and not only_hints
+                and not self._matches_hint((prio, url, text), name_hints)
+                and sum(1 for p in result.pages if p.kind == "sonstige") >= _MAX_SONSTIGE_PAGES
+            ):
+                continue  # Objekt-/Stadtteilseiten begrenzen, sonst 8 von 12 Seiten „Immobilienmakler Hürth“
             await self._load_page(url, kind, result)
             if name_hints:
                 for entry in list(result.pending):

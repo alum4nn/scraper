@@ -175,3 +175,42 @@ def test_throttle_waits_between_requests(monkeypatch, served):
     asyncio.run(crawler.crawl("https://rheinblick.de"))
     asyncio.run(crawler.close())
     assert sleeps and all(0 < s <= 0.5 for s in sleeps)
+
+
+def test_low_value_pages_and_redirect_duplicates(httpx_mock):
+    """Bewertungs-/News-Seiten haben niedrigste Priorität; Redirects auf geladene Seiten zählen nicht doppelt;
+    Objekt-/Stadtteilseiten (Prio 4) sind auf drei begrenzt."""
+    assert classify_url("https://x.de/ueber-uns/kundenbewertungen/") == (9, "sonstige")
+    assert classify_url("https://x.de/news/maklertagebuch-woche-29/") == (9, "sonstige")
+    assert classify_url("https://x.de/ueber-uns/") == (2, "team")
+
+    home = (
+        "<html><body>"
+        + '<a href="/kontakt/">Kontakt</a><a href="/Kontakt/">Kontakt (alt)</a>'
+        + "".join(f'<a href="/immobilien/objekt-{i}/">Objekt {i}</a>' for i in range(6))
+        + "</body></html>"
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        if path == "/robots.txt":
+            return httpx.Response(404)
+        if path == "/":
+            return httpx.Response(200, text=home, headers={"content-type": "text/html"})
+        if path == "/Kontakt/":
+            return httpx.Response(301, headers={"location": "https://x.de/kontakt/"})
+        return httpx.Response(
+            200,
+            text=f"<html><body><h1>{path}</h1><p>Tel. 0221 5550000</p></body></html>",
+            headers={"content-type": "text/html"},
+        )
+
+    httpx_mock.add_callback(handler, is_reusable=True)
+    crawler = SiteCrawler(_settings(max_pages_per_site=10))
+    try:
+        result = asyncio.run(crawler.crawl("https://x.de/"))
+    finally:
+        asyncio.run(crawler.close())
+    paths = [httpx.URL(p.final_url).path for p in result.pages]
+    assert paths.count("/kontakt/") == 1
+    assert sum(1 for p in paths if p.startswith("/immobilien/")) == 3

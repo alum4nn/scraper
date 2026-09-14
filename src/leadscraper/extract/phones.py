@@ -15,11 +15,11 @@ import phonenumbers
 from phonenumbers import NumberParseException, PhoneNumberType
 
 from leadscraper.extract.htmlutil import Link
-from leadscraper.extract.names import find_names, normalize_name, surname
+from leadscraper.extract.names import find_plausible_names, normalize_name, surname
 from leadscraper.models import Person, PhoneNumber, PhoneSource, RoleCategory
 
 # Kandidaten im Fließtext: beginnt mit +49 / 0049 / 0, dann Ziffern mit üblichen Trennern
-_CANDIDATE_RE = re.compile(r"(?<![\w+])(?:\+49|0049|0)[\d\s\-/.()]{5,24}\d(?![\w])")
+_CANDIDATE_RE = re.compile(r"(?<![\w+])(?:\+49|0049|0)[\d\s\-–—/.()]{5,24}\d(?![\w])")
 _MOBILE_LABEL_RE = re.compile(
     r"\b(?:mobil(?:e|nummer|telefon)?|handy(?:nummer)?|cell(?:phone)?|whats\s?app|m\s*:)\s*[:.]?", re.I
 )
@@ -159,7 +159,7 @@ class _NameIndex:
 
     def any_in(self, idx: int) -> list[str]:
         if idx not in self._cache:
-            self._cache[idx] = find_names(self.lines[idx])
+            self._cache[idx] = find_plausible_names(self.lines[idx])
         return self._cache[idx]
 
 
@@ -175,10 +175,12 @@ def _associate(index: _NameIndex, line_idx: int, before_text: str) -> str | None
             return name
         if offset > 0 and index.any_in(i):
             break  # eine andere Person steht dazwischen → nicht weiter zurück
-    # 2) beliebiger Name: gleiche Zeile (vor der Nummer bevorzugt), dann bis 3 Zeilen zurück
-    same = find_names(before_text) or index.any_in(line_idx)
+    # 2) plausibler Name (bekannter Vorname/Anrede): gleiche Zeile (vor der Nummer bevorzugt), dann
+    #    bis 3 Zeilen zurück – sonst landen Handynummern bei „Immobilienbewertung Frechen“
+    before_names = find_plausible_names(before_text) if before_text else []
+    same = before_names or index.any_in(line_idx)
     if same:
-        return same[-1] if before_text and find_names(before_text) else same[0]
+        return same[-1] if before_names else same[0]
     for offset in range(1, _MAX_LOOKBACK):
         i = line_idx - offset
         if i < 0:
@@ -240,7 +242,7 @@ def find_phones(
             if key in digits_to_line:
                 phone.person = _associate(index, digits_to_line[key], "")
             else:
-                names = find_names(link.text) if link.text else []
+                names = find_plausible_names(link.text) if link.text else []
                 phone.person = names[0] if names else None
             found.append(phone)
         elif link.kind == "whatsapp":

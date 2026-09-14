@@ -130,3 +130,17 @@ def test_parse_vcard_cell_and_folding():
     assert {p.e164 for p in tb.phones} == {"+492215550000", "+491715550123"}
     assert tb.mobile.e164 == "+491715550123" and tb.mobile.person == "Thomas Berger"
     assert people[1].mobile.e164 == "+491725550456"
+
+
+def test_number_with_en_dash_separator_is_found():
+    """„Telefon: 02 21 – 160 37 0“ (Gedankenstrich statt Bindestrich) muss erkannt werden."""
+    result = _phones(["Telefon: 02 21 – 160 37 0", "Telefax: 02 21 – 160 37 30"], source="impressum")
+    assert [p.e164 for p in result] == ["+49221160370"]
+
+
+def test_mobile_not_attributed_to_layout_text():
+    """Ohne bekannte Person wird eine Nummer nur einem plausiblen Namen zugeordnet."""
+    lines = ["Immobilienbewertung Frechen", "Mobil: 0176 5550002", "Anna Heck", "Mobil: 0176 5550003"]
+    result = {p.e164: p.person for p in _phones(lines)}
+    assert result["+491765550002"] is None
+    assert result["+491765550003"] == "Anna Heck"

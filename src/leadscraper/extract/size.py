@@ -11,8 +11,10 @@ _UNITS = (
     r"mitarbeiter(?:n|innen|\*innen|:innen|_innen|/innen)?|mitarbeitende[nr]?|beschäftigte[nr]?|"
     r"angestellte[nr]?|kolleg(?:en|innen|\*innen|:innen)|teammitglieder[n]?|fachkräfte[n]?|expert(?:en|innen)|"
     r"köpfe[n]?|berater(?:n|innen)?|anwält(?:e|en|innen)|steuerberater(?:n|innen)?|makler(?:n|innen)?|monteure[n]?|"
-    r"gesellen|festangestellte[n]?|vollzeitkräfte[n]?|arbeitnehmer(?:n|innen)?|leute[n]?|personen|menschen"
-)
+    r"gesellen|festangestellte[n]?|vollzeitkräfte[n]?|arbeitnehmer(?:n|innen)?"
+)  # „Personen/Leute/Menschen“ nur mit Team-Kontext (s. _PATTERNS), sonst „optimal für 4 Personen“
+_TEAM_UNITS = rf"{_UNITS}|leute[n]?|personen|menschen|köpfe[n]?"
+
 _STRONG_UNIT_RE = re.compile(
     r"mitarbeit|beschäftigt|angestellt|kolleg|teammitglied|fachkr|expert|köpfe|berater|anwält|makler|monteur|"
     r"gesellen|arbeitnehmer|vollzeit",
@@ -57,14 +59,24 @@ _PATTERNS = [
         re.I,
     ),
     # "Team von 12", "Team aus 12 Mitarbeitern", "12-köpfiges Team", "wir sind 8"
-    re.compile(rf"team\s+(?:von|aus|mit)\s+{_QUAL}\s*(?:{_NUM}|({_WORDNUM}))\b", re.I),
+    re.compile(
+        rf"team\s+(?:von|aus|mit|besteht\s+aus|umfasst|zählt)\s+{_QUAL}\s*(?:{_NUM}|({_WORDNUM}))"
+        rf"(?:\s+(?:{_TEAM_UNITS}))?\b",
+        re.I,
+    ),
     re.compile(rf"{_NUM}[-\s]?köpfige[sn]?\s+team", re.I),
-    re.compile(rf"wir\s+sind\s+(?:ein\s+team\s+(?:von|aus)\s+)?{_QUAL}\s*{_NUM}(?:\s+(?:{_UNITS}))?", re.I),
+    re.compile(
+        rf"wir\s+sind\s+(?:ein\s+team\s+(?:von|aus)\s+)?{_QUAL}\s*{_NUM}(?:\s+(?:{_TEAM_UNITS}))?", re.I
+    ),
     # "Mitarbeiterzahl: 25", "Beschäftigte: 48", "Mitarbeiter: ca. 30"
     re.compile(rf"(?:{_UNITS})(?:zahl|anzahl)?\s*:\s*{_QUAL}\s*{_NUM}\b", re.I),
     # Zahlwörter: "zwölf Mitarbeiter"
     re.compile(rf"{_QUAL}\s*(?P<word>{_WORDNUM})\s+(?:{_UNITS})\b", re.I),
 ]
+# Rangangaben/Auszeichnungen: „TOP-5 Makler Köln“, „Platz 3“, „Nr. 1 Makler“, „Top 100 Makler“
+_RANK_BEFORE_RE = re.compile(
+    r"(?:\btop|\bplatz|\brang|\bnr\.?|#|\bbeste[nr]?|\bkategorie)\s*[-–:]?\s*$", re.I
+)
 _GROUP_RE = re.compile(
     r"weltweit|global|konzern|gruppe|unternehmensgruppe|holding|international|europaweit|bundesweit|deutschlandweit",
     re.I,
@@ -163,6 +175,8 @@ def _scan(url: str, text: str) -> list[_Hit]:
             values = [v for v in (_to_int(n) for n in nums) if v is not None]
             if not values or max(values) > 200_000 or min(values) < 1:
                 continue
+            if _RANK_BEFORE_RE.search(text[max(0, start - 12) : start]):
+                continue
             if len(values) >= 2 and values[0] < values[1]:
                 lo, hi, point = values[0], values[1], (values[0] + values[1]) // 2
             else:
@@ -179,6 +193,8 @@ def _scan(url: str, text: str) -> list[_Hit]:
                 and not re.search(r"team|köpfig|wir\s+sind|zahl\s*:", m.group(0), re.I)
             ):
                 continue
+            if not unit_direct and len(values) == 1 and 1900 <= values[0] <= 2100:
+                continue  # „wir sind 2019 umgezogen“ – Jahreszahl, keine Kopfzahl
             # Jahresangaben ("seit 1998", "1998 gegründet") in unmittelbarer Nähe der Zahl → verwerfen
             if (
                 re.search(

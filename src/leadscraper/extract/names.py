@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import re
 
+from leadscraper.extract.vornamen import is_known_first_name
+
 _TITLE = (
     r"(?:Prof\.|Dr\.|Dipl\.-\w+\.|Dipl\.\s?\w+\.?|Mag\.|Ing\.|MBA|LL\.M\.|B\.A\.|M\.A\.|B\.Sc\.|M\.Sc\.|"
     r"M\.Eng\.|B\.Eng\.|RA|StB|WP|vBP|med\.|dent\.|vet\.|rer\.\s?\w+\.|jur\.|phil\.|h\.c\.|mult\.|Dres\.)"
@@ -35,6 +37,11 @@ _ROLE_SUFFIX = re.compile(
 )
 _STREET_SUFFIX = re.compile(
     r"(straße|strasse|str\.|weg|platz|allee|gasse|ring|damm|ufer|chaussee|steig)$", re.I
+)
+# Abstrakta/Substantive, die nie Namen sind („Wohnflächenberechnung“, „Kompetenz“, „Präsentation“);
+# „-ung“ nur ab 9 Zeichen, damit Nachnamen wie Jung/Hartung bleiben.
+_NOUN_SUFFIX = re.compile(
+    r"(heit|keit|schaft|schaften|tion|tionen|ität|ismus|ierung|ungen|thek)$|^.{6,}ung$", re.I
 )
 
 STOPWORDS: frozenset[str] = frozenset(
@@ -78,6 +85,10 @@ STOPWORDS: frozenset[str] = frozenset(
     Mecklenburg-Vorpommern Vorpommern Sachsen-Anhalt Anhalt Rhein Main Ruhr Neckar Elbe Donau Weser Mosel
     Bodensee Allgäu Eifel Sauerland Bergisch Gladbach Taunus Odenwald Harz
     Österreich Schweiz Wien Zürich
+    Mein Meine Dein Deine Konto Formular Neues Neue Neuer Fotos Foto Backoffice Kontaktart Bevorzugte
+    Stadtbezirk Häufige Fragen Frage Cookie Cookies Analytics Google Vimeo Youtube Videos Video Database
+    Previous Next Contact Free Text Premium Angabe Angaben Hauptsitz Standortleitung Eigentümer Verkäufer
+    Käufer Interessenten
     """.split()
 )
 
@@ -108,7 +119,7 @@ def is_probable_person_name(s: str) -> bool:
     for tok in tokens:
         if tok.lower().strip(".") in STOPWORDS:
             return False
-        if _STREET_SUFFIX.search(tok) or _ROLE_SUFFIX.search(tok):
+        if _STREET_SUFFIX.search(tok) or _ROLE_SUFFIX.search(tok) or _NOUN_SUFFIX.search(tok):
             return False
         if len(tok) > 3 and tok.isupper():
             return False
@@ -128,6 +139,36 @@ def _trim(candidate: str) -> str | None:
     if not toks:
         return None
     return " ".join(toks)
+
+
+def is_plausible_person_name(s: str) -> bool:
+    """Strenger als is_probable_person_name: zusätzlich bekannter Vorname oder Anrede/Titel.
+
+    Für Kontexte ohne Rollen-Label (Team-Karten ohne Funktion, Nummern-Zuordnung, Zähler für die
+    Teamgröße), in denen „Bevorzugte Kontaktart“ oder „Stadtbezirk Hörde“ sonst als Person durchgehen.
+    """
+    if not is_probable_person_name(s):
+        return False
+    stripped = s.strip()
+    if _SALUTATION_RE.match(stripped) or _TITLE_RE.match(_SALUTATION_RE.sub("", stripped)):
+        return True
+    toks = _core_tokens(s)
+    if is_known_first_name(toks[0]):
+        return True
+    return len(toks) >= 3 and is_known_first_name(toks[1])
+
+
+def find_plausible_names(text: str) -> list[str]:
+    """Wie find_names, nur plausible Personen; eine Anrede im Text („Herr Yüksel Turan“) zählt als Beleg."""
+    found: dict[str, str] = {}
+    for m in NAME_RE.finditer(text):
+        cand = _trim(m.group(0))
+        if not cand or not is_probable_person_name(cand):
+            continue
+        if not (is_plausible_person_name(cand) or _SALUTATION_RE.match(m.group(0))):
+            continue
+        found.setdefault(normalize_name(cand).casefold(), cand)
+    return list(found.values())
 
 
 def find_names(text: str) -> list[str]:

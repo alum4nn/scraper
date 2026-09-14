@@ -5,7 +5,13 @@ from __future__ import annotations
 import re
 
 from leadscraper.extract.htmlutil import Link
-from leadscraper.extract.names import find_names, is_probable_person_name, normalize_name, surname
+from leadscraper.extract.names import (
+    find_names,
+    is_plausible_person_name,
+    is_probable_person_name,
+    normalize_name,
+    surname,
+)
 from leadscraper.models import ROLE_PRIORITY, Person, PhoneNumber, RoleCategory
 
 ROLE_PATTERNS: list[tuple[str, RoleCategory]] = [
@@ -13,7 +19,8 @@ ROLE_PATTERNS: list[tuple[str, RoleCategory]] = [
         r"geschäftsführ|geschaeftsfuehr|\bceo\b|managing\s+director|geschäftsleit|gründer|founder|geschäftsinhaber",
         "geschaeftsfuehrung",
     ),
-    (r"inhaber|betriebsinhaber|eigentümer|\bowner\b|einzelunternehmer", "inhaber"),
+    # „Eigentümer“ fehlt absichtlich: bei Maklern ist das die Kundengruppe („Für Eigentümer“), keine Rolle
+    (r"inhaber(?!gef)|\bowner\b|einzelunternehmer", "inhaber"),  # nicht „inhabergeführt seit 1968“
     (r"vorstand|\bcfo\b|\bcoo\b|\bcto\b|\bcmo\b", "vorstand"),
     (
         r"personalleit|leitung\s+personal|leiter(?:in)?\s+personal|head\s+of\s+hr|hr[\s-]*(?:manager|leit|business|director|generalist)|human\s+resources|people\s*&?\s*culture|recruit|personalreferent|personalabteilung|personalwesen|personalmanagement|\bhr\b",
@@ -41,6 +48,8 @@ _ANSPRECH_RE = re.compile(
     re.I,
 )
 _YEAR_RE = re.compile(r"\b(?:19|20)\d{2}\b")
+# Kontaktdaten in den Zeilen unter einem Namen (Team-Karte): E-Mail, Telefonnummer, Tel/Mobil-Label
+_CONTACT_RE = re.compile(r"@|(?:\+49|\b0)[\d\s\-–/.()]{6,}\d|\b(?:tel|mobil|handy|fon|phone)\b", re.I)
 
 
 def categorize_role(role_text: str | None) -> RoleCategory:
@@ -53,11 +62,18 @@ def categorize_role(role_text: str | None) -> RoleCategory:
 
 
 def _is_roleish(line: str) -> bool:
-    if len(line) > 80 or is_probable_person_name(line):
+    if len(line) > 80 or is_probable_person_name(line) or "@" in line or "http" in line.lower():
         return False
     if re.search(r"\d", _YEAR_RE.sub("", line)):
         return False
+    words = line.split()
+    if len(words) > 8 or (len(words) >= 4 and line.rstrip().endswith((".", "!", "?"))):
+        return False  # ganzer Satz („Lädt unsere Bewertungen von …“), keine Funktionsbezeichnung
     return bool(categorize_role(line) != "sonstige" or _ROLEISH_RE.search(line))
+
+
+def _contact_nearby(lines: list[str], idx: int) -> bool:
+    return any(_CONTACT_RE.search(lines[j]) for j in range(idx + 1, min(idx + 4, len(lines))))
 
 
 def _email_local_matches(local: str, person_name: str) -> bool:
@@ -107,7 +123,14 @@ def find_people(
                 break
             if j < len(lines) and is_probable_person_name(lines[j]):
                 break
-        if role or page_kind in ("team", "kontakt"):
+        # Ohne Rollen-Label reicht die Namensform nicht („Bevorzugte Kontaktart“, „Stadtbezirk Hörde“):
+        # bekannter Vorname/Anrede oder Kontaktdaten direkt darunter müssen den Menschen belegen.
+        plausible = is_plausible_person_name(line)
+        if categorize_role(role) != "sonstige" and (plausible or len(role.split()) <= 5):
+            add(line.strip(), role)  # Entscheider-/HR-Rolle: kurzes Label reicht, Slogan + „Mein Konto“ nicht
+        elif role and (plausible or _contact_nearby(lines, i)):
+            add(line.strip(), role)
+        elif page_kind in ("team", "kontakt") and plausible:
             add(line.strip(), role)
 
     # E-Mail-Adressen mit Namensbestandteilen zuordnen

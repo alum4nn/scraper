@@ -101,3 +101,37 @@ def test_attach_phones_by_full_name_and_unique_surname():
     attach_phones(people, phones)
     assert [ph.e164 for ph in people[0].phones] == ["+491715550123"]
     assert [ph.e164 for ph in people[1].phones] == ["+491725550456"]
+
+
+def test_team_page_ignores_layout_lines_and_slogans():
+    """Reale Makler-Seiten: Zwei-Wort-Zeilen in Namensform sind meist Layout, keine Menschen."""
+    lines = [
+        "Bevorzugte Kontaktart",
+        "Bevorzugte Zeit",
+        "Stadtbezirk Hörde",
+        "Immobilienmakler Dortmund Benninghofen",
+        "Mein Konto",
+        "Ihr Immobilienmakler in Dortmund, inhabergeführt seit 1968",
+        "Kaufinteressenten Registrierung",
+        "Eigentümer",
+        "Proven Expert",
+        "Lädt unsere Bewertungen von Proven Expert (Expert Systems AG).",
+        "Backoffice, Fotos",
+        "info@doernhoff-immobilien.de",
+        "Oliver Penzel",
+        "Geprüfter Immobilienmakler mit IHK Zertifikat",
+        "Yüksel Turan",  # unbekannter Vorname, aber Kontaktdaten direkt darunter
+        "Immobilienberater",
+        "Mobil: 0176 5550001",
+        "Hanna Stawinoga",  # bekannter Vorname ohne Rolle → auf Team-Seite aufnehmen
+    ]
+    people = {p.name: p for p in find_people(lines, [], source_url="https://x.de/team", page_kind="team")}
+    assert set(people) == {"Oliver Penzel", "Yüksel Turan", "Hanna Stawinoga"}
+    assert people["Oliver Penzel"].role_category == "sonstige"
+    assert not any(p.role_category == "inhaber" for p in people.values())
+
+
+def test_eigentuemer_is_customer_segment_not_role():
+    assert categorize_role("Für Eigentümer") == "sonstige"
+    assert categorize_role("inhabergeführt seit 1968") == "sonstige"
+    assert categorize_role("Inhaberin") == "inhaber"
