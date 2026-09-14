@@ -7,12 +7,22 @@ from dataclasses import dataclass
 
 from leadscraper.models import SizeEstimate
 
-_UNITS = (
+# Starke Einheiten: Wer „12 Mitarbeiter“ schreibt, meint die Belegschaft.
+_STRONG_UNITS = (
     r"mitarbeiter(?:n|innen|\*innen|:innen|_innen|/innen)?|mitarbeitende[nr]?|beschäftigte[nr]?|"
-    r"angestellte[nr]?|kolleg(?:en|innen|\*innen|:innen)|teammitglieder[n]?|fachkräfte[n]?|expert(?:en|innen)|"
-    r"köpfe[n]?|berater(?:n|innen)?|anwält(?:e|en|innen)|steuerberater(?:n|innen)?|makler(?:n|innen)?|monteure[n]?|"
-    r"gesellen|festangestellte[n]?|vollzeitkräfte[n]?|arbeitnehmer(?:n|innen)?"
-)  # „Personen/Leute/Menschen“ nur mit Team-Kontext (s. _PATTERNS), sonst „optimal für 4 Personen“
+    r"angestellte[nr]?|kolleg(?:en|innen|\*innen|:innen)|teammitglieder[n]?|festangestellte[n]?|"
+    r"vollzeitkräfte[n]?|arbeitnehmer(?:n|innen)?"
+)
+# Schwache Einheiten: Auf einer Makler-Website steht „5 Makler“ auch in Kundenstimmen und
+# Vergleichsportalen („1.271 Urteile wurden für die 17 Makler berücksichtigt“). Sie zählen nur mit
+# Besitzbezug – „unsere 17 Makler“, „mein Team aus 5 Beratern“.
+_WEAK_UNITS = (
+    r"fachkräfte[n]?|expert(?:en|innen)|köpfe[n]?|berater(?:n|innen)?|anwält(?:e|en|innen)|"
+    r"steuerberater(?:n|innen)?|makler(?:n|innen)?|monteure[n]?|gesellen"
+)
+_UNITS = rf"{_STRONG_UNITS}|{_WEAK_UNITS}"
+_BESITZ = r"(?:unser|unsere[nmrs]?|mein|meine[nmrs]?|im\s+team|team\s+aus|team\s+von)\s+(?:\w+\s+){0,2}"
+# „Personen/Leute/Menschen“ nur mit Team-Kontext (s. _PATTERNS), sonst „optimal für 4 Personen“
 _TEAM_UNITS = rf"{_UNITS}|leute[n]?|personen|menschen|köpfe[n]?"
 
 _STRONG_UNIT_RE = re.compile(
@@ -55,10 +65,17 @@ _QUAL = (
 
 _PATTERNS = [
     # "zwischen 20 und 30 Mitarbeitern", "20-30 Mitarbeiter", "20 bis 30 Mitarbeiter"
-    re.compile(rf"(?:zwischen\s+)?{_NUM}\s*(?:-|–|bis|und)\s*{_NUM}\s+(?:{_UNITS})", re.I),
+    re.compile(rf"(?:zwischen\s+)?{_NUM}\s*(?:-|–|bis|und)\s*{_NUM}\s+(?:{_UNITS})\b", re.I),
     # "über 100 Mitarbeiter", "rund 40 Mitarbeitende", "12 Kollegen"
     re.compile(
-        rf"{_QUAL}\s*{_NUM}\s+(?:erfahrene[n]?\s+|engagierte[n]?\s+|qualifizierte[n]?\s+|motivierte[n]?\s+|feste[n]?\s+)?(?:{_UNITS})\b",
+        rf"{_QUAL}\s*{_NUM}\s+(?:erfahrene[n]?\s+|engagierte[n]?\s+|qualifizierte[n]?\s+|"
+        rf"motivierte[n]?\s+|feste[n]?\s+)?(?:{_STRONG_UNITS})\b",
+        re.I,
+    ),
+    # "unsere 17 Makler", "mein Team aus 5 Beratern" – schwache Einheiten nur mit Besitzbezug
+    re.compile(
+        rf"{_BESITZ}{_QUAL}\s*{_NUM}\s+(?:erfahrene[n]?\s+|engagierte[n]?\s+|qualifizierte[n]?\s+|"
+        rf"motivierte[n]?\s+|feste[n]?\s+)?(?:{_WEAK_UNITS})\b",
         re.I,
     ),
     # "Team von 12", "Team aus 12 Mitarbeitern", "12-köpfiges Team", "wir sind 8"
@@ -92,6 +109,8 @@ _GROUP_RE = re.compile(
 )
 _ANTI_RE = re.compile(
     r"jahr|seit|kunden|projekt|standort|filial|prozent|%|€|eur\b|stunde|uhr|quadratmeter|m²|referenz|bewertung|"
+    r"abt\.|abteilung|aktenzeichen|\baz\.|ordnungsamt|amtsgericht|paragraf|§|"
+    r"urteile|berücksichtigt|vergleich|verglichen|getestet|rangliste|ranking|testsieger|"
     r"fahrzeug|objekt|wohnung|einheit|immobilien\s+verkauft|verkauft|vermietet|verwaltet|mio|milliard|umsatz|"
     r"tonnen|kilometer|km\b|artikel|produkte|sterne|stern\b|folge|abonn|likes",
     re.I,
@@ -201,7 +220,8 @@ def _scan(url: str, text: str) -> list[_Hit]:
                 lo, hi, point = _apply_qual(qual, values[0])
             local_anti = _ANTI_RE.search(window)
             unit_direct = re.search(
-                rf"\d\s+(?:erfahrene[n]?\s+|engagierte[n]?\s+|qualifizierte[n]?\s+|motivierte[n]?\s+|feste[n]?\s+)?(?:{_UNITS})",
+                rf"\d\s+(?:erfahrene[n]?\s+|engagierte[n]?\s+|qualifizierte[n]?\s+|motivierte[n]?\s+|"
+                rf"feste[n]?\s+)?(?:{_UNITS})\b",
                 m.group(0),
                 re.I,
             )

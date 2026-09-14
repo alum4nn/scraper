@@ -152,3 +152,23 @@ def test_upper_bounds_are_not_a_headcount(text, lo, hi):
     est = estimate_size([(U, text)])
     assert (est.employees_min, est.employees_max) == (lo, hi)
     assert est.confidence != "high"  # darf nicht als belegte Zahl in die Kopfzahl eingehen
+
+
+@pytest.mark.parametrize(
+    ("text", "erwartet"),
+    [
+        # Schwache Einheiten brauchen einen Besitzbezug – auf Makler-Websites steht „5 Makler“
+        # auch in Kundenstimmen und Vergleichsportalen
+        ("Nachdem 5 Makler beim ersten Termin nicht überzeugten", None),
+        ("1.271 Urteile wurden für die 17 Makler berücksichtigt", None),
+        ("Unsere 17 Makler betreuen Sie persönlich", 17),
+        ("Unser Team aus 6 Beratern", 6),
+        # Aktenzeichen und Abteilungsnummern sind keine Kopfzahlen
+        ("Rechts- und Ordnungsamt, Abt. 32-31 Maklerangaben", None),
+        ("Aktenzeichen 12-45 Mitarbeitervertretung", None),
+        # Starke Einheiten zählen weiterhin ohne Besitzbezug
+        ("Wir verwalten mit 8 Mitarbeitern rund 900 Einheiten", 8),
+    ],
+)
+def test_weak_units_need_a_possessive(text, erwartet):
+    assert estimate_size([(U, text)]).point_estimate == erwartet
