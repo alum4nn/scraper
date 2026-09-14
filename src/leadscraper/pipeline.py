@@ -89,6 +89,22 @@ def _dedupe_phones(phones: list[PhoneNumber]) -> list[PhoneNumber]:
     return list(best.values())
 
 
+def _drop_shared_numbers(deduped: list[PhoneNumber], alle: list[PhoneNumber]) -> list[PhoneNumber]:
+    """Steht dieselbe Nummer bei mehreren Personen, ist es die Firmennummer – dann keine Zuordnung.
+
+    Viele Team-Seiten wiederholen unter jedem Porträt dieselbe Zentrale. Wer sie einer Person zuschreibt,
+    ruft am Telefon den Falschen auf.
+    """
+    personen: dict[str, set[str]] = {}
+    for phone in alle:
+        if phone.person:
+            personen.setdefault(phone.e164, set()).add(phone.person)
+    for phone in deduped:
+        if len(personen.get(phone.e164, ())) > 1:
+            phone.person = None
+    return deduped
+
+
 _EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", re.I)
 _OBFUSCATED_RE = re.compile(
     r"([\w.+-]+)\s*(?:\[at\]|\(at\)|\{at\}|\s@\s|\sat\s|\[ät\])\s*([\w-]+(?:\s*(?:\[dot\]|\(dot\)|\[punkt\]|\(punkt\)|\.)\s*[\w-]+)+)",
@@ -189,7 +205,7 @@ def build_enrichment(company: Company, crawl: CrawlResult) -> Enrichment:
         pn = phones_mod.classify_number(company.phone, source="places", source_url=company.google_maps_uri)
         if pn:
             phones.append(pn)
-    enr.phones = _dedupe_phones(phones)
+    enr.phones = _drop_shared_numbers(_dedupe_phones(phones), phones)
     people_mod.attach_phones(people, enr.phones)
     enr.people = people
     promote_responsible_owner(enr, company.name)

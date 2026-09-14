@@ -144,3 +144,24 @@ def test_mobile_not_attributed_to_layout_text():
     result = {p.e164: p.person for p in _phones(lines)}
     assert result["+491765550002"] is None
     assert result["+491765550003"] == "Anna Heck"
+
+
+def test_surname_in_email_does_not_attribute_the_number():
+    """„brandes@brandes-immobilien.de“ enthält den Nachnamen – das ist keine Personenzuordnung."""
+    known = [Person(name="Robin Brandes", role_category="geschaeftsfuehrung")]
+    lines = ["Kontakt", "Schreiben Sie an brandes@brandes-immobilien.de", "Mobil: 0171 6444518"]
+    result = {p.e164: p.person for p in _phones(lines, known=known)}
+    assert result["+491716444518"] is None
+
+
+def test_same_surname_twice_is_not_guessed():
+    """Familienbetrieb: ohne Vornamen neben der Nummer bleibt die Zuordnung offen."""
+    known = [
+        Person(name="Robin Brandes", role_category="geschaeftsfuehrung"),
+        Person(name="Ralf Brandes", role_category="prokura"),
+    ]
+    ambig = _phones(["Brandes Immobilien", "Mobil: 0171 6444518"], known=known)
+    assert ambig[0].person is None
+    # Mit vollem Namen in der Zeile ist es eindeutig
+    klar = _phones(["Ralf Brandes, Prokurist", "Mobil: 0171 6444518"], known=known)
+    assert klar[0].person == "Ralf Brandes"

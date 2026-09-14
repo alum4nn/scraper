@@ -137,6 +137,11 @@ def _normalize_label(label: str | None) -> str | None:
     return label
 
 
+# E-Mail-Adressen und URLs enthalten den Nachnamen der Firma („brandes@brandes-immobilien.de“) und
+# dürfen deshalb keine Personen-Zuordnung auslösen.
+_ADDRESS_RE = re.compile(r"\S+@\S+|https?://\S+|www\.\S+|\b[\w-]+\.(?:de|com|net|org|eu|info|immo)\b", re.I)
+
+
 class _NameIndex:
     """Personennamen je Zeile (lazy), bekannte Personen zuerst."""
 
@@ -149,13 +154,16 @@ class _NameIndex:
 
     def known_in(self, idx: int) -> str | None:
         line = self.lines[idx].casefold()
-        best: str | None = None
+        ohne_adressen = _ADDRESS_RE.sub(" ", line)
+        treffer: list[str] = []
         for name, full, sn in self.known:
             if full and full in line:
                 return name
-            if best is None and sn and len(sn) >= 3 and re.search(rf"(?<!\w){re.escape(sn)}(?!\w)", line):
-                best = name
-        return best
+            if sn and len(sn) >= 3 and re.search(rf"(?<!\w){re.escape(sn)}(?!\w)", ohne_adressen):
+                treffer.append(name)
+        # Mehrere Personen mit demselben Nachnamen (Familienbetrieb) – ohne Vornamen ist das nicht
+        # entscheidbar, dann lieber keine Zuordnung als die falsche.
+        return treffer[0] if len(treffer) == 1 else None
 
     def any_in(self, idx: int) -> list[str]:
         if idx not in self._cache:

@@ -370,3 +370,26 @@ def test_responsible_person_with_company_name_counts_as_owner():
     )
     pipeline.promote_responsible_owner(enr2, "Berger Immobilien GmbH")
     assert enr2.people[1].role_category == "sonstige"
+
+
+def test_company_number_under_every_portrait_is_not_personal():
+    """Wiederholt eine Team-Seite unter jedem Porträt dieselbe Nummer, gehört sie der Firma."""
+    from leadscraper.models import PhoneNumber
+    from leadscraper.pipeline import _drop_shared_numbers
+
+    def pn(person):
+        return PhoneNumber(
+            raw="0178 3364585",
+            e164="+491783364585",
+            national="0178 3364585",
+            kind="mobile",
+            source="team",
+            person=person,
+        )
+
+    alle = [pn("Helmut Jentz"), pn("Lisbeth Jentz"), pn("Sarah Jentz")]
+    deduped = _drop_shared_numbers([pn("Helmut Jentz")], alle)
+    assert deduped[0].person is None
+
+    nur_einer = [pn("Helmut Jentz"), pn("Helmut Jentz")]
+    assert _drop_shared_numbers([pn("Helmut Jentz")], nur_einer)[0].person == "Helmut Jentz"
