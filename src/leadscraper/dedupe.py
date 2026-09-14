@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from urllib.parse import urlsplit
 
 import tldextract
 
@@ -12,6 +13,7 @@ _extract = tldextract.TLDExtract(suffix_list_urls=())  # offline, keine Netzabfr
 
 
 def normalize_domain(website_or_domain: str | None) -> str | None:
+    """Registrierbare Domain (ohne www), z. B. 'beispiel-makler.de'. Unbekannte TLDs → Hostname ohne www."""
     if not website_or_domain:
         return None
     value = website_or_domain.strip().lower()
@@ -20,7 +22,11 @@ def normalize_domain(website_or_domain: str | None) -> str | None:
     if "://" not in value:
         value = "http://" + value
     ext = _extract(value)
-    return ext.top_domain_under_public_suffix or None
+    if ext.top_domain_under_public_suffix:
+        return ext.top_domain_under_public_suffix
+    host = urlsplit(value).hostname or ""
+    host = host.removeprefix("www.")
+    return host or None
 
 
 def normalize_phone_key(phone: str | None) -> str | None:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from leadscraper.dedupe import normalize_domain
 from leadscraper.geo import bundesland_from_plz, normalize_bundesland
@@ -90,7 +91,7 @@ def read_company_list(path: Path) -> list[Company]:
         website = data.get("website")
         if website and "://" not in website:
             website = "https://" + website
-        name = data.get("name") or (normalize_domain(website) if website else None)
+        name = data.get("name") or (urlsplit(website).hostname if website else None)
         if not name:
             continue
         plz = data.get("plz")
