@@ -249,7 +249,7 @@ def build_enrichment(company: Company, crawl: CrawlResult) -> Enrichment:
     # Team-Karten ohne Fließtext: Namen stehen im Link auf die Unterseite oder im Bild-Alternativtext
     karten_people: list[Person] = []
     for page in crawl.pages:
-        if page.kind in ("team", "kontakt"):
+        if page.final_url in staff_urls:
             karten_people.extend(
                 people_mod.staff_from_links_and_images(page.links, page.image_alts, source_url=page.final_url)
             )
