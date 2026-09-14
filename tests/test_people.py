@@ -154,3 +154,19 @@ def test_owner_named_in_prose_on_about_page():
     people = {p.name: p for p in found}
     assert people["Thomas Steffens"].role_category in ("inhaber", "geschaeftsfuehrung")
     assert people["Sabine Klein"].role_category == "geschaeftsfuehrung"
+
+
+def test_staff_from_team_cards_without_running_text():
+    """Team-Karten bestehen oft nur aus Foto und Link – die Namen müssen trotzdem gezählt werden."""
+    from leadscraper.extract.people import staff_from_links_and_images
+
+    links = [
+        Link(href="https://x.de/team/anna-schmidt/", text="", kind="internal"),
+        Link(href="https://x.de/team/max-weber/", text="Mehr erfahren", kind="internal"),
+        Link(href="https://x.de/team/", text="Zurück zum Team", kind="internal"),
+        Link(href="https://x.de/leistungen/bewertung/", text="Immobilienbewertung", kind="internal"),
+        Link(href="https://x.de/vcard/lena-fischer.vcf", text="Lena Fischer", kind="vcard"),
+    ]
+    alts = ["Anna Schmidt", "Tim Brandt, Immobilienkaufmann", "Logo der Firma", "Außenansicht Bürogebäude"]
+    people = staff_from_links_and_images(links, alts, source_url="https://x.de/team/")
+    assert sorted(p.name for p in people) == ["Anna Schmidt", "Lena Fischer", "Max Weber", "Tim Brandt"]

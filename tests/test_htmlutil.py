@@ -66,3 +66,21 @@ def test_empty_and_broken_html():
     assert extract_text("") == ""
     assert extract_lines("<div><p>a<p>b") == ["a", "b"]
     assert extract_links("<a>kein href</a>", "https://x.de") == []
+
+
+def test_image_alt_texts():
+    from leadscraper.extract.htmlutil import image_alt_texts
+
+    html = """<html><body>
+      <img src="a.jpg" alt="Anna Schmidt">
+      <img src="b.jpg" alt="  Max   Weber, Immobilienkaufmann ">
+      <img src="c.jpg" title="Tim Brandt">
+      <img src="logo.svg" alt="">
+      <div data-name="Lena Fischer"></div>
+    </body></html>"""
+    assert image_alt_texts(html) == [
+        "Anna Schmidt",
+        "Max Weber, Immobilienkaufmann",
+        "Tim Brandt",
+        "Lena Fischer",
+    ]

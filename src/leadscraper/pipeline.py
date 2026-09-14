@@ -210,7 +210,18 @@ def build_enrichment(company: Company, crawl: CrawlResult) -> Enrichment:
     #    find_people ist dort streng (Rolle, bekannter Vorname oder Kontaktdaten); Bewertungen zählen nicht
     staff_urls = {p.final_url for p in crawl.pages if p.kind in ("team", "kontakt")}
     team_count = len({p.name for p in page_people if p.source_url in staff_urls}) or None
-    staff_people = [p for p in page_people if p.source_url in staff_urls]
+    # Team-Karten ohne Fließtext: Namen stehen im Link auf die Unterseite oder im Bild-Alternativtext
+    karten_people: list[Person] = []
+    for page in crawl.pages:
+        if page.kind in ("team", "kontakt"):
+            karten_people.extend(
+                people_mod.staff_from_links_and_images(
+                    page.links, page.image_alts, source_url=page.final_url
+                )
+            )
+    staff_people = people_mod.merge_people(
+        [p for p in page_people if p.source_url in staff_urls], karten_people
+    )
     enr.size = estimate_size(
         [(p.final_url, p.text) for p in crawl.pages],
         team_member_count=team_count,

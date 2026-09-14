@@ -174,6 +174,42 @@ def find_people(
     return list(people.values())
 
 
+_PERSON_PATH_SEGMENT_RE = re.compile(
+    r"/(?:team|mitarbeiter|makler|berater|ansprechpartner)/[a-zäöü]+-[a-zäöü-]+/?$", re.I
+)
+
+
+def staff_from_links_and_images(
+    links: list[Link], image_alts: list[str], *, source_url: str | None
+) -> list[Person]:
+    """Mitarbeitende, die nur als Link zur eigenen Unterseite oder als Bildunterschrift auftauchen.
+
+    Team-Seiten bestehen oft aus Karten: ein Foto mit `alt="Anna Schmidt"` und ein Link auf
+    `/team/anna-schmidt/`. Im Fließtext steht dann nichts – gezählt werden müssen sie trotzdem.
+    """
+    found: dict[str, Person] = {}
+
+    def add(name: str) -> None:
+        key = normalize_name(name).casefold()
+        found.setdefault(key, Person(name=normalize_name(name), source_url=source_url))
+
+    for link in links:
+        if link.kind not in ("internal", "vcard"):
+            continue
+        for name in find_plausible_names(link.text or ""):
+            add(name)
+        match = _PERSON_PATH_SEGMENT_RE.search(link.href)
+        if match:
+            segment = match.group(0).rstrip("/").rsplit("/", 1)[-1]
+            kandidat = " ".join(teil.capitalize() for teil in segment.split("-") if teil)
+            for name in find_plausible_names(kandidat):
+                add(name)
+    for alt in image_alts:
+        for name in find_plausible_names(alt):
+            add(name)
+    return list(found.values())
+
+
 def merge_people(*groups: list[Person]) -> list[Person]:
     merged: dict[str, Person] = {}
     for group in groups:

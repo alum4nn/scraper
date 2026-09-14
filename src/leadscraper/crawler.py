@@ -20,7 +20,13 @@ import httpx
 
 from leadscraper.cache import Cache
 from leadscraper.dedupe import normalize_domain
-from leadscraper.extract.htmlutil import Link, extract_lines, extract_links, extract_text
+from leadscraper.extract.htmlutil import (
+    Link,
+    extract_lines,
+    extract_links,
+    extract_text,
+    image_alt_texts,
+)
 from leadscraper.extract.names import is_probable_person_name
 from leadscraper.settings import Settings
 
@@ -103,6 +109,7 @@ class Page:
     lines: list[str]
     links: list[Link]
     status: int = 200
+    image_alts: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -287,6 +294,7 @@ class SiteCrawler:
             lines=extract_lines(html),
             links=extract_links(html, final_url),
             status=status,
+            image_alts=image_alt_texts(html),
         )
         result.pages.append(page)
         self._collect_candidates(page, result)

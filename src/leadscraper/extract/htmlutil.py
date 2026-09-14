@@ -142,6 +142,20 @@ def decode_cloudflare_email(encoded: str) -> str | None:
         return None
 
 
+def image_alt_texts(html: str) -> list[str]:
+    """Alternativtexte von Bildern und `title`-Attribute – auf Team-Seiten steht der Name oft nur dort
+    („<img alt='Anna Schmidt, Immobilienkauffrau'>“)."""
+    tree = _parse(html)
+    out: list[str] = []
+    for node in tree.css("img[alt], img[title], figure[title], [data-name]"):
+        attrs = node.attributes
+        for key in ("alt", "title", "data-name"):
+            value = (attrs.get(key) or "").strip()
+            if value and len(value) <= 80:
+                out.append(_WS_RE.sub(" ", html_mod.unescape(value)))
+    return out
+
+
 def classify_href(href: str, base_url: str, base_domain: str | None = None) -> LinkKind:
     low = href.lower()
     if low.startswith("tel:") or low.startswith("callto:"):
