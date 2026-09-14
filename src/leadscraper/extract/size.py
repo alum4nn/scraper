@@ -223,6 +223,11 @@ def _evidence(hit: _Hit) -> str:
     return f"Text: „{hit.snippet}“{tag} ({hit.url})"
 
 
+def is_rating_text(text: str) -> bool:
+    """Stammt eine gespeicherte Fundstelle aus einer Portalbewertung statt aus einer Mitarbeiterangabe?"""
+    return bool(_RATING_RE.search(text))
+
+
 def headcount_from_indicators(
     team_member_count: int | None, staff_mailboxes: int | None, staff_phones: int | None
 ) -> tuple[int, str] | None:

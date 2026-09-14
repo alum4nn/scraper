@@ -22,7 +22,7 @@ from leadscraper.extract import people as people_mod
 from leadscraper.extract import phones as phones_mod
 from leadscraper.extract.htmlutil import decode_cloudflare_email
 from leadscraper.extract.names import surname
-from leadscraper.extract.size import estimate_size, headcount_from_indicators
+from leadscraper.extract.size import estimate_size, headcount_from_indicators, is_rating_text
 from leadscraper.models import (
     Company,
     Enrichment,
@@ -570,6 +570,9 @@ def refresh_lead(lead: Lead, spec: SearchSpec, funding_cfg: dict) -> Lead:
     if enr is None:
         return finalize_lead(lead.company, None, spec, funding_cfg)
     attribute_sole_mobile(enr)
+    if enr.size.evidence and any(is_rating_text(ev) for ev in enr.size.evidence[:1]):
+        # Fundstelle war eine Portalbewertung („4,5/5 Mitarbeiter Zufriedenheit“) – verwerfen und neu schätzen
+        enr.size = SizeEstimate()
     if enr.size.confidence in ("none", "low"):
         staff_urls = {u for u in enr.pages_crawled}
         team_count = len({p.name for p in enr.people if p.source_url in staff_urls}) or None

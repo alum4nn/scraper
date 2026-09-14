@@ -309,3 +309,26 @@ def test_refresh_lead_applies_indicators_without_crawl():
     assert out.enrichment.mobile_assignment == "eindeutig"
     assert out.enrichment.people[0].mobile is not None
     assert out.premium is True and out.premium_missing == []
+
+
+def test_refresh_lead_discards_rating_as_headcount():
+    """Alte Läufe haben „4,5/5 Mitarbeiter Zufriedenheit“ als Größe gespeichert – refresh verwirft das."""
+    from leadscraper import funding
+    from leadscraper.models import SizeEstimate
+
+    lead = Lead(
+        company=Company(place_id="p", name="X GmbH", website="https://x.de"),
+        enrichment=Enrichment(
+            pages_crawled=["https://x.de/"],
+            size=SizeEstimate(
+                point_estimate=5,
+                employees_min=5,
+                employees_max=5,
+                confidence="high",
+                evidence=["Text: „Kununu.com 4,5/5 Mitarbeiter Zufriedenheit“ (https://x.de/)"],
+            ),
+        ),
+    )
+    out = pipeline.refresh_lead(lead, SearchSpec(queries=["x"]), funding.load_funding_config())
+    assert out.enrichment.size.point_estimate is None
+    assert out.premium is False
