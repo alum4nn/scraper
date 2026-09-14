@@ -173,12 +173,19 @@ def test_premium_check_all_criteria():
     anon.enrichment.people[0].phones = []
     assert premium_check(anon, SPEC) == ["keine Handynummer beim Entscheider"]
 
-    # belegt zu groß
+    # belegt zu groß (Angabe auf der Website)
     big = ok.model_copy(deep=True)
     big.enrichment.size = SizeEstimate(
         point_estimate=80, employees_min=80, employees_max=80, confidence="high"
     )
     assert premium_check(big, SPEC) == ["Betriebsgröße belegt außerhalb 5–50"]
+
+    # aus Indizien geschätzt und rechnerisch unter 5 → bleibt Premium (Untergrenze, kein Ausschluss)
+    tiny = ok.model_copy(deep=True)
+    tiny.enrichment.size = SizeEstimate(
+        point_estimate=3, employees_min=2, employees_max=4, confidence="medium"
+    )
+    assert premium_check(tiny, SPEC) == []
 
     # HR mit Handy ist kein Entscheider im Premium-Sinn
     hr = ok.model_copy(deep=True)

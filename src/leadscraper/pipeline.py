@@ -606,8 +606,8 @@ def refresh_lead(lead: Lead, spec: SearchSpec, funding_cfg: dict) -> Lead:
             n, why = indicator
             enr.size = SizeEstimate(
                 employees_min=n,
-                employees_max=max(n + 2, round(n * 1.8)),
-                point_estimate=max(n, round(n * 1.3)),
+                employees_max=max(12, round(n * 2.5)),
+                point_estimate=max(n, round(n * 1.4)),
                 confidence="medium" if n >= 3 else "low",
                 evidence=[f"Indiz: {why} (mindestens so viele Beschäftigte)", *enr.size.evidence[:2]],
             )

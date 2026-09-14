@@ -66,6 +66,7 @@ def test_indicator_fallbacks_personal_mailboxes_and_extensions():
     """Ohne Zahl auf der Website zählen Indizien: persönliche Postfächer / eigene Durchwahlen."""
     est = estimate_size([(U, "Willkommen")], staff_mailboxes=6)
     assert est.confidence == "medium" and est.employees_min == 6
+    assert est.employees_max >= 12  # Untergrenze: Innendienst steht selten auf der Website
     assert "persönliche E-Mail-Postfächer" in est.evidence[0]
     est = estimate_size([(U, "Willkommen")], staff_phones=4, team_member_count=2)
     assert est.employees_min == 4 and "eigener Telefonnummer" in est.evidence[0]

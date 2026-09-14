@@ -147,7 +147,9 @@ def premium_check(lead: Lead, spec: SearchSpec) -> list[str]:
     if len(deciders) > _MAX_DECIDERS:
         missing.append(f"{len(deciders)} Geschäftsführer im Impressum – Konzern, kein Kleinbetrieb")
     size = enr.size
-    if size.in_range(spec.min_employees, spec.max_employees) is False:
+    # Nur eine Angabe auf der Website („Team aus 80 Mitarbeitern“) schließt aus. Schätzungen aus Indizien
+    # sind eine Untergrenze – wer nur den Chef nennt, kann trotzdem acht Leute im Innendienst haben.
+    if size.confidence == "high" and size.in_range(spec.min_employees, spec.max_employees) is False:
         missing.append(f"Betriebsgröße belegt außerhalb {spec.min_employees}–{spec.max_employees}")
     # § 82 SGB III fördert nur sozialversicherungspflichtig Beschäftigte – freie Handelsvertreter zählen nicht
     if enr.employment_signal == "frei":

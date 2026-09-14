@@ -286,10 +286,12 @@ def estimate_size(
     if chosen is None and indicator is not None:
         # Namentliche Mitarbeitende sind die Untergrenze: Innendienst/Backoffice steht selten auf der Website.
         n, why = indicator
+        # Untergrenze: Innendienst, Buchhaltung und Azubis stehen fast nie auf der Website. Die Obergrenze
+        # bleibt deshalb weit – die Schätzung soll niemanden ausschließen, nur einordnen.
         est = SizeEstimate(
             employees_min=n,
-            employees_max=max(n + 2, round(n * 1.8)),
-            point_estimate=max(n, round(n * 1.3)),
+            employees_max=max(12, round(n * 2.5)),
+            point_estimate=max(n, round(n * 1.4)),
             confidence="medium" if n >= 3 else "low",
             evidence=[f"Indiz: {why} (mindestens so viele Beschäftigte)"],
         )
