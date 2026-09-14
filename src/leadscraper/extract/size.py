@@ -1,0 +1,271 @@
+"""Mitarbeiterzahl schätzen – aus Website-Text, Team-Seite, Rechtsform und (schwach) Google-Bewertungen."""
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+
+from leadscraper.models import SizeEstimate
+
+_UNITS = (
+    r"mitarbeiter(?:n|innen|\*innen|:innen|_innen|/innen)?|mitarbeitende[nr]?|beschäftigte[nr]?|"
+    r"angestellte[nr]?|kolleg(?:en|innen|\*innen|:innen)|teammitglieder[n]?|fachkräfte[n]?|expert(?:en|innen)|"
+    r"köpfe[n]?|berater(?:n|innen)?|anwält(?:e|en|innen)|steuerberater(?:n|innen)?|makler(?:n|innen)?|monteure[n]?|"
+    r"gesellen|festangestellte[n]?|vollzeitkräfte[n]?|arbeitnehmer(?:n|innen)?|leute[n]?|personen|menschen"
+)
+_STRONG_UNIT_RE = re.compile(
+    r"mitarbeit|beschäftigt|angestellt|kolleg|teammitglied|fachkr|expert|köpfe|berater|anwält|makler|monteur|"
+    r"gesellen|arbeitnehmer|vollzeit",
+    re.I,
+)
+_NUM = r"(\d{1,3}(?:[.\s]\d{3})+|\d{1,5})"
+_WORDNUMS = {
+    "zwei": 2,
+    "drei": 3,
+    "vier": 4,
+    "fünf": 5,
+    "sechs": 6,
+    "sieben": 7,
+    "acht": 8,
+    "neun": 9,
+    "zehn": 10,
+    "elf": 11,
+    "zwölf": 12,
+    "fünfzehn": 15,
+    "zwanzig": 20,
+    "dreißig": 30,
+    "vierzig": 40,
+    "fünfzig": 50,
+    "sechzig": 60,
+    "siebzig": 70,
+    "achtzig": 80,
+    "neunzig": 90,
+    "hundert": 100,
+}
+_WORDNUM = "|".join(_WORDNUMS)
+_QUAL = (
+    r"(?P<qual>über|mehr\s+als|rund|ca\.?|circa|etwa|knapp|fast|bis\s+zu|nahezu|gut|~|>|inzwischen|mittlerweile|"
+    r"aktuell|derzeit|heute)?"
+)
+
+_PATTERNS = [
+    # "zwischen 20 und 30 Mitarbeitern", "20-30 Mitarbeiter", "20 bis 30 Mitarbeiter"
+    re.compile(rf"(?:zwischen\s+)?{_NUM}\s*(?:-|–|bis|und)\s*{_NUM}\s+(?:{_UNITS})", re.I),
+    # "über 100 Mitarbeiter", "rund 40 Mitarbeitende", "12 Kollegen"
+    re.compile(
+        rf"{_QUAL}\s*{_NUM}\s+(?:erfahrene[n]?\s+|engagierte[n]?\s+|qualifizierte[n]?\s+|motivierte[n]?\s+|feste[n]?\s+)?(?:{_UNITS})\b",
+        re.I,
+    ),
+    # "Team von 12", "Team aus 12 Mitarbeitern", "12-köpfiges Team", "wir sind 8"
+    re.compile(rf"team\s+(?:von|aus|mit)\s+{_QUAL}\s*{_NUM}\b", re.I),
+    re.compile(rf"{_NUM}[-\s]?köpfige[sn]?\s+team", re.I),
+    re.compile(rf"wir\s+sind\s+(?:ein\s+team\s+(?:von|aus)\s+)?{_QUAL}\s*{_NUM}(?:\s+(?:{_UNITS}))?", re.I),
+    # "Mitarbeiterzahl: 25", "Beschäftigte: 48", "Mitarbeiter: ca. 30"
+    re.compile(rf"(?:{_UNITS})(?:zahl|anzahl)?\s*:\s*{_QUAL}\s*{_NUM}\b", re.I),
+    # Zahlwörter: "zwölf Mitarbeiter"
+    re.compile(rf"{_QUAL}\s*(?P<word>{_WORDNUM})\s+(?:{_UNITS})\b", re.I),
+]
+_GROUP_RE = re.compile(
+    r"weltweit|global|konzern|gruppe|unternehmensgruppe|holding|international|europaweit|bundesweit|deutschlandweit",
+    re.I,
+)
+_ANTI_RE = re.compile(
+    r"jahr|seit|kunden|projekt|standort|filial|prozent|%|€|eur\b|stunde|uhr|quadratmeter|m²|referenz|bewertung|"
+    r"fahrzeug|objekt|wohnung|einheit|immobilien\s+verkauft|verkauft|vermietet|verwaltet|mio|milliard|umsatz|"
+    r"tonnen|kilometer|km\b|artikel|produkte|sterne|stern\b|folge|abonn|likes",
+    re.I,
+)
+_FORM_PRIOR: dict[str, tuple[int, int, int]] = {  # rechtsform -> (min, max, point)
+    "e.K.": (1, 9, 4),
+    "GbR": (1, 9, 3),
+    "Einzelunternehmen": (1, 9, 3),
+    "Freiberufler": (1, 9, 3),
+    "UG": (1, 9, 3),
+    "PartG": (3, 30, 8),
+    "PartG mbB": (5, 60, 15),
+    "GmbH": (5, 49, 12),
+    "gGmbH": (5, 99, 20),
+    "GmbH & Co. KG": (10, 99, 30),
+    "KG": (5, 49, 15),
+    "OHG": (3, 30, 8),
+    "eG": (5, 200, 30),
+    "e.V.": (1, 50, 8),
+    "AG": (50, 5000, 200),
+    "SE": (200, 20000, 1000),
+    "KGaA": (200, 20000, 1000),
+}
+
+
+@dataclass
+class _Hit:
+    lo: int
+    hi: int
+    point: int
+    group: bool
+    unit_quality: int  # 2 = Mitarbeiter/Beschäftigte, 1 = Team von, 0 = sonstiges
+    snippet: str
+    url: str
+
+
+def _to_int(s: str) -> int | None:
+    if s.lower() in _WORDNUMS:
+        return _WORDNUMS[s.lower()]
+    digits = re.sub(r"[.\s]", "", s)
+    return int(digits) if digits.isdigit() else None
+
+
+def _sentence(text: str, start: int, end: int) -> str:
+    """Satz (bzw. Zeile) um die Fundstelle – Kontext für Gruppen-/Anti-Muster."""
+    lo = max(text.rfind(ch, 0, start) for ch in ".!?\n") + 1
+    ends = [text.find(ch, end) for ch in ".!?\n"]
+    hi = min((e for e in ends if e != -1), default=len(text))
+    return text[max(lo, start - 120) : min(hi, end + 120)]
+
+
+def _quality(snippet: str) -> int:
+    if _STRONG_UNIT_RE.search(snippet):
+        return 2
+    if re.search(r"team|köpfig|wir\s+sind", snippet, re.I):
+        return 1
+    return 0
+
+
+def _apply_qual(qual: str | None, n: int) -> tuple[int, int, int]:
+    q = (qual or "").lower().strip()
+    if q.startswith(("über", "mehr", ">", "gut")):
+        return n, max(n + 1, int(n * 1.5)), max(n + 1, int(n * 1.2))
+    if q.startswith(("knapp", "fast", "bis", "nahezu")):
+        return max(1, int(n * 0.8)), n, max(1, int(n * 0.9))
+    if q.startswith(("rund", "ca", "circa", "etwa", "~")):
+        return max(1, int(n * 0.8)), int(n * 1.2) + 1, n
+    return n, n, n
+
+
+def _scan(url: str, text: str) -> list[_Hit]:
+    hits: list[_Hit] = []
+    spans: list[tuple[int, int]] = []
+    for pat in _PATTERNS:
+        for m in pat.finditer(text):
+            start, end = m.start(), m.end()
+            if any(start < e and end > s0 for s0, e in spans):
+                continue  # spezifischeres Muster (z. B. Bereich) hat diese Stelle schon erfasst
+            window = _sentence(text, start, end)
+            snippet = text[max(0, start - 30) : min(len(text), end + 30)].replace("\n", " ").strip()
+            groups = m.groups()
+            nums = [
+                g
+                for g in groups
+                if g and (g.isdigit() or re.fullmatch(r"\d{1,3}(?:[.\s]\d{3})+", g) or g.lower() in _WORDNUMS)
+            ]
+            qual = m.groupdict().get("qual")
+            if not nums:
+                continue
+            values = [v for v in (_to_int(n) for n in nums) if v is not None]
+            if not values or max(values) > 200_000 or min(values) < 1:
+                continue
+            if len(values) >= 2 and values[0] < values[1]:
+                lo, hi, point = values[0], values[1], (values[0] + values[1]) // 2
+            else:
+                lo, hi, point = _apply_qual(qual, values[0])
+            local_anti = _ANTI_RE.search(window)
+            unit_direct = re.search(
+                rf"\d\s+(?:erfahrene[n]?\s+|engagierte[n]?\s+|qualifizierte[n]?\s+|motivierte[n]?\s+|feste[n]?\s+)?(?:{_UNITS})",
+                m.group(0),
+                re.I,
+            )
+            if (
+                local_anti
+                and not unit_direct
+                and not re.search(r"team|köpfig|wir\s+sind|zahl\s*:", m.group(0), re.I)
+            ):
+                continue
+            # Jahresangaben ("seit 1998", "1998 gegründet") in unmittelbarer Nähe der Zahl → verwerfen
+            if (
+                re.search(
+                    r"(?:seit|gegründet|gründung|jahr)\D{0,12}$", text[max(0, start - 15) : start], re.I
+                )
+                and not unit_direct
+            ):
+                continue
+            spans.append((start, end))
+            hits.append(
+                _Hit(lo, hi, point, bool(_GROUP_RE.search(window)), _quality(m.group(0)), snippet, url)
+            )
+    return hits
+
+
+def _evidence(hit: _Hit) -> str:
+    tag = " (Gruppe/weltweit)" if hit.group else ""
+    return f"Text: „{hit.snippet}“{tag} ({hit.url})"
+
+
+def estimate_size(
+    pages: list[tuple[str, str]],
+    *,
+    team_member_count: int | None = None,
+    rechtsform: str | None = None,
+    user_rating_count: int | None = None,
+) -> SizeEstimate:
+    hits: list[_Hit] = []
+    for url, text in pages:
+        hits.extend(_scan(url, text or ""))
+
+    local = [h for h in hits if not h.group]
+    chosen: _Hit | None = None
+    if local:
+        best_q = max(h.unit_quality for h in local)
+        cands = sorted((h for h in local if h.unit_quality == best_q), key=lambda h: h.point)
+        chosen = cands[len(cands) // 2]  # Median
+        est = SizeEstimate(
+            employees_min=chosen.lo,
+            employees_max=chosen.hi,
+            point_estimate=chosen.point,
+            confidence="high" if best_q == 2 else "medium",
+        )
+    elif hits:
+        cands = sorted(hits, key=lambda h: h.point)
+        chosen = cands[len(cands) // 2]
+        est = SizeEstimate(
+            employees_min=chosen.lo, employees_max=chosen.hi, point_estimate=chosen.point, confidence="medium"
+        )
+    else:
+        est = SizeEstimate()
+
+    evidence = [_evidence(h) for h in ([chosen] if chosen else [])]
+    evidence += [_evidence(h) for h in hits if h is not chosen][:4]
+    est.evidence = evidence[:5]
+
+    if chosen is None and team_member_count and team_member_count >= 3:
+        est = SizeEstimate(
+            employees_min=team_member_count,
+            employees_max=round(team_member_count * 1.5),
+            point_estimate=team_member_count,
+            confidence="medium",
+            evidence=[f"Team-Seite: {team_member_count} Personen aufgeführt"],
+        )
+    elif chosen is None and rechtsform in _FORM_PRIOR:
+        lo, hi, point = _FORM_PRIOR[rechtsform]
+        est = SizeEstimate(
+            employees_min=lo,
+            employees_max=hi,
+            point_estimate=point,
+            confidence="low",
+            evidence=[f"Rechtsform {rechtsform} (typische Größe {lo}–{hi})"],
+        )
+    elif chosen is None and user_rating_count is not None:
+        if user_rating_count < 10:
+            lo, hi, point = 1, 9, 3
+        elif user_rating_count <= 100:
+            lo, hi, point = 3, 30, 8
+        else:
+            lo, hi, point = 10, 100, 25
+        est = SizeEstimate(
+            employees_min=lo,
+            employees_max=hi,
+            point_estimate=point,
+            confidence="low",
+            evidence=[f"{user_rating_count} Google-Bewertungen (schwaches Signal)"],
+        )
+    elif chosen is None and team_member_count:
+        est.evidence.append(f"Team-Seite: {team_member_count} Personen aufgeführt")
+    return est
