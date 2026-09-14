@@ -23,6 +23,7 @@ from leadscraper.extract import phones as phones_mod
 from leadscraper.extract.htmlutil import decode_cloudflare_email
 from leadscraper.extract.names import surname
 from leadscraper.extract.size import estimate_size, headcount_from_indicators, is_rating_text
+from leadscraper.extract.staff import count_staff, personal_mailboxes
 from leadscraper.models import (
     Company,
     Enrichment,
@@ -209,13 +210,23 @@ def build_enrichment(company: Company, crawl: CrawlResult) -> Enrichment:
     #    find_people ist dort streng (Rolle, bekannter Vorname oder Kontaktdaten); Bewertungen zählen nicht
     staff_urls = {p.final_url for p in crawl.pages if p.kind in ("team", "kontakt")}
     team_count = len({p.name for p in page_people if p.source_url in staff_urls}) or None
+    staff_people = [p for p in page_people if p.source_url in staff_urls]
     enr.size = estimate_size(
         [(p.final_url, p.text) for p in crawl.pages],
         team_member_count=team_count,
-        staff_mailboxes=count_personal_mailboxes(enr.emails, people),
+        staff_mailboxes=len(personal_mailboxes(enr.emails, people)) or None,
         staff_phones=len({ph.person for ph in enr.phones if ph.person}) or None,
         rechtsform=enr.rechtsform,
         user_rating_count=company.user_rating_count,
+    )
+    stated = enr.size.point_estimate if enr.size.confidence == "high" else None
+    enr.staff = count_staff(
+        staff_people,
+        enr.emails,
+        enr.phones,
+        all_people=people,
+        stated=stated,
+        stated_evidence=enr.size.evidence[0] if stated and enr.size.evidence else None,
     )
     attribute_sole_mobile(enr)
     enr.employment_signal, enr.employment_evidence = employment_signal(crawl, enr)  # nach size/Zuordnung
@@ -255,29 +266,6 @@ _EMPLOYED_ROLE_RE = re.compile(
     r"immobilienkaufmann|immobilienkauffrau|marketing|office|verwaltung|vermietung",
     re.I,
 )
-
-
-_PERSONAL_MAILBOX_RE = re.compile(r"^[a-zäöüß]{1,20}[._-][a-zäöüß-]{2,25}$|^[a-zäöüß]\.[a-zäöüß-]{2,25}$")
-_ROLE_MAILBOX_RE = re.compile(
-    r"^(?:info|kontakt|mail|office|buero|büro|service|verwaltung|immobilien|makler|team|post|zentrale|"
-    r"anfrage|beratung|vertrieb|marketing|presse|datenschutz|webmaster|noreply|no-reply|bewerbung|jobs|"
-    r"karriere|support|hallo|moin)\b",
-    re.I,
-)
-
-
-def count_personal_mailboxes(emails: list[str], people: list[Person]) -> int | None:
-    """Persönliche Postfächer (m.mustermann@, anna.schmidt@) – ein Indiz je Mitarbeitendem."""
-    locals_seen: set[str] = set()
-    for addr in emails:
-        local = addr.split("@", 1)[0].strip().lower()
-        if _ROLE_MAILBOX_RE.match(local):
-            continue
-        if _PERSONAL_MAILBOX_RE.match(local) or any(
-            surname(p.name).casefold() in local for p in people if len(surname(p.name)) >= 4
-        ):
-            locals_seen.add(local)
-    return len(locals_seen) or None
 
 
 _RESPONSIBLE_RE = re.compile(r"verantwortlich|redaktion|§\s*18|v\.\s*i\.\s*s\.\s*d\.", re.I)
@@ -591,15 +579,24 @@ def refresh_lead(lead: Lead, spec: SearchSpec, funding_cfg: dict) -> Lead:
         return finalize_lead(lead.company, None, spec, funding_cfg)
     promote_responsible_owner(enr, lead.company.name)
     attribute_sole_mobile(enr)
-    if enr.size.evidence and any(is_rating_text(ev) for ev in enr.size.evidence[:1]):
+    staff_urls = set(enr.pages_crawled)
+    stated = enr.size.point_estimate if enr.size.confidence == "high" else None
+    enr.staff = count_staff(
+        [p for p in enr.people if p.source_url in staff_urls],
+        enr.emails,
+        enr.phones,
+        all_people=enr.people,
+        stated=stated,
+        stated_evidence=enr.size.evidence[0] if stated and enr.size.evidence else None,
+    )
+    if enr.size.evidence and any(is_rating_text(ev) for ev in enr.size.evidence[:1]):  # Portalbewertung
         # Fundstelle war eine Portalbewertung („4,5/5 Mitarbeiter Zufriedenheit“) – verwerfen und neu schätzen
         enr.size = SizeEstimate()
     if enr.size.confidence in ("none", "low"):
-        staff_urls = {u for u in enr.pages_crawled}
-        team_count = len({p.name for p in enr.people if p.source_url in staff_urls}) or None
+        team_count = len({p.name for p in enr.people if p.source_url in set(enr.pages_crawled)}) or None
         indicator = headcount_from_indicators(
             team_count,
-            count_personal_mailboxes(enr.emails, enr.people),
+            len(personal_mailboxes(enr.emails, enr.people)) or None,
             len({ph.person for ph in enr.phones if ph.person}) or None,
         )
         if indicator is not None:

@@ -95,6 +95,22 @@ class SizeEstimate(BaseModel):
         return True
 
 
+class StaffEvidence(BaseModel):
+    """Belegte Belegschaft: unterscheidbare Menschen, die nachweislich in diesem Betrieb arbeiten.
+
+    `headcount` ist eine Untergrenze – Innendienst, Buchhaltung und Azubis stehen selten auf der Website.
+    Für § 82 SGB III zählen nur sozialversicherungspflichtig Beschäftigte; freie Handelsvertreter werden
+    über `Enrichment.employment_signal` ausgeschlossen, nicht hier.
+    """
+
+    headcount: int = 0
+    named: int = 0  # namentlich auf Team-/Kontaktseiten
+    mailboxes: int = 0  # persönliche Postfächer (vorname.nachname@)
+    extensions: int = 0  # eigene Durchwahlen unter einem Anschluss
+    stated: int | None = None  # ausdrücklich genannte Zahl („Team aus 14 Mitarbeitern“)
+    evidence: list[str] = Field(default_factory=list)
+
+
 class Company(BaseModel):
     """Ergebnis aus Google Places (Text Search / Place Details)."""
 
@@ -140,6 +156,7 @@ class Enrichment(BaseModel):
     instagram_url: str | None = None
     facebook_url: str | None = None
     size: SizeEstimate = Field(default_factory=SizeEstimate)
+    staff: StaffEvidence = Field(default_factory=StaffEvidence)
     impressum_street: str | None = None
     impressum_plz: str | None = None
     impressum_city: str | None = None

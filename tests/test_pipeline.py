@@ -308,7 +308,17 @@ def test_refresh_lead_applies_indicators_without_crawl():
     # einzige Handynummer + genau ein Entscheider → eindeutig diesem zugeordnet
     assert out.enrichment.mobile_assignment == "eindeutig"
     assert out.enrichment.people[0].mobile is not None
-    assert out.premium is True and out.premium_missing == []
+    # vier belegte Köpfe reichen für die Mindestgröße 5 nicht
+    assert out.enrichment.staff.headcount == 4
+    assert out.premium is False and out.premium_missing == [
+        "nur 4 Beschäftigte belegt (mindestens 5 gefordert)"
+    ]
+
+    # mit einer fünften Person auf der Team-Seite ist die Belegschaft belegt
+    lead.enrichment.people.append(Person(name="Tim Brandt", role="Innendienst", source_url=url))
+    out2 = pipeline.refresh_lead(lead, spec, funding.load_funding_config())
+    assert out2.enrichment.staff.headcount == 5
+    assert out2.premium is True and out2.premium_missing == []
 
 
 def test_refresh_lead_discards_rating_as_headcount():

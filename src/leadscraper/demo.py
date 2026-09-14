@@ -6,7 +6,16 @@ Alle Firmen, Personen, Domains und Rufnummern sind frei erfunden.
 from __future__ import annotations
 
 from leadscraper import funding, scoring
-from leadscraper.models import Company, Enrichment, Lead, Person, PhoneNumber, SearchSpec, SizeEstimate
+from leadscraper.models import (
+    Company,
+    Enrichment,
+    Lead,
+    Person,
+    PhoneNumber,
+    SearchSpec,
+    SizeEstimate,
+    StaffEvidence,
+)
 
 
 def _pn(
@@ -90,6 +99,18 @@ def demo_leads(spec: SearchSpec) -> list[Lead]:
             confidence="high",
             evidence=[f"Text: „Unser Team aus 9 Mitarbeitern begleitet Sie“ ({site}/)"],
         ),
+        staff=StaffEvidence(
+            headcount=9,
+            named=5,
+            mailboxes=4,
+            extensions=3,
+            stated=9,
+            evidence=[
+                f"Text: „Unser Team aus 9 Mitarbeitern begleitet Sie“ ({site}/)",
+                "5 namentlich genannte Mitarbeitende (Thomas Berger, Julia Kranz, Lea Winter …)",
+                "4 persönliche E-Mail-Postfächer (t.berger@…, j.kranz@…, l.winter@…)",
+            ],
+        ),
         call_indicators=[
             "Betriebsgröße < 50 → 100 % Lehrgangskosten möglich (§ 82 SGB III)",
             "Digitalisierung auf der Website erwähnt",
@@ -139,6 +160,15 @@ def demo_leads(spec: SearchSpec) -> list[Lead]:
             point_estimate=6,
             confidence="medium",
             evidence=[f"Text: „ein kleines Team von sechs Immobilienprofis“ ({site2}/)"],
+        ),
+        staff=StaffEvidence(
+            headcount=6,
+            named=6,
+            mailboxes=1,
+            evidence=[
+                "6 namentlich genannte Mitarbeitende (Claudia Sonnenhof, Nadine Koch, Tim Brandt …)",
+                f"Text: „ein kleines Team von sechs Immobilienprofis“ ({site2}/)",
+            ],
         ),
         call_indicators=["Betriebsgröße < 50 → 100 % Lehrgangskosten möglich (§ 82 SGB III)"],
         pages_crawled=[f"{site2}/", f"{site2}/impressum/", f"{site2}/kontakt/"],

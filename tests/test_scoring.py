@@ -1,4 +1,13 @@
-from leadscraper.models import Company, Enrichment, Lead, Person, PhoneNumber, SearchSpec, SizeEstimate
+from leadscraper.models import (
+    Company,
+    Enrichment,
+    Lead,
+    Person,
+    PhoneNumber,
+    SearchSpec,
+    SizeEstimate,
+    StaffEvidence,
+)
 from leadscraper.scoring import in_target_size, premium_check, score_lead, sort_key
 
 SPEC = SearchSpec(queries=["x"], min_employees=5, max_employees=50)
@@ -144,24 +153,27 @@ def test_premium_check_all_criteria():
             people=[gf],
             phones=[_mobile("Thomas Berger")],
             size=SizeEstimate(point_estimate=8, employees_min=8, employees_max=8, confidence="medium"),
+            staff=StaffEvidence(headcount=8, named=6, mailboxes=5, evidence=["6 namentlich genannte"]),
             employment_signal="angestellt",
         ),
     )
     assert premium_check(ok, SPEC) == []
 
-    # Größe nur indiziert (Rechtsform, niedrige Konfidenz) reicht – eine Zahl auf der Website ist nicht nötig
+    # Kernforderung: ohne belegte Belegschaft kein Premium, egal wie gut der Rest aussieht
+    einzel = ok.model_copy(deep=True)
+    einzel.enrichment.staff = StaffEvidence(headcount=2, named=2)
+    assert premium_check(einzel, SPEC) == ["nur 2 Beschäftigte belegt (mindestens 5 gefordert)"]
+    keine = ok.model_copy(deep=True)
+    keine.enrichment.staff = StaffEvidence()
+    assert premium_check(keine, SPEC) == ["nur 0 Beschäftigte belegt (mindestens 5 gefordert)"]
+
+    # Belegte Köpfe zählen, auch wenn die Größenschätzung selbst unsicher ist
     weak = ok.model_copy(deep=True)
     weak.enrichment.employment_signal = "unklar"
     weak.enrichment.size = SizeEstimate(
         point_estimate=12, employees_min=5, employees_max=49, confidence="low"
     )
     assert premium_check(weak, SPEC) == []
-
-    # gar kein Anhaltspunkt für Beschäftigte (keine Größe, kein Beschäftigten-Signal) → kein Premium
-    bare = ok.model_copy(deep=True)
-    bare.enrichment.employment_signal = "unklar"
-    bare.enrichment.size = SizeEstimate()
-    assert premium_check(bare, SPEC) == ["keine Anhaltspunkte für Beschäftigte (Ein-Personen-Betrieb?)"]
 
     # freie Handelsvertreter: § 82 SGB III fördert keine Selbstständigen
     frei = ok.model_copy(deep=True)
@@ -178,9 +190,9 @@ def test_premium_check_all_criteria():
     big.enrichment.size = SizeEstimate(
         point_estimate=80, employees_min=80, employees_max=80, confidence="high"
     )
-    assert premium_check(big, SPEC) == ["Betriebsgröße belegt außerhalb 5–50"]
+    assert premium_check(big, SPEC) == ["Betriebsgröße belegt über 50"]
 
-    # aus Indizien geschätzt und rechnerisch unter 5 → bleibt Premium (Untergrenze, kein Ausschluss)
+    # Größenschätzung unter 5, aber belegte Köpfe darüber → bleibt Premium (die Köpfe sind der Beleg)
     tiny = ok.model_copy(deep=True)
     tiny.enrichment.size = SizeEstimate(
         point_estimate=3, employees_min=2, employees_max=4, confidence="medium"
@@ -214,6 +226,7 @@ def test_many_managing_directors_is_not_a_small_business():
             people=people,
             phones=[_mobile("Person 0")],
             size=SizeEstimate(point_estimate=40, employees_min=35, employees_max=63, confidence="medium"),
+            staff=StaffEvidence(headcount=35, named=35),
             employment_signal="angestellt",
         ),
     )

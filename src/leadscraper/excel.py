@@ -83,6 +83,8 @@ LEAD_COLUMNS: tuple[str, ...] = (
     "Weitere Handynummern",
     "Festnetz (Places)",
     "Festnetz (Website)",
+    "Beschäftigte belegt",
+    "Beleg Beschäftigte",
     "Mitarbeiter (Schätzung)",
     "MA min",
     "MA max",
@@ -181,6 +183,7 @@ _LEAD_WRAP_COLUMNS = frozenset(
         "Premium-Check",
         "Beschäftigte Beleg",
         "Handy-Zuordnung",
+        "Beleg Beschäftigte",
     }
 )
 
@@ -290,6 +293,8 @@ def _lead_row(lead: Lead) -> dict[str, Any]:
         "Festnetz (Places)": company.phone or "",
         "Festnetz (Website)": _website_landline(enr),
         "E-Mail": _email(person, enr),
+        "Beschäftigte belegt": enr.staff.headcount if enr else None,
+        "Beleg Beschäftigte": "\n".join(enr.staff.evidence[:4]) if enr else "",
         "Mitarbeiter (Schätzung)": size.point_estimate,
         "MA min": size.employees_min,
         "MA max": size.employees_max,
@@ -657,6 +662,8 @@ def trello_rows(leads: Iterable[Lead]) -> list[tuple[str, str]]:
             ("E-Mail", row["E-Mail"]),
             ("Webseite", row["Webseite"]),
             ("Adresse", adresse),
+            ("Beschäftigte belegt", str(row["Beschäftigte belegt"] or "")),
+            ("Beleg Beschäftigte", (row["Beleg Beschäftigte"] or "").replace("\n", " | ")),
             ("Mitarbeiter (Schätzung)", _employee_text(row)),
             ("Beleg Mitarbeiterzahl", (row["MA Beleg"] or "").replace("\n", " | ")),
             ("Beschäftigte", row["Beschäftigte"]),
