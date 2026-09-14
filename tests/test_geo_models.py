@@ -50,9 +50,8 @@ def test_lead_best_mobile_and_contact():
     )
     lead = Lead(company=Company(place_id="1", name="X"), enrichment=enr)
     assert lead.best_contact is hr  # Handy schlägt Rollen-Priorität
-    enr.phones = [enr.phones[0]]
-    hr.phones = []
-    assert lead.best_contact is gf  # ohne Handys entscheidet die Rollen-Priorität
     assert lead.best_mobile.e164 == "+491515550999"  # Nummer mit Person vor WhatsApp ohne Person
     assert [p.name for p in enr.decision_makers] == ["Thomas Berger", "Anja Roth"]
     assert Lead(company=Company(place_id="2", name="Y")).best_mobile is None
+    hr.phones = []
+    assert lead.best_contact is gf  # ohne Handys entscheidet die Rollen-Priorität
