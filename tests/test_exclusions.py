@@ -21,3 +21,25 @@ def test_domain_and_name_matching():
 def test_name_match_is_substring_case_insensitive():
     c = Company(place_id="5", name="mcmakler gmbh", website=None)
     assert exclusion_reason(c) is not None
+
+
+def test_real_estate_chains_and_portals_are_dropped():
+    """Im Lauf aufgetauchte Ketten/Franchise/Portale (Impressum zeigt die Zentrale, nicht den Betrieb)."""
+    from leadscraper.exclusions import filter_chains
+    from leadscraper.models import Company
+
+    chains = [
+        Company(
+            place_id="1",
+            name="Deutsche Bank Immobilien Simon Palme",
+            domain="deutsche-bank-immobilien.de",
+        ),
+        Company(place_id="2", name="PlanetHome AG Immobilien", domain="planethome.de"),
+        Company(place_id="3", name="Evernest Köln", domain="evernest.com"),
+        Company(place_id="4", name="CENTURY 21 Musterstadt", domain="century21.de"),
+        Company(place_id="5", name="Dahler & Company Bonn", domain="dahler.com"),
+    ]
+    eigen = Company(place_id="9", name="Müller Immobilien GmbH", domain="mueller-immobilien.de")
+    keep, dropped = filter_chains([*chains, eigen])
+    assert [c.name for c in keep] == ["Müller Immobilien GmbH"]
+    assert len(dropped) == len(chains)

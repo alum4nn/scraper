@@ -16,6 +16,35 @@ domains:
   - sparkassen-immobilien.de
   - lbs.de
   - postbank-immobilien.de
+  - postbank.de
+  - evernest.com
+  - dahler.com
+  - century21.de
+  - wuestenrot-immobilien.de
+  - planethome.de
+  - homecompany.de
+  - spardaimmobilien.de
+  - vr-immobilien.de
+  - volksbank-immobilien.de
+  - deutsche-bank-immobilien.de
+  - db-immobilien.de
+  - garant-immo.de
+  - immoblitz.de
+  - kensington-international.com
+  - pro-immobilia.de
+  - hausgold.de
+  - maklaro.de
+  - realbest.de
+  - immoscout24.de
+  - ohne-makler.net
+  - wohnungsboerse.net
+  - immobilien.de
+  - meinestadt.de
+  - firmenmap.com
+  - airbnb.com
+  - jimdofree.com
+  - heid-immobilienbewertung.de
+  - siriusfacilities.com
   # Versicherung / Finanzen (Konzernagenturen)
   - allianz.de
   - ergo.de
@@ -82,3 +111,23 @@ names:
   - "Rossmann"
   - "TÜV"
   - "DEKRA"
+  # Immobilien-Ketten, Franchise-Systeme und Portale (Impressum zeigt die Zentrale)
+  - "Century 21"
+  - "CENTURY21"
+  - "Dahler"
+  - "Evernest"
+  - "PlanetHome"
+  - "Wüstenrot"
+  - "HomeCompany"
+  - "Deutsche Bank Immobilien"
+  - "Postbank Immobilien"
+  - "Sparda"
+  - "Kensington"
+  - "Garant Immobilien"
+  - "Immobilienscout"
+  - "ImmoScout"
+  - "Immowelt"
+  - "HAUSGOLD"
+  - "Maklaro"
+  - "Sirius Facilities"
+  - "Heid Immobilien"
