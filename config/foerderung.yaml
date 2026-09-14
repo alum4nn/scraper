@@ -1,81 +1,107 @@
-# Förderlogik für den Pitch. Stand-Datum pflegen! Werte werden durch Recherche validiert
-# (siehe README "Förderung"). Quelle Bund: § 82 SGB III (Qualifizierungschancengesetz / Weiterbildungsgesetz).
-stand: "2026-09"
+# Förderlogik für den Pitch. Werte aus Recherche (13.09.2026) gegen gesetze-im-internet.de / arbeitsagentur.de
+# (Suchmaschinen-Snippets der Primärquellen, Volltext war nicht abrufbar) – vor Kundengesprächen prüfen!
+# Rechtsstand § 82 SGB III: Fördersätze seit 01.04.2024 (Gesetz zur Stärkung der Aus- und Weiterbildungsförderung),
+# Wartefristen 2 Jahre seit 01.01.2025 (SGB III-Modernisierungsgesetz).
+stand: "2026-09-13"
 bund:
   gesetz: "§ 82 SGB III"
+  quelle: "https://www.gesetze-im-internet.de/sgb_3/__82.html"
+  quelle_ba: "https://www.arbeitsagentur.de/unternehmen/finanziell/foerderung-von-weiterbildung"
+  # Betriebsgröße = Beschäftigte des GESAMTEN Unternehmens (inkl. verbundener Unternehmen), ohne Azubis/Minijobber.
   groessenklassen:
-    - band: "<10"
+    - band: "<50"
       min: 0
-      max: 9
+      max: 49
       lehrgangskosten_pct: 100
       arbeitsentgeltzuschuss_pct: 75
-    - band: "10-49"
-      min: 10
-      max: 49
-      lehrgangskosten_pct: 50
-      arbeitsentgeltzuschuss_pct: 50
-    - band: "50-249"
+    - band: "50-499"
       min: 50
-      max: 249
+      max: 499
       lehrgangskosten_pct: 50
       arbeitsentgeltzuschuss_pct: 50
-    - band: "250-2499"
-      min: 250
-      max: 2499
+    - band: ">=500"
+      min: 500
+      max: null
       lehrgangskosten_pct: 25
       arbeitsentgeltzuschuss_pct: 25
-    - band: ">=2500"
-      min: 2500
-      max: null
-      lehrgangskosten_pct: 15
-      arbeitsentgeltzuschuss_pct: 25
   bonus:
-    - "+5 % Lehrgangskosten bei Betriebsvereinbarung oder Tarifvertrag zur Weiterbildung"
-    - "+10 % Lehrgangskosten für Beschäftigte ab 45 Jahren oder mit Schwerbehinderung (bei <250 Beschäftigten bis zu 100 %)"
-    - "Bis zu 100 % Lehrgangskosten und 75 % Arbeitsentgeltzuschuss bei Betrieben unter 10 Beschäftigten"
+    - "+5 Prozentpunkte Lehrgangskosten UND Arbeitsentgeltzuschuss bei Betriebsvereinbarung oder Tarifvertrag zur Weiterbildung"
+    - "100 % Lehrgangskosten für Beschäftigte ab 45 Jahren oder mit Schwerbehinderung in Betrieben unter 500 Beschäftigten"
+    - "Bis zu 100 % Arbeitsentgeltzuschuss bei Beschäftigten ohne Berufsabschluss in abschlussbezogener Weiterbildung"
   voraussetzungen:
-    - "Maßnahme > 120 Stunden, AZAV-zugelassener Träger und Maßnahme"
-    - "Vermittlung von Kenntnissen, die über arbeitsplatzbezogene Anpassungsfortbildung hinausgehen"
-    - "Letzter Berufsabschluss oder letzte geförderte Weiterbildung liegt i. d. R. mind. 4 Jahre zurück"
-    - "Antrag vor Beginn der Maßnahme beim Arbeitgeberservice der Agentur für Arbeit"
+    - "Maßnahme > 120 Stunden; Träger UND Maßnahme nach AZAV zugelassen"
+    - "Kenntnisse, die über kurzfristige arbeitsplatzbezogene Anpassungsfortbildung hinausgehen (kein reines Tool-Training)"
+    - "Berufsabschluss bzw. letzte geförderte Weiterbildung liegt i. d. R. mindestens 2 Jahre zurück"
+    - "Antrag VOR Maßnahmebeginn beim Arbeitgeber-Service der Agentur für Arbeit; Sammelantrag für mehrere Beschäftigte möglich"
+    - "Keine Kumulierung derselben Kosten mit Landesprogrammen (Doppelförderungsverbot)"
+  qualifizierungsgeld: >-
+    §§ 82a–82c SGB III (seit 01.04.2024): Entgeltersatz (60 %/67 % der Nettoentgeltdifferenz) bei strukturwandelbedingtem
+    Qualifizierungsbedarf für mind. 20 % der Belegschaft (10 % bei < 250 Beschäftigten), Maßnahme > 120 Stunden,
+    Betriebsvereinbarung/Tarifvertrag nötig, Lehrgangskosten trägt der Arbeitgeber. Für Kleinbetriebe selten relevant.
+# Landesprogramme für KURZE Kurse (< 120 h, die § 82 nicht abdeckt) bzw. als Zusatzargument. Status Recherche 09/2026.
 laender:
-  Nordrhein-Westfalen:
-    programm: "Bildungsscheck NRW"
-    hinweis: "50 % der Kurskosten, max. 500 € pro Scheck; betrieblicher Zugang für Betriebe < 250 Beschäftigte"
-    url: "https://www.mags.nrw/bildungsscheck"
-  Hamburg:
-    programm: "Hamburger Weiterbildungsbonus PLUS"
-    hinweis: "Zuschuss zu Weiterbildungskosten für KMU-Beschäftigte"
-    url: "https://www.hamburg.de/weiterbildungsbonus"
-  Sachsen:
-    programm: "Weiterbildungsscheck betrieblich (SAB)"
-    hinweis: "Zuschuss für betriebliche Weiterbildung, KMU-Fokus"
-    url: "https://www.sab.sachsen.de"
-  Brandenburg:
-    programm: "Weiterbildungsrichtlinie Brandenburg"
-    hinweis: "Zuschuss zu betrieblicher Weiterbildung (ILB)"
-    url: "https://www.ilb.de"
-  Rheinland-Pfalz:
-    programm: "QualiScheck"
-    hinweis: "Individuelle Weiterbildung, 60 % bis 1.500 €"
-    url: "https://www.qualischeck.rlp.de"
   Schleswig-Holstein:
     programm: "Weiterbildungsbonus Schleswig-Holstein"
-    hinweis: "Zuschuss für Beschäftigte in KMU"
-    url: "https://www.ib-sh.de"
-  Thüringen:
-    programm: "Weiterbildungsscheck Thüringen"
-    hinweis: "Zuschuss für Beschäftigte in KMU"
-    url: "https://www.gfaw-thueringen.de"
-  Bremen:
-    programm: "Weiterbildung-Scheck Bremen"
-    hinweis: "Zuschuss zu betrieblicher Weiterbildung"
-    url: "https://www.weiterbildung-bremen.de"
-  Mecklenburg-Vorpommern:
-    programm: "Bildungsschecks M-V"
-    hinweis: "Zuschuss zu beruflicher Weiterbildung"
-    url: "https://www.weiterbildung-mv.de"
+    hinweis: "60 % der Kosten, max. 5.000 € je Weiterbildung (bis 31.12.2028)"
+    url: "https://www.ib-sh.de/produkt/a3-weiterbildungsbonus-schleswig-holstein/"
+    status: aktiv
+  Brandenburg:
+    programm: "Weiterbildungsrichtlinie Brandenburg 2026 (ILB)"
+    hinweis: "betriebliche Weiterbildung bis 60 % (KMU), bis 30.06.2027"
+    url: "https://www.ilb.de/de/weiterbildungsrichtlinie-2026/"
+    status: aktiv
   Sachsen-Anhalt:
     programm: "Sachsen-Anhalt WEITERBILDUNG BETRIEB"
-    hinweis: "Zuschuss für betriebliche Weiterbildung (IB Sachsen-Anhalt)"
-    url: "https://www.ib-sachsen-anhalt.de"
+    hinweis: "60 % (≤ 10 Beschäftigte) / 50 % (≤ 249), +10 Pp. bei Tarifbindung"
+    url: "https://www.ib-sachsen-anhalt.de/de/unternehmen/aus-weiterbildung/weiterbildung-betrieblich"
+    status: aktiv
+  Mecklenburg-Vorpommern:
+    programm: "Bildungsschecks für Unternehmen (GSA)"
+    hinweis: "50 %, max. 3.000 € je Scheck"
+    url: "https://www.gsa-schwerin.de/foerderung/bildungsschecks-fuer-unternehmen"
+    status: aktiv
+  Hamburg:
+    programm: "Hamburger Weiterbildungsbonus PLUS"
+    hinweis: "50 % (bis 75 % Zielgruppen), max. 750 € je Kurs"
+    url: "https://www.esf-hamburg.de/hamburger-weiterbildungsbonus-plus-617752"
+    status: aktiv
+  Bremen:
+    programm: "Bremer Weiterbildungsscheck für kleine Unternehmen"
+    hinweis: "50 %, max. 500 € je Scheck, 4 Schecks pro Unternehmen und Jahr"
+    url: "https://www.bremen.de/wirtschaft/wirtschaftsfoerderung/gute-arbeit/bremer-weiterbildungsscheck-fuer-kleine-unternehmen"
+    status: aktiv
+  Saarland:
+    programm: "Kompetenz durch Weiterbildung (KdW)"
+    hinweis: "40 %, max. 2.000 € je Mitarbeiter"
+    url: "https://www.saarland.de/masfg/DE/portale/ausundweiterbildung/weiterbildung/kdw_/kdw"
+    status: aktiv
+  Rheinland-Pfalz:
+    programm: "Betriebliche Weiterbildung RLP (ESF+) / QualiScheck"
+    hinweis: "betrieblich 40 % (Region Trier 60 %), max. 1.500 € je Teilnehmer"
+    url: "https://esf.rlp.de/berufliche-weiterbildung/betriebliche-weiterbildung"
+    status: aktiv
+  Bayern:
+    programm: "ESF+ Bayern – Betriebliche Weiterbildung"
+    hinweis: "bis 40–50 % der Projektkosten (Trägerprojekte, Antrag prüfen)"
+    url: "https://www.esf.bayern.de/esf-foerderung/foerderaktion/fp2021-2027/betrieblicheweiterbildung.php"
+    status: aktiv
+  Baden-Württemberg:
+    programm: "ESF Plus Fachkurse BW"
+    hinweis: "Zuschuss auf Kursgebühren zugelassener Fachkurse (45 % ab 09/2026)"
+    url: "https://www.esf-bw.de/projekte-und-programme-umsetzen/foerderbereich-wirtschaft/foerderprogramm-fachkurse"
+    status: aktiv
+  Nordrhein-Westfalen:
+    programm: "Bildungsscheck NRW 2.0"
+    hinweis: "seit 02/2026 nur noch individueller Zugang (50 %, max. 500 €) – kein Betriebszugang mehr"
+    url: "https://www.mags.nrw/bildungsscheck"
+    status: eingeschraenkt
+  Sachsen:
+    programm: "Weiterbildungsscheck Sachsen (betrieblich)"
+    hinweis: "derzeit ausgesetzt (keine Antragstellung 2025/2026) – nur § 82 SGB III argumentieren"
+    url: "https://www.sab.sachsen.de"
+    status: ausgesetzt
+  Thüringen:
+    programm: "Weiterbildungsscheck Thüringen"
+    hinweis: "Antragsstopp, Neustart voraussichtlich Herbst 2026"
+    url: "https://www.aw-landesverwaltungsamt.thueringen.de/foerderung/foerderung-a-z/weiterbildungsscheck"
+    status: ausgesetzt

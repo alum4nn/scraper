@@ -79,8 +79,8 @@ def assess(
     result.lehrgangskosten_pct = int(entry["lehrgangskosten_pct"])
     result.arbeitsentgeltzuschuss_pct = int(entry["arbeitsentgeltzuschuss_pct"])
 
-    if band == "<10":
-        groesse = "Bei unter 10 Beschäftigten"
+    if (entry.get("min") or 0) == 0 and entry.get("max") is not None:
+        groesse = f"Bei unter {entry['max'] + 1} Beschäftigten"
     elif entry.get("max") is None:
         groesse = f"Ab {entry['min']} Beschäftigten"
     else:
@@ -130,6 +130,9 @@ def funding_reference_rows(config: dict[str, Any] | None = None) -> list[dict[st
     rows += [_row("Voraussetzung", hinweis=v) for v in cfg["bund"].get("voraussetzungen", [])]
     for land, info in (cfg.get("laender") or {}).items():
         hinweis = f"{info.get('programm', '')}: {info.get('hinweis', '')}".strip(": ")
+        status = info.get("status")
+        if status and status != "aktiv":
+            hinweis += f" [{status}]"
         rows.append(_row("Landesprogramm", land, hinweis=hinweis, url=info.get("url", "")))
     rows.append(_row("Stand", str(cfg.get("stand", "")), hinweis="Werte vor Kundengesprächen prüfen"))
     return rows
