@@ -158,6 +158,26 @@ def is_impressum_page(url: str, lines: list[str]) -> bool:
     return has_marker and has_facts
 
 
+_GENERIC_LABEL_RE = re.compile(r"^(?:gesetzlich\s+)?vertret|^vertretungsberechtig|^(?:der|die)\s", re.I)
+_CATEGORY_ROLE: dict[str, str] = {
+    "geschaeftsfuehrung": "Geschäftsführung",
+    "inhaber": "Inhaber/-in",
+    "vorstand": "Vorstand",
+    "prokura": "Prokurist/-in",
+    "hr": "Personal / HR",
+    "ausbildung": "Ausbildungsleitung",
+    "betriebsleitung": "Betriebsleitung",
+}
+
+
+def _readable_role(label: str, category: RoleCategory | None) -> str:
+    """„Vertreten durch“ / „Vertretungsberechtigter“ sagt nichts über die Funktion – Kategorie anzeigen."""
+    text = label.strip(" :")
+    if category and _GENERIC_LABEL_RE.match(text):
+        return _CATEGORY_ROLE.get(category, text)
+    return text
+
+
 def _match_label(line: str) -> tuple[re.Match[str], RoleCategory | None] | None:
     for pat, cat in _LABELS:
         m = pat.match(line)
@@ -260,7 +280,7 @@ def parse_impressum(lines: list[str], url: str | None = None) -> ImpressumData:
         m, category = hit
         if category is None:
             continue
-        role_text = m.group(0).strip(" :")
+        role_text = _readable_role(m.group(0), category)
         names, via_company = _names_after_label(scope, i, m.end())
         if via_company and category == "inhaber":
             category, role_text = "geschaeftsfuehrung", "Geschäftsführer (Komplementär-GmbH)"

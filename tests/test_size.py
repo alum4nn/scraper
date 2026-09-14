@@ -117,3 +117,16 @@ def test_ranks_and_household_sizes_are_not_headcounts(text):
 def test_team_besteht_aus_personen_counts():
     est = estimate_size([(U, "Unser Team besteht aus 12 Personen mit langjähriger Erfahrung.")])
     assert est.point_estimate == 12 and est.confidence == "medium"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Kununu.com 4,5/5 Mitarbeiter Zufriedenheit, 100 % Weiterempfehlung",
+        "4,9 von 5 Sternen aus 120 Bewertungen",
+        "ProvenExpert: 4,8/5 – 300 Erfahrungen unserer Kunden",
+    ],
+)
+def test_ratings_are_not_headcounts(text):
+    est = estimate_size([(U, text)])
+    assert est.point_estimate is None and est.confidence == "none"

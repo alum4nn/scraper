@@ -77,6 +77,12 @@ _PATTERNS = [
 _RANK_BEFORE_RE = re.compile(
     r"(?:\btop|\bplatz|\brang|\bnr\.?|#|\bbeste[nr]?|\bkategorie)\s*[-–:]?\s*$", re.I
 )
+# Bewertungsportale und Quoten: „4,5/5 Mitarbeiter Zufriedenheit“, „100 % Weiterempfehlung“, „4,8 Sterne“
+_RATING_RE = re.compile(
+    r"\d\s*[.,]\d\s*/\s*\d|\d\s*/\s*5\b|kununu|proven\s?expert|trustpilot|zufriedenheit|"
+    r"weiterempfehlung|sterne|bewertungen|erfahrungen|score",
+    re.I,
+)
 _GROUP_RE = re.compile(
     r"weltweit|global|konzern|gruppe|unternehmensgruppe|holding|international|europaweit|bundesweit|deutschlandweit",
     re.I,
@@ -177,6 +183,8 @@ def _scan(url: str, text: str) -> list[_Hit]:
                 continue
             if _RANK_BEFORE_RE.search(text[max(0, start - 12) : start]):
                 continue
+            if _RATING_RE.search(window) or text[max(0, start - 1) : start] in ("/", ","):
+                continue  # Bewertung/Quote, keine Kopfzahl
             if len(values) >= 2 and values[0] < values[1]:
                 lo, hi, point = values[0], values[1], (values[0] + values[1]) // 2
             else:

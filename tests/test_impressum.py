@@ -147,3 +147,15 @@ def test_is_impressum_page():
     assert is_impressum_page("https://x.de/info", ["Impressum", "Foo GmbH", "HRB 1234"])
     assert not is_impressum_page("https://x.de/info", ["Impressum", "Foo GmbH"])
     assert not is_impressum_page("https://x.de/kontakt", ["Kontakt", "Tel 0221 1"])
+
+
+def test_generic_representation_label_becomes_readable_role():
+    """„Vertreten durch“ ist kein Funktionstitel – im Export soll die Funktion stehen."""
+    data = parse_impressum(
+        ["Muster Immobilien GmbH", "Vertreten durch: Thomas Berger", "HRB 12345"],
+        "https://x.de/impressum",
+    )
+    person = next(p for p in data.people if p.name == "Thomas Berger")
+    assert person.role == "Geschäftsführung" and person.role_category == "geschaeftsfuehrung"
+    data2 = parse_impressum(["Inhaber: Claudia Sonnenhof"], "https://y.de/impressum")
+    assert data2.people[0].role == "Inhaber"  # konkrete Bezeichnung bleibt erhalten

@@ -125,12 +125,13 @@ def find_people(
                 break
         # Ohne Rollen-Label reicht die Namensform nicht („Bevorzugte Kontaktart“, „Stadtbezirk Hörde“):
         # bekannter Vorname/Anrede oder Kontaktdaten direkt darunter müssen den Menschen belegen.
-        plausible = is_plausible_person_name(line)
-        if categorize_role(role) != "sonstige" and (plausible or len(role.split()) <= 5):
-            add(line.strip(), role)  # Entscheider-/HR-Rolle: kurzes Label reicht, Slogan + „Mein Konto“ nicht
-        elif role and (plausible or _contact_nearby(lines, i)):
-            add(line.strip(), role)
-        elif page_kind in ("team", "kontakt") and plausible:
+        # „Inhabergeführtes Maklerbüro“ und „Erklärung zur Barrierefreiheit“ sehen aus wie Namen: ein
+        # bekannter Vorname (oder Anrede/Titel) belegt die Person. Sonst braucht es eine Rolle UND
+        # Kontaktdaten direkt darunter – und die Zeile selbst darf kein Berufs-/Abteilungsbegriff sein.
+        if is_plausible_person_name(line):
+            if role or page_kind in ("team", "kontakt"):
+                add(line.strip(), role)
+        elif role and _contact_nearby(lines, i) and not _ROLEISH_RE.search(line):
             add(line.strip(), role)
 
     # E-Mail-Adressen mit Namensbestandteilen zuordnen
