@@ -301,8 +301,9 @@ _EMPLOYED_RE = re.compile(
 )
 _FREELANCE_RE = re.compile(
     r"freie[rn]?\s+(?:mitarbeiter|immobilienberater|immobilienmakler|handelsvertreter|vertriebspartner)|"
-    r"freiberuflich|handelsvertreter|selbst(?:st)?ändige[rn]?\s+(?:immobilienberater|makler|vertriebspartner|"
-    r"partner)|auf\s+provisionsbasis|provisionsbasis|lizenzpartner|franchise|§\s*84\s*hgb",
+    r"freiberuflich|handelsvertreter|"
+    r"selbst(?:st)?ändige[rn]?\s+\w*(?:berater|maklerin|makler|vertriebspartner|partner|vermittler)|"
+    r"auf\s+provisionsbasis|provisionsbasis|lizenzpartner|lizenznehmer|franchise|§\s*84\s*hgb",
     re.I,
 )
 _EMPLOYED_ROLE_RE = re.compile(

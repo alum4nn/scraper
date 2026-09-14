@@ -86,6 +86,15 @@ def extension_count(phones: list[PhoneNumber]) -> tuple[int, str | None]:
     return len(numbers), f"{len(numbers)} Durchwahlen unter einem Anschluss ({beispiel} …)"
 
 
+# Rollen, die gerade KEINE sozialversicherungspflichtige Beschäftigung belegen (§ 82 SGB III fördert
+# keine Selbstständigen). Aus der Prüfung an echten Seiten: „selbständiger Immobilienmakler“,
+# „freier Mitarbeiter“, „Lizenzpartner“, „Repräsentant“.
+_ROLE_IS_FREELANCE = re.compile(
+    r"freie[rn]?\s+(?:mitarbeiter|berater|experte|immobilien\w*)|freiberuflich|handelsvertreter|"
+    r"selbst(?:st)?ändig|lizenzpartner|lizenznehmer|franchise|repräsentant|kooperationspartner|"
+    r"netzwerkpartner|partnerbüro|auf\s+provisionsbasis",
+    re.I,
+)
 _ROLE_IS_STAFF = {
     "geschaeftsfuehrung",
     "inhaber",
@@ -113,6 +122,8 @@ def count_staff(
     people = all_people if all_people is not None else staff_people
     named: dict[str, str] = {}
     for person in [*staff_people, *(p for p in people if p.role_category in _ROLE_IS_STAFF)]:
+        if person.role and _ROLE_IS_FREELANCE.search(person.role):
+            continue  # selbstständig oder Partner – kein sozialversicherungspflichtig Beschäftigter
         key = _identity(surname(person.name))
         if len(key) >= 3:
             named.setdefault(key, person.name)

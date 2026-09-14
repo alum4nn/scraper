@@ -72,3 +72,19 @@ def test_decision_makers_count_as_staff():
     # Ohne Funktion im Betrieb zählt eine Person aus dem Impressum nicht mit
     datenschutz = P(name="Jens Wagner", role="Datenschutzbeauftragter", role_category="sonstige")
     assert count_staff(team, [], [], all_people=[datenschutz, *team]).headcount == 3
+
+
+def test_self_employed_partners_do_not_count():
+    """§ 82 SGB III fördert keine Selbstständigen – ihre Rollenbezeichnung schließt sie aus."""
+    from leadscraper.models import Person as P
+
+    team = [
+        P(name="Ralf Hilger", role="selbständiger Immobilienmakler"),
+        P(name="Klaus Schmitz", role="selbstständiger Immobilienmakler"),
+        P(name="Bernd Meyer", role="Freier Mitarbeiter, Repräsentant Rheinland"),
+        P(name="Anna Weber", role="Immobilienkauffrau"),
+        P(name="Tim Brandt", role="Innendienst"),
+    ]
+    evidence = count_staff(team, [], [])
+    assert evidence.headcount == 2
+    assert "Anna Weber" in evidence.evidence[0] and "Tim Brandt" in evidence.evidence[0]
