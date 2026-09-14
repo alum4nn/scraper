@@ -55,7 +55,8 @@ def _spec_from_args(
             raise typer.BadParameter(f"Unbekanntes Profil „{profile}“. Verfügbar: {', '.join(profiles)}")
         queries.extend(profiles[profile]["queries"])
     if not queries:
-        raise typer.BadParameter("Mindestens --query oder --profile angeben.")
+        profile = "makler"  # Standardfokus: Immobilienmakler (höchste Handy-Trefferquote)
+        queries = list(_load_profiles()[profile]["queries"])
     return SearchSpec(
         queries=list(dict.fromkeys(queries)),
         city=city,
@@ -94,7 +95,9 @@ def run(
     query: list[str] = typer.Option(
         [], "--query", "-q", help="Suchbegriff (mehrfach möglich), z. B. 'Immobilienmakler'"
     ),
-    profile: str | None = typer.Option(None, "--profile", "-p", help="Profil aus config/branchen.yaml"),
+    profile: str | None = typer.Option(
+        None, "--profile", "-p", help="Profil aus config/branchen.yaml (Default ohne --query: makler)"
+    ),
     city: str | None = typer.Option(
         None, "--city", "-c", help="Ort/Region, z. B. 'Köln' oder 'Landkreis Rosenheim'"
     ),

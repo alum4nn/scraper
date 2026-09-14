@@ -29,10 +29,12 @@ def test_run_without_api_key_fails_with_hint(monkeypatch, tmp_path: Path):
     assert "GOOGLE_PLACES_API_KEY" in (result.stdout + str(result.exception))
 
 
-def test_run_requires_query_or_profile(monkeypatch, tmp_path: Path):
+def test_run_defaults_to_makler_profile(monkeypatch, tmp_path: Path):
+    monkeypatch.delenv("GOOGLE_PLACES_API_KEY", raising=False)
     monkeypatch.chdir(tmp_path)
     result = runner.invoke(app, ["run", "-c", "Köln"])
-    assert result.exit_code != 0
+    assert "Immobilienmakler" in result.stdout  # Makler-Profil als Default
+    assert result.exit_code != 0  # scheitert erst am fehlenden API-Key
 
 
 def test_enrich_list_reads_csv_and_writes_excel(fixture_web, tmp_path: Path, monkeypatch):
