@@ -21,10 +21,13 @@ def normalize_domain(website_or_domain: str | None) -> str | None:
         return None
     if "://" not in value:
         value = "http://" + value
-    ext = _extract(value)
-    if ext.top_domain_under_public_suffix:
-        return ext.top_domain_under_public_suffix
-    host = urlsplit(value).hostname or ""
+    try:
+        ext = _extract(value)
+        if ext.top_domain_under_public_suffix:
+            return ext.top_domain_under_public_suffix
+        host = urlsplit(value).hostname or ""
+    except ValueError:
+        return None  # kaputte URL auf der Seite (z. B. „http://[“) – kein gültiger Host
     host = host.removeprefix("www.")
     return host or None
 

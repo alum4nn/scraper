@@ -152,7 +152,10 @@ def classify_href(href: str, base_url: str, base_domain: str | None = None) -> L
         return "whatsapp"
     if low.startswith(("javascript:", "#", "data:")) or low in ("", "/#"):
         return "other"
-    parts = urlsplit(low)
+    try:
+        parts = urlsplit(low)
+    except ValueError:
+        return "other"  # kaputter Link (z. B. „http://[“)
     if parts.path.endswith(".vcf"):
         return "vcard"
     if not parts.scheme and not parts.netloc:

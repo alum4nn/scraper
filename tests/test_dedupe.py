@@ -36,3 +36,10 @@ def test_dedupe_by_place_domain_phone():
 def test_dedupe_keeps_order_and_companies_without_keys():
     cs = [Company(place_id=str(i), name=f"N{i}") for i in range(3)]
     assert [c.place_id for c in dedupe_companies(cs)] == ["0", "1", "2"]
+
+
+def test_normalize_domain_survives_broken_url():
+    from leadscraper.dedupe import normalize_domain
+
+    assert normalize_domain("http://[") is None
+    assert normalize_domain("https://www.makler-koeln.de/team") == "makler-koeln.de"

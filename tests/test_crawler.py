@@ -270,3 +270,22 @@ def test_frameset_and_impressum_guess(httpx_mock):
     assert "/inhalt.html" in paths  # Frame-Inhalt geladen
     assert "/impressum" in paths  # geraten, weil nirgends verlinkt
     assert any(p.kind == "impressum" for p in result.pages)
+
+
+def test_broken_link_does_not_abort_the_crawl(httpx_mock):
+    """Ein kaputter Link („http://[“) darf nicht die Auswertung der ganzen Firma kosten."""
+    home = '<html><body><a href="http://[">kaputt</a><a href="/impressum">Impressum</a></body></html>'
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/robots.txt":
+            return httpx.Response(404)
+        body = home if request.url.path == "/" else "<html><body>Impressum</body></html>"
+        return httpx.Response(200, text=body, headers={"content-type": "text/html"})
+
+    httpx_mock.add_callback(handler, is_reusable=True)
+    crawler = SiteCrawler(_settings())
+    try:
+        result = asyncio.run(crawler.crawl("https://kaputt.example/"))
+    finally:
+        asyncio.run(crawler.close())
+    assert [httpx.URL(p.final_url).path for p in result.pages] == ["/", "/impressum"]

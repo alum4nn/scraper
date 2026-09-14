@@ -14,7 +14,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Literal
 from urllib import robotparser
-from urllib.parse import urljoin, urlsplit, urlunsplit
+from urllib.parse import SplitResult, urljoin, urlsplit, urlunsplit
 
 import httpx
 
@@ -125,15 +125,23 @@ class CrawlResult:
     vcard_urls: list[str] = field(default_factory=list)
 
 
+def _split(url: str) -> SplitResult:
+    """urlsplit, das an kaputten Links auf fremden Seiten nicht die ganze Firma scheitern lässt."""
+    try:
+        return urlsplit(url)
+    except ValueError:
+        return SplitResult("", "", "", "", "")
+
+
 def _norm_key(url: str) -> str:
-    parts = urlsplit(url)
+    parts = _split(url)
     host = (parts.hostname or "").lower().removeprefix("www.")
     path = parts.path.rstrip("/") or "/"
     return f"{host}{path}{'?' + parts.query if parts.query else ''}"
 
 
 def classify_url(url: str, anchor_text: str = "") -> tuple[int, PageKind]:
-    parts = urlsplit(url)
+    parts = _split(url)
     path = parts.path or "/"
     haystack = f"{path} {anchor_text}"
     penalty = 1 if _LANG_PREFIX_RE.match(path) else 0
@@ -151,7 +159,9 @@ def _normalize_start(website: str) -> str:
         return site
     if "://" not in site:
         site = "https://" + site
-    parts = urlsplit(site)
+    parts = _split(site)
+    if not parts.netloc:
+        return ""
     return urlunsplit(
         (parts.scheme.lower(), (parts.netloc or "").lower(), parts.path or "/", parts.query, "")
     )
@@ -181,7 +191,7 @@ class SiteCrawler:
     # --- HTTP -------------------------------------------------------------------------------------
 
     async def _throttle(self, url: str) -> None:
-        host = urlsplit(url).hostname or ""
+        host = _split(url).hostname or ""
         delay = self.settings.request_delay_seconds
         if delay <= 0:
             return
@@ -192,7 +202,7 @@ class SiteCrawler:
         self._last_request[host] = time.monotonic()
 
     async def _robots_for(self, url: str) -> robotparser.RobotFileParser | None:
-        parts = urlsplit(url)
+        parts = _split(url)
         base = f"{parts.scheme}://{parts.netloc}"
         if base in self._robots:
             return self._robots[base]
@@ -297,19 +307,18 @@ class SiteCrawler:
             href = link.href
             if normalize_domain(href) != base_domain:
                 continue
-            if _SKIP_EXT_RE.search(href) or _SKIP_PATH_RE.search(
-                urlsplit(href).path + "?" + urlsplit(href).query
-            ):
+            parts = _split(href)
+            if _SKIP_EXT_RE.search(href) or _SKIP_PATH_RE.search(f"{parts.path}?{parts.query}"):
                 continue
             key = _norm_key(href)
             if key in known:
                 continue
             prio, _kind = classify_url(href, link.text)
-            if urlsplit(href).query and prio > 3:
+            if parts.query and prio > 3:
                 continue
             # Personen-Unterseiten (/team/max-mustermann/) nachrangig, damit sie nicht das Budget fressen –
             # crawl_more() holt gezielt die, deren Name aus dem Impressum bekannt ist (Prio 4).
-            if _PERSON_PATH_RE.search(urlsplit(href).path) or is_probable_person_name(link.text):
+            if _PERSON_PATH_RE.search(parts.path) or is_probable_person_name(link.text):
                 prio = 5
             if prio == 9 and re.search(r"whatsapp|mobil|handy", link.text, re.I):
                 prio = 5
@@ -417,7 +426,7 @@ class SiteCrawler:
         Adressen direkt probieren – § 5 DDG verlangt eine leicht erkennbare Anbieterkennzeichnung."""
         if any(p.kind == "impressum" for p in result.pages) or not result.pages:
             return
-        parts = urlsplit(result.website)
+        parts = _split(result.website)
         base = f"{parts.scheme}://{parts.netloc}"
         for path in _IMPRESSUM_GUESSES:
             url = base + path
