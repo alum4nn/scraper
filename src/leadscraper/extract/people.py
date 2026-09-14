@@ -69,6 +69,55 @@ _PROSE_MIDDLE_RE = re.compile(
 # Kontaktdaten in den Zeilen unter einem Namen (Team-Karte): E-Mail, Telefonnummer, Tel/Mobil-Label
 _CONTACT_RE = re.compile(r"@|(?:\+49|\b0)[\d\s\-–/.()]{6,}\d|\b(?:tel|mobil|handy|fon|phone)\b", re.I)
 
+# Abschnitte, in denen Namen stehen, die NICHT zur Belegschaft gehören: Kundenstimmen, Partnerlisten,
+# freie Mitarbeiter, Gremien. Eine Stichprobe an echten Websites zeigte, dass hier die meisten
+# Fehlzählungen entstehen (Rezensenten und Handwerkspartner wurden zu Mitarbeitenden).
+_FREMDE_ABSCHNITTE_RE = re.compile(
+    r"^(?:das\s+sagen\s+unsere\s+kunden|was\s+(?:unsere\s+)?kunden\s+sagen|kundenstimmen|"
+    r"kundenmeinungen|(?:unsere\s+)?bewertungen|rezensionen|referenzen|erfahrungsberichte|testimonials?|"
+    r"(?:unsere\s+)?(?:kooperations|netzwerk|vertriebs|premium|handwerks)?partner|partnernetzwerk|"
+    r"(?:unser\s+)?netzwerk|kooperationen|handwerker|dienstleister|empfehlungen|"
+    r"freie\s+(?:mitarbeiter|experten|berater)(?:\s*&?\s*berater)?|"
+    r"beirat|aufsichtsrat|kuratorium|ehemalige|in\s+memoriam)\s*[:–-]?$",
+    re.I,
+)
+# Abschnitte, die wieder zur Belegschaft zurückführen
+_TEAM_ABSCHNITTE_RE = re.compile(
+    r"^(?:unser\s+team|das\s+team|team|ihre?\s+ansprechpartner(?:in)?|ansprechpartner(?:in)?|"
+    r"(?:unsere\s+)?mitarbeiter(?:innen)?|unsere\s+(?:makler|berater|experten|köpfe)|"
+    r"geschäftsführung|geschäftsleitung|inhaber(?:in)?|kontakt|standort|büro|über\s+uns|wir\s+über\s+uns)"
+    r"\s*[:–-]?$",
+    re.I,
+)
+# Bewertungs-Widgets: die Namen daneben gehören Kunden, nicht dem Betrieb
+_BEWERTUNGS_WIDGET_RE = re.compile(
+    r"provenexpert|trustindex|trustpilot|gepostet\s+auf\s+google|profile\s+picture|"
+    r"verifizierte?\s+bewertung|google[- ]?bewertung",
+    re.I,
+)
+_ABSCHNITT_MAXLEN = 70
+
+
+def _is_staff_context(lines: list[str]) -> list[bool]:
+    """Für jede Zeile: Gehören hier genannte Menschen zur Belegschaft?
+
+    Überschriften schalten den Kontext um. Ohne diese Unterscheidung landen Rezensenten aus dem
+    Bewertungs-Widget und Handwerker aus der Partnerliste als Mitarbeitende in der Auswertung.
+    """
+    erlaubt: list[bool] = []
+    aktuell = True
+    for line in lines:
+        kurz = line.strip()
+        if len(kurz) <= _ABSCHNITT_MAXLEN:
+            if _FREMDE_ABSCHNITTE_RE.match(kurz):
+                aktuell = False
+            elif _TEAM_ABSCHNITTE_RE.match(kurz):
+                aktuell = True
+        if _BEWERTUNGS_WIDGET_RE.search(line):
+            aktuell = False
+        erlaubt.append(aktuell)
+    return erlaubt
+
 
 def categorize_role(role_text: str | None) -> RoleCategory:
     if not role_text:
@@ -109,6 +158,7 @@ def find_people(
     lines: list[str], links: list[Link], *, source_url: str | None, page_kind: str
 ) -> list[Person]:
     people: dict[str, Person] = {}
+    staff_kontext = _is_staff_context(lines)
 
     def add(name: str, role: str | None) -> None:
         key = normalize_name(name).casefold()
@@ -123,6 +173,8 @@ def find_people(
         people[key] = Person(name=normalize_name(name), role=role, role_category=cat, source_url=source_url)
 
     for i, line in enumerate(lines):
+        if not staff_kontext[i]:
+            continue  # Kundenstimmen, Partnerliste, freie Mitarbeiter, Beirat
         if m := _ROLE_LABEL_LINE_RE.match(line):
             for name in find_plausible_names(m.group(2)):
                 add(name, m.group(1).strip())
@@ -205,6 +257,8 @@ def staff_from_links_and_images(
             for name in find_plausible_names(kandidat):
                 add(name)
     for alt in image_alts:
+        if _BEWERTUNGS_WIDGET_RE.search(alt):
+            continue  # „Max Mustermann profile picture“ aus dem Bewertungs-Widget
         for name in find_plausible_names(alt):
             add(name)
     return list(found.values())

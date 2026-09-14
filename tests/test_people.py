@@ -46,9 +46,15 @@ def test_team_cards_with_roles_and_emails():
 
 
 def test_no_roleless_people_on_other_pages():
-    lines = ["Referenzen", "Peter Kaminski", "hat uns super beraten", "Sabine Klein", "Geschäftsführerin"]
-    people = find_people(lines, [], source_url="https://x.de/referenzen", page_kind="sonstige")
+    lines = ["Aktuelles", "Peter Kaminski", "hat uns super beraten", "Sabine Klein", "Geschäftsführerin"]
+    people = find_people(lines, [], source_url="https://x.de/aktuelles", page_kind="sonstige")
     assert [p.name for p in people] == ["Sabine Klein"]
+
+
+def test_nobody_is_taken_from_a_references_block():
+    """Unter „Referenzen“ stehen Kunden – auch wenn dort eine Geschäftsführerin genannt wird."""
+    lines = ["Referenzen", "Peter Kaminski", "hat uns super beraten", "Sabine Klein", "Geschäftsführerin"]
+    assert find_people(lines, [], source_url="https://x.de/referenzen", page_kind="sonstige") == []
 
 
 def test_ansprechpartner_pattern():
@@ -170,3 +176,36 @@ def test_staff_from_team_cards_without_running_text():
     alts = ["Anna Schmidt", "Tim Brandt, Immobilienkaufmann", "Logo der Firma", "Außenansicht Bürogebäude"]
     people = staff_from_links_and_images(links, alts, source_url="https://x.de/team/")
     assert sorted(p.name for p in people) == ["Anna Schmidt", "Lena Fischer", "Max Weber", "Tim Brandt"]
+
+
+def test_reviewers_and_partners_are_not_staff():
+    """Die häufigste Fehlerquelle laut Prüfung an echten Seiten: Kundenstimmen und Partnerlisten."""
+    lines = [
+        "Unser Team",
+        "Torben Domaser",
+        "Immobilienberater",
+        "Das sagen unsere Kunden",
+        "Patrick Atzor",
+        "Sehr gute Beratung, immer erreichbar",
+        "Joseph Kachichian",
+        "Top Service",
+        "Unsere Kooperationspartner",
+        "Alexander Tibelius",
+        "Elektrotechnik",
+        "Ihre Ansprechpartner",
+        "Katharina Lilienthal",
+        "Vermietung",
+        "Freie Mitarbeiter",
+        "Bernd Meyer",
+        "Repräsentant Rheinland",
+    ]
+    namen = {p.name for p in find_people(lines, [], source_url="https://x.de/team", page_kind="team")}
+    assert namen == {"Torben Domaser", "Katharina Lilienthal"}
+
+
+def test_review_widget_images_are_not_staff():
+    from leadscraper.extract.people import staff_from_links_and_images
+
+    alts = ["Anna Schmidt", "Patrick Atzor profile picture", "ProvenExpert Siegel 4,9 von 5"]
+    namen = {p.name for p in staff_from_links_and_images([], alts, source_url="https://x.de/")}
+    assert namen == {"Anna Schmidt"}

@@ -44,6 +44,8 @@ domains:
   - airbnb.com
   - jimdofree.com
   - heid-immobilienbewertung.de
+  - mein-makler.com
+  - immoleon24.com
   - siriusfacilities.com
   # Internationale Gewerbemakler / Konzerne (Impressum = Zentrale, Entscheidung nicht vor Ort)
   - colliers.de
@@ -144,6 +146,7 @@ names:
   - "Maklaro"
   - "Sirius Facilities"
   - "Heid Immobilien"
+  - "Mein Makler"
   - "Colliers"
   - "JLL"
   - "Jones Lang"

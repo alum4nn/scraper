@@ -393,3 +393,43 @@ def test_company_number_under_every_portrait_is_not_personal():
 
     nur_einer = [pn("Helmut Jentz"), pn("Helmut Jentz")]
     assert _drop_shared_numbers([pn("Helmut Jentz")], nur_einer)[0].person == "Helmut Jentz"
+
+
+def test_number_stays_with_the_person_across_pages():
+    """Die Handynummer des Inhabers steht auf Team-, Objekt- und Kontaktseite – sie bleibt seine."""
+    from leadscraper.models import PhoneNumber
+    from leadscraper.pipeline import _drop_shared_numbers
+
+    def pn(url, person=None):
+        return PhoneNumber(
+            raw="0171 5550123",
+            e164="+491715550123",
+            national="0171 5550123",
+            kind="mobile",
+            source="team",
+            source_url=url,
+            person=person,
+        )
+
+    ueberall = [pn("https://x.de/team/", "Thomas Berger"), pn("https://x.de/objekt/1", "Thomas Berger")]
+    assert _drop_shared_numbers([pn("https://x.de/team/", "Thomas Berger")], ueberall)[0].person
+
+
+def test_location_portal_counts_only_its_own_branch():
+    """Franchise-Portale führen jeden Standort unter eigenem Pfad – fremde Standorte zählen nicht mit."""
+    from leadscraper.pipeline import _scope_to_own_location
+
+    urls = {
+        "https://portal.de/makler-in-koeln/sued/",
+        "https://portal.de/makler-in-koeln/sued/team/",
+        "https://portal.de/makler-in-bochum/",
+        "https://portal.de/team/",
+    }
+    eigene = _scope_to_own_location(urls, "https://portal.de/makler-in-koeln/sued/")
+    assert eigene == {
+        "https://portal.de/makler-in-koeln/sued/",
+        "https://portal.de/makler-in-koeln/sued/team/",
+    }
+    # Eine gewöhnliche Firmenseite bleibt unangetastet
+    normal = {"https://makler.de/team/", "https://makler.de/kontakt/"}
+    assert _scope_to_own_location(normal, "https://makler.de/") == normal

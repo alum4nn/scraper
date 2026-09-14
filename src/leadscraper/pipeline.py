@@ -9,6 +9,7 @@ import re
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from pydantic import ValidationError
 
@@ -93,7 +94,8 @@ def _drop_shared_numbers(deduped: list[PhoneNumber], alle: list[PhoneNumber]) ->
     """Steht dieselbe Nummer bei mehreren Personen, ist es die Firmennummer – dann keine Zuordnung.
 
     Viele Team-Seiten wiederholen unter jedem Porträt dieselbe Zentrale. Wer sie einer Person zuschreibt,
-    ruft am Telefon den Falschen auf.
+    ruft am Telefon den Falschen auf. Umgekehrt darf eine Nummer, die auf mehreren Seiten immer beim
+    selben Menschen steht, ihm zugeordnet bleiben – das ist bei Inhabern der Normalfall.
     """
     personen: dict[str, set[str]] = {}
     for phone in alle:
@@ -147,6 +149,22 @@ def _collect_social(pages: list[Page]) -> dict[str, str | None]:
                 if out[key] is None and any(n in href for n in needles):
                     out[key] = link.href
     return out
+
+
+def _scope_to_own_location(urls: set[str], website: str | None) -> set[str]:
+    """Portale mit vielen Standorten: nur Seiten unterhalb des eigenen Pfads zählen.
+
+    Franchise-Systeme führen jeden Lizenzpartner unter einer eigenen Unterseite
+    (`/immobilienmakler-in-koeln/sued/`). Ohne diese Einschränkung sammelt der Crawler die Belegschaft
+    der Zentrale und fremder Standorte ein und schreibt sie dem örtlichen Betrieb zu.
+    """
+    if not website:
+        return urls
+    basis = urlsplit(website).path.rstrip("/")
+    if basis.count("/") < 2:  # normale Firmenseite, kein Standort-Unterpfad
+        return urls
+    eigene = {u for u in urls if urlsplit(u).path.rstrip("/").startswith(basis)}
+    return eigene or urls
 
 
 def build_enrichment(company: Company, crawl: CrawlResult) -> Enrichment:
@@ -225,6 +243,7 @@ def build_enrichment(company: Company, crawl: CrawlResult) -> Enrichment:
     # 6) Größe – Personen auf Team- UND Kontakt-/Standortseiten („Ihre Ansprechpartner in Köln-Süd“);
     #    find_people ist dort streng (Rolle, bekannter Vorname oder Kontaktdaten); Bewertungen zählen nicht
     staff_urls = {p.final_url for p in crawl.pages if p.kind in ("team", "kontakt")}
+    staff_urls = _scope_to_own_location(staff_urls, company.website)
     team_count = len({p.name for p in page_people if p.source_url in staff_urls}) or None
     # Team-Karten ohne Fließtext: Namen stehen im Link auf die Unterseite oder im Bild-Alternativtext
     karten_people: list[Person] = []
