@@ -6,6 +6,8 @@ from leadscraper.models import Lead, SearchSpec
 
 _DECIDERS = {"geschaeftsfuehrung", "inhaber", "vorstand"}
 _OWNER_FORMS = {"e.K.", "GbR", "Einzelunternehmen", "Freiberufler", "PartG mbB", "PartG"}
+# Mehr Geschäftsführer als das hier führt kein Betrieb mit 5–49 Beschäftigten (Colliers: 15+)
+_MAX_DECIDERS = 6
 
 
 def _surname(name: str) -> str:
@@ -142,6 +144,8 @@ def premium_check(lead: Lead, spec: SearchSpec) -> list[str]:
         missing.append("kein Entscheider im Impressum erkannt")
     elif not any(p.mobile for p in deciders):
         missing.append("keine Handynummer beim Entscheider")
+    if len(deciders) > _MAX_DECIDERS:
+        missing.append(f"{len(deciders)} Geschäftsführer im Impressum – Konzern, kein Kleinbetrieb")
     size = enr.size
     if size.in_range(spec.min_employees, spec.max_employees) is False:
         missing.append(f"Betriebsgröße belegt außerhalb {spec.min_employees}–{spec.max_employees}")

@@ -192,3 +192,22 @@ def test_premium_check_all_criteria():
     assert premium_check(Lead(company=Company(place_id="x", name="X")), SPEC) == [
         "Website nicht erreichbar/keine Website"
     ]
+
+
+def test_many_managing_directors_is_not_a_small_business():
+    """Konzerne listen ein Dutzend Geschäftsführer – gefördert werden Betriebe mit 5–49 Beschäftigten."""
+    people = [
+        Person(name=f"Person {i}", role_category="geschaeftsfuehrung", phones=[_mobile(f"Person {i}")])
+        for i in range(9)
+    ]
+    lead = Lead(
+        company=Company(place_id="p", name="Großmakler GmbH", website="https://g.de"),
+        enrichment=Enrichment(
+            pages_crawled=["https://g.de/"],
+            people=people,
+            phones=[_mobile("Person 0")],
+            size=SizeEstimate(point_estimate=40, employees_min=35, employees_max=63, confidence="medium"),
+            employment_signal="angestellt",
+        ),
+    )
+    assert any("Konzern" in m for m in premium_check(lead, SPEC))

@@ -5,7 +5,12 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-from leadscraper.extract.names import find_names, is_probable_person_name, normalize_name
+from leadscraper.extract.names import (
+    find_names,
+    find_plausible_names,
+    is_probable_person_name,
+    normalize_name,
+)
 from leadscraper.models import Person, RoleCategory
 
 _URL_HINT_RE = re.compile(
@@ -190,10 +195,14 @@ def _is_stop(line: str) -> bool:
     return bool(_STOP_LABEL_RE.match(line) or _match_label(line) or _CUTOFF_RE.match(line))
 
 
-def _names_from_piece(piece: str) -> list[str]:
+def _names_from_piece(piece: str, *, strict: bool = False) -> list[str]:
+    """strict: Für Namen auf den Zeilen NACH dem Label – dort stehen auf großen Seiten auch Menüpunkte
+    („Capital Markets“, „Soziales Engagement“), deshalb ist ein bekannter Vorname nötig."""
     piece = _ROLE_TAIL_RE.sub("", piece).strip(" :.-–")
     if not piece or detect_rechtsform(piece):
         return []
+    if strict:
+        return [normalize_name(n) for n in find_plausible_names(piece)]
     if is_probable_person_name(piece):
         return [normalize_name(piece)]
     return [normalize_name(n) for n in find_names(piece)]
@@ -233,7 +242,7 @@ def _names_after_label(lines: list[str], idx: int, label_end: int) -> tuple[list
         )
         found: list[str] = []
         for piece in _SPLIT_RE.split(inner):
-            found.extend(_names_from_piece(piece))
+            found.extend(_names_from_piece(piece, strict=True))
         if not found:
             if names:
                 break

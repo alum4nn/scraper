@@ -189,3 +189,22 @@ def test_street_is_not_read_as_person():
         "https://y.de/impressum",
     )
     assert [p.name for p in data.people] == ["Patrick Hoffmann"]
+
+
+def test_menu_items_after_label_are_not_people():
+    """Große Seiten haben unter dem Impressum-Label Navigationspunkte – sie sind keine Geschäftsführer."""
+    lines = [
+        "Colliers International Deutschland GmbH",
+        "Eigentümer",
+        "Capital Markets",
+        "Soziales Engagement",
+        "Geschäftsführer: Manuel Aller, Clemens von Arnim",
+    ]
+    data = parse_impressum(lines, "https://x.de/impressum/")
+    assert sorted(p.name for p in data.people) == ["Clemens von Arnim", "Manuel Aller"]
+
+
+def test_names_on_following_lines_still_found():
+    lines = ["Muster GmbH", "Vertreten durch:", "Thomas Berger", "Julia Kranz", "HRB 1234"]
+    data = parse_impressum(lines, "https://y.de/impressum")
+    assert sorted(p.name for p in data.people) == ["Julia Kranz", "Thomas Berger"]

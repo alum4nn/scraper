@@ -45,6 +45,19 @@ domains:
   - jimdofree.com
   - heid-immobilienbewertung.de
   - siriusfacilities.com
+  # Internationale Gewerbemakler / Konzerne (Impressum = Zentrale, Entscheidung nicht vor Ort)
+  - colliers.de
+  - jll.de
+  - cbre.de
+  - savills.de
+  - cushmanwakefield.com
+  - bnpparibas.de
+  - realestate.bnpparibas.de
+  - aengevelt.com
+  - grossmann-berger.de
+  - angermann.de
+  - brockhoff.de
+  - ivd.net
   # Versicherung / Finanzen (Konzernagenturen)
   - allianz.de
   - ergo.de
@@ -131,3 +144,13 @@ names:
   - "Maklaro"
   - "Sirius Facilities"
   - "Heid Immobilien"
+  - "Colliers"
+  - "JLL"
+  - "Jones Lang"
+  - "CBRE"
+  - "Savills"
+  - "Cushman"
+  - "BNP Paribas"
+  - "Aengevelt"
+  - "Grossmann & Berger"
+  - "Angermann"
