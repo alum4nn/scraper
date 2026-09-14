@@ -174,8 +174,8 @@ def test_end_to_end_build_leads_and_excel(fast_settings, tmp_path: Path):
     ws = wb["Leads"]
     headers = [c.value for c in ws[1]]
     row = dict(zip(headers, [c.value for c in ws[2]], strict=False))
-    assert row["Firma"] == leads[0].display_name
-    assert row["Handy Entscheider"] == leads[0].best_contact.mobile.national
+    assert row["Unternehmensname"] == leads[0].display_name
+    assert row["Nummer"] == leads[0].best_contact.mobile.national
     assert row["Firmenname Quelle"] == "Impressum"
     assert row["Straße"] == leads[0].address[0]
     assert wb["Entscheider"].max_row >= 4

@@ -5,12 +5,13 @@ Vertrag:
                  funding_rows: list[dict] | None = None) -> Path
   Blätter:
   1. "Leads" – eine Zeile pro Firma, sortiert nach Score. Spalten (in dieser Reihenfolge):
-     Score | Firma | Entscheider | Rolle | Handy Entscheider | Handy Fundstelle | Weitere Handynummern |
-     Festnetz (Places) | Festnetz (Website) | E-Mail | Mitarbeiter (Schätzung) | MA min | MA max |
-     MA Konfidenz | MA Beleg | Im Zielbereich | Förderband | Lehrgangskosten % | AEZ % | Landesprogramm |
-     Pitch | Branche (Places) | Straße | PLZ | Ort | Bundesland | Website | Impressum-URL | Rechtsform |
-     Register | Google-Bewertung | Anzahl Bewertungen | Status | Google Maps | LinkedIn | XING | WhatsApp |
-     Suchbegriff | Score-Begründung | Fehler | Gescrapt am |
+     Name (Entscheider) | Unternehmensname | E-Mail | Nummer (Handy Entscheider) | Webseite | Score |
+     Premium | Premium-Check | Rolle | Handy Fundstelle | Weitere Handynummern | Festnetz (Places) |
+     Festnetz (Website) | Mitarbeiter (Schätzung) | MA min | MA max | MA Konfidenz | MA Beleg |
+     Im Zielbereich | Beschäftigte | Beschäftigte Beleg | Förderband | Lehrgangskosten % | AEZ % |
+     Landesprogramm | Pitch | Anruf-Indikatoren | Branche (Places) | Straße | PLZ | Ort | Bundesland |
+     Impressum-URL | Rechtsform | Register | Google-Bewertung | Anzahl Bewertungen | Status | Google Maps |
+     LinkedIn | XING | WhatsApp | Suchbegriff | Score-Begründung | Fehler | Gescrapt am | Firmenname Quelle |
      CRM-Spalten (leer, mit Dropdown-Validierung): Status Akquise (offen/angerufen/Termin/kein Interesse/
      Wiedervorlage) | Termin am | Notizen | Nächster Schritt
   2. "Entscheider" – eine Zeile pro Person mit Rolle, Handy, Festnetz, E-Mail, Firma, Website, Fundstelle,
@@ -25,11 +26,11 @@ Vertrag:
   URLs als Hyperlinks, Zeilenumbruch in Beleg/Notizen/Pitch. Datei speichern und Pfad zurückgeben.
 - lead_rows(leads) -> list[dict]: die Zeilen des Leads-Blatts (für Tests/CSV).
 
-Spaltenlogik "Entscheider" / "Handy Entscheider" (Leads-Blatt):
-- Entscheider = Person mit Rolle ≠ "sonstige"; Personen MIT Handynummer zuerst, dann ROLE_PRIORITY
-  (dieselbe Reihenfolge wie im Blatt "Entscheider"). Gibt es keine, fällt die Spalte auf
+Spaltenlogik "Name" / "Nummer" (Leads-Blatt):
+- Name = Entscheider, d. h. Person mit Rolle ≠ "sonstige"; Personen MIT Handynummer zuerst, dann
+  ROLE_PRIORITY (dieselbe Reihenfolge wie im Blatt "Entscheider"). Gibt es keine, fällt die Spalte auf
   Lead.best_contact zurück.
-- Handy Entscheider = Handynummer dieser Person. Hat sie keine, wird eine Handynummer OHNE
+- Nummer = Handynummer dieser Person. Hat sie keine, wird eine Handynummer OHNE
   Personenzuordnung (z. B. WhatsApp-Nummer der Firma) eingetragen – nie die Nummer einer anderen Person.
 - Weitere Handynummern = alle übrigen Handynummern, bei bekannter Person mit Name in Klammern.
 """
@@ -67,38 +68,38 @@ SHEET_META = "Meta"
 
 CRM_COLUMNS: tuple[str, ...] = ("Status Akquise", "Termin am", "Notizen", "Nächster Schritt")
 LEAD_COLUMNS: tuple[str, ...] = (
+    "Name",
+    "Unternehmensname",
+    "E-Mail",
+    "Nummer",
+    "Webseite",
     "Score",
     "Premium",
     "Premium-Check",
-    "Firma",
-    "Entscheider",
     "Rolle",
-    "Handy Entscheider",
     "Handy Fundstelle",
     "Weitere Handynummern",
     "Festnetz (Places)",
     "Festnetz (Website)",
-    "E-Mail",
     "Mitarbeiter (Schätzung)",
     "MA min",
     "MA max",
     "MA Konfidenz",
     "MA Beleg",
     "Im Zielbereich",
+    "Beschäftigte",
+    "Beschäftigte Beleg",
     "Förderband",
     "Lehrgangskosten %",
     "AEZ %",
     "Landesprogramm",
     "Pitch",
     "Anruf-Indikatoren",
-    "Beschäftigte",
-    "Beschäftigte Beleg",
     "Branche (Places)",
     "Straße",
     "PLZ",
     "Ort",
     "Bundesland",
-    "Website",
     "Impressum-URL",
     "Rechtsform",
     "Register",
@@ -162,10 +163,10 @@ NO_FUNDING_NOTE = "Keine Förderdaten übergeben (funding_rows leer) – siehe c
 
 # Spalten mit Telefonnummern/PLZ: Textformat, damit Excel führende Nullen nicht verschluckt.
 _LEAD_TEXT_COLUMNS = frozenset(
-    {"Handy Entscheider", "Weitere Handynummern", "Festnetz (Places)", "Festnetz (Website)", "PLZ"}
+    {"Nummer", "Weitere Handynummern", "Festnetz (Places)", "Festnetz (Website)", "PLZ"}
 )
 _LEAD_LINK_COLUMNS = frozenset(
-    {"Handy Fundstelle", "Website", "Impressum-URL", "Google Maps", "LinkedIn", "XING", "WhatsApp"}
+    {"Handy Fundstelle", "Webseite", "Impressum-URL", "Google Maps", "LinkedIn", "XING", "WhatsApp"}
 )
 _LEAD_WRAP_COLUMNS = frozenset(
     {
@@ -226,7 +227,7 @@ def write_workbook(
         text_columns=_LEAD_TEXT_COLUMNS,
         link_columns=_LEAD_LINK_COLUMNS,
         wrap_columns=_LEAD_WRAP_COLUMNS,
-        freeze="E2",
+        freeze="F2",
     )
     _format_leads_sheet(ws_leads, n_leads)
 
@@ -276,10 +277,10 @@ def _lead_row(lead: Lead) -> dict[str, Any]:
         "Score": lead.score,
         "Premium": "ja" if lead.premium else "nein",
         "Premium-Check": "erfüllt" if lead.premium else "\n".join(lead.premium_missing),
-        "Firma": lead.display_name,
-        "Entscheider": person.name if person else "",
+        "Unternehmensname": lead.display_name,
+        "Name": person.name if person else "",
         "Rolle": _role_label(person) if person else "",
-        "Handy Entscheider": mobile.national if mobile else "",
+        "Nummer": mobile.national if mobile else "",
         "Handy Fundstelle": (mobile.source_url or "") if mobile else "",
         "Weitere Handynummern": ", ".join(_other_mobiles(enr, mobile)),
         "Festnetz (Places)": company.phone or "",
@@ -308,7 +309,7 @@ def _lead_row(lead: Lead) -> dict[str, Any]:
         "PLZ": plz or "",
         "Ort": city or "",
         "Bundesland": company.bundesland or "",
-        "Website": company.website or (enr.website if enr else None) or "",
+        "Webseite": company.website or (enr.website if enr else None) or "",
         "Impressum-URL": (enr.impressum_url if enr else None) or "",
         "Rechtsform": (enr.rechtsform if enr else None) or "",
         "Register": _register(enr),
