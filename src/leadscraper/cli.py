@@ -16,6 +16,7 @@ from rich.table import Table
 from leadscraper import funding, pipeline
 from leadscraper.excel import write_workbook
 from leadscraper.models import Company, Lead, SearchSpec
+from leadscraper.places import PlacesError
 from leadscraper.settings import CONFIG_DIR, Settings, get_settings
 
 app = typer.Typer(
@@ -135,7 +136,10 @@ def run(
     )
     where = f"{spec.city or 'ohne Ort'}, {spec.radius_km:.0f} km"
     console.print(f"[bold]Suche:[/] {', '.join(spec.queries)}  [dim]({where})[/]")
-    leads = asyncio.run(pipeline.run(spec, settings, progress=lambda m: console.print(f"[dim]{m}[/]")))
+    try:
+        leads = asyncio.run(pipeline.run(spec, settings, progress=lambda m: console.print(f"[dim]{m}[/]")))
+    except (PlacesError, RuntimeError) as exc:
+        raise typer.Exit(code=_err(str(exc))) from None
     target = out or _default_out(settings, profile or spec.queries[0])
     write_workbook(leads, spec, target, funding_rows=funding.funding_reference_rows())
     if json_out:
@@ -177,7 +181,10 @@ def search(
         finally:
             await client.close()
 
-    companies = asyncio.run(go())
+    try:
+        companies = asyncio.run(go())
+    except PlacesError as exc:
+        raise typer.Exit(code=_err(str(exc))) from None
     table = Table(title=f"{len(companies)} Firmen")
     for col in ("Firma", "Telefon", "Website", "PLZ", "Ort", "Bundesland", "Typ", "Bewertungen"):
         table.add_column(col)

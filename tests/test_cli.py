@@ -49,3 +49,23 @@ def test_enrich_list_reads_csv_and_writes_excel(fixture_web, tmp_path: Path, mon
     assert result.exit_code == 0, result.stdout
     assert out.exists()
     assert "Thomas Berger" in result.stdout
+
+
+def test_search_reports_places_error_without_traceback(httpx_mock, monkeypatch, tmp_path: Path):
+    monkeypatch.setenv("GOOGLE_PLACES_API_KEY", "test-key")
+    monkeypatch.chdir(tmp_path)
+    httpx_mock.add_response(
+        status_code=403,
+        json={
+            "error": {
+                "code": 403,
+                "message": "Places API (New) has not been used in project 1 before",
+                "status": "PERMISSION_DENIED",
+            }
+        },
+        is_reusable=True,
+    )
+    result = runner.invoke(app, ["search", "Immobilienmakler", "--city", "Köln"])
+    assert result.exit_code == 1
+    assert "Zugriff verweigert" in result.stdout and "Places API (New)" in result.stdout
+    assert "Traceback" not in result.stdout
