@@ -209,3 +209,22 @@ def test_review_widget_images_are_not_staff():
     alts = ["Anna Schmidt", "Patrick Atzor profile picture", "ProvenExpert Siegel 4,9 von 5"]
     namen = {p.name for p in staff_from_links_and_images([], alts, source_url="https://x.de/")}
     assert namen == {"Anna Schmidt"}
+
+
+def test_group_photo_caption_is_not_staff():
+    """„v.l.n.r.: …“ unter einem Gruppenfoto zeigt bei Genossenschaften den Aufsichtsrat."""
+    lines = [
+        "Unser Team",
+        "Mandy Schwarz",
+        "Sachbearbeiterin",
+        "Aufsichtsrat",
+        "v.l.n.r.: Hermann Emmerich, Walburga Krahl, Wolfgang Teichmann, Rosemarie Pottin",
+    ]
+    namen = {p.name for p in find_people(lines, [], source_url="https://x.de/team", page_kind="team")}
+    assert namen == {"Mandy Schwarz"}
+
+    from leadscraper.extract.people import staff_from_links_and_images
+
+    alts = ["Anna Schmidt", "v.l.n.r. Hermann Emmerich, Walburga Krahl"]
+    gefunden = {p.name for p in staff_from_links_and_images([], alts, source_url="https://x.de/")}
+    assert gefunden == {"Anna Schmidt"}

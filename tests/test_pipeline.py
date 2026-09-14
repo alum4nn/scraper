@@ -465,3 +465,16 @@ def test_refresh_drops_evidence_that_no_longer_holds():
         lead_mit("Text: „Unser Team aus 17 Mitarbeitern betreut Sie“ (https://x.de/)"), spec, cfg
     )
     assert gueltig.enrichment.staff.headcount == 17
+
+
+def test_license_and_franchise_wording_marks_freelancers():
+    """Betz Immobilien schreibt es selbst: ein Zusammenschluss rechtlich selbstständiger Makler."""
+    from leadscraper.pipeline import _FREELANCE_RE
+
+    for satz in (
+        "Betz Immobilien ist ein Zusammenschluss von rechtlich selbstständigen Maklern.",
+        "Jeder Lizenz- oder Franchisenehmer ist ein rechtlich eigenständiges Unternehmen.",
+        "Sie sind Immobilienmakler und möchten auf selbstständiger Basis arbeiten?",
+    ):
+        assert _FREELANCE_RE.search(satz), satz
+    assert not _FREELANCE_RE.search("Unsere Mitarbeiterin Mandy Schwarz berät Sie in Festanstellung.")

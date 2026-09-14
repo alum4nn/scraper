@@ -95,6 +95,11 @@ _BEWERTUNGS_WIDGET_RE = re.compile(
     r"verifizierte?\s+bewertung|google[- ]?bewertung",
     re.I,
 )
+# „v.l.n.r.: Hermann Emmerich, Walburga Krahl, …“ – Bildunterschrift eines Gruppenfotos. Bei
+# Genossenschaften und Vereinen steht darunter der Aufsichtsrat, nicht die Belegschaft.
+_GRUPPENFOTO_RE = re.compile(
+    r"^v\s*\.?\s*l\s*\.?\s*n\s*\.?\s*r\s*\.?|^von\s+links(?:\s+nach\s+rechts)?", re.I
+)
 _ABSCHNITT_MAXLEN = 70
 
 
@@ -113,7 +118,7 @@ def _is_staff_context(lines: list[str]) -> list[bool]:
                 aktuell = False
             elif _TEAM_ABSCHNITTE_RE.match(kurz):
                 aktuell = True
-        if _BEWERTUNGS_WIDGET_RE.search(line):
+        if _BEWERTUNGS_WIDGET_RE.search(line) or _GRUPPENFOTO_RE.match(kurz):
             aktuell = False
         erlaubt.append(aktuell)
     return erlaubt
@@ -257,8 +262,8 @@ def staff_from_links_and_images(
             for name in find_plausible_names(kandidat):
                 add(name)
     for alt in image_alts:
-        if _BEWERTUNGS_WIDGET_RE.search(alt):
-            continue  # „Max Mustermann profile picture“ aus dem Bewertungs-Widget
+        if _BEWERTUNGS_WIDGET_RE.search(alt) or _GRUPPENFOTO_RE.match(alt.strip()):
+            continue  # Bewertungs-Widget oder Gruppenfoto („v.l.n.r.: …“) – kein Personal
         for name in find_plausible_names(alt):
             add(name)
     return list(found.values())
