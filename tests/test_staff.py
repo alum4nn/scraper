@@ -22,10 +22,10 @@ def test_personal_mailboxes_ignores_role_addresses():
 
 
 def test_extensions_need_a_shared_trunk():
-    """Mehrere Nummern unter einem Anschluss sind eigene Arbeitsplätze, verstreute Nummern nicht."""
+    """Mehrere Nummern unter einem Anschluss sind Arbeitsplätze – abzüglich Zentrale und Faxgerät."""
     phones = [_phone(f"+4922155501{i}") for i in range(1, 6)]
     count, evidence = extension_count(phones)
-    assert count == 5 and "Durchwahlen" in evidence
+    assert count == 4 and "Durchwahlen" in evidence  # fünf Nummern, eine davon die Zentrale
     fremd = [_phone("+492215550011"), _phone("+4930999888777"), _phone("+498912345678")]
     assert extension_count(fremd)[0] == 0
     # Google-Nummern zählen nicht mit, sie stammen nicht von der Website
@@ -88,3 +88,55 @@ def test_self_employed_partners_do_not_count():
     evidence = count_staff(team, [], [])
     assert evidence.headcount == 2
     assert "Anna Weber" in evidence.evidence[0] and "Tim Brandt" in evidence.evidence[0]
+
+
+def test_fax_and_central_number_are_not_workplaces():
+    """Bei Dederichs & Göttlicher zählte das Werkzeug fünf Köpfe – es waren drei Menschen,
+    eine Zentrale und ein Faxgerät."""
+    phones = [
+        PhoneNumber(
+            raw="0221 55594",
+            e164="+49221555 94".replace(" ", ""),
+            national="0221 55594",
+            kind="landline",
+            source="kontakt",
+            label="Tel",
+        ),
+        PhoneNumber(
+            raw="0221 55595",
+            e164="+4922155595",
+            national="0221 55595",
+            kind="landline",
+            source="kontakt",
+            label="Tel",
+            person="Sven Dederichs",
+        ),
+        PhoneNumber(
+            raw="0221 55596",
+            e164="+4922155596",
+            national="0221 55596",
+            kind="landline",
+            source="kontakt",
+            label="Tel",
+            person="Heiko Göttlicher",
+        ),
+        PhoneNumber(
+            raw="0221 55597",
+            e164="+4922155597",
+            national="0221 55597",
+            kind="landline",
+            source="kontakt",
+            label="Tel",
+            person="Dennis Malcherczyk",
+        ),
+        PhoneNumber(
+            raw="0221 55599",
+            e164="+4922155599",
+            national="0221 55599",
+            kind="landline",
+            source="kontakt",
+            label="Fax",
+        ),
+    ]
+    count, _ = extension_count(phones)
+    assert count == 3

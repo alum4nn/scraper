@@ -63,15 +63,23 @@ def personal_mailboxes(emails: list[str], people: list[Person]) -> dict[str, str
     return found
 
 
+# Nummern, hinter denen kein Arbeitsplatz steht: Fax, Zentrale, Hotline, Notdienst
+_SERVICE_LABEL_RE = re.compile(r"fax|zentrale|hotline|notdienst|notruf|bereitschaft|service", re.I)
+
+
 def extension_count(phones: list[PhoneNumber]) -> tuple[int, str | None]:
-    """Wie viele Durchwahlen hat die größte Nummerngruppe? (Anzahl, Beispiel-Beleg)
+    """Wie viele Arbeitsplätze belegt die größte Durchwahlgruppe? (Anzahl, Beleg)
 
     Mehrere Festnetznummern mit demselben Stamm und unterschiedlicher Endung sind eigene Arbeitsplätze:
-    +49221555011, +49221555012, +49221555013 → drei Durchwahlen.
+    +49221555011, +49221555012, +49221555013. Eine davon ist aber immer die Zentrale, und Faxgeräte
+    hängen ebenfalls am selben Anschluss – beides wird abgezogen. Eine Prüfung an echten Seiten zeigte
+    sonst fünf „Köpfe“ bei drei Menschen: Zentrale, drei Durchwahlen und ein Faxgerät.
     """
     groups: dict[str, set[str]] = defaultdict(set)
     for phone in phones:
         if phone.kind != "landline" or phone.source == "places":
+            continue
+        if phone.label and _SERVICE_LABEL_RE.search(phone.label):
             continue
         digits = phone.e164
         if len(digits) < 10:
@@ -79,11 +87,12 @@ def extension_count(phones: list[PhoneNumber]) -> tuple[int, str | None]:
         groups[digits[:-2]].add(digits)
     if not groups:
         return 0, None
-    stem, numbers = max(groups.items(), key=lambda kv: len(kv[1]))
-    if len(numbers) < 2:
+    _, numbers = max(groups.items(), key=lambda kv: len(kv[1]))
+    arbeitsplaetze = len(numbers) - 1  # eine Nummer der Gruppe ist die Zentrale
+    if arbeitsplaetze < 2:
         return 0, None
     beispiel = ", ".join(sorted(numbers)[:3])
-    return len(numbers), f"{len(numbers)} Durchwahlen unter einem Anschluss ({beispiel} …)"
+    return arbeitsplaetze, (f"{arbeitsplaetze} eigene Durchwahlen neben der Zentrale ({beispiel} …)")
 
 
 # Rollen, die gerade KEINE sozialversicherungspflichtige Beschäftigung belegen (§ 82 SGB III fördert
