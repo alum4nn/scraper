@@ -14,7 +14,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Literal
 from urllib import robotparser
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import urljoin, urlsplit, urlunsplit
 
 import httpx
 
@@ -82,6 +82,15 @@ _HTML_TYPES = ("text/html", "application/xhtml+xml")
 _VCARD_TYPES = ("text/vcard", "text/x-vcard", "text/directory", "application/octet-stream", "text/plain")
 _MAX_VCARDS = 10
 _EXTRA_PAGES_FOR_HINTS = 4
+# Frames statt Navigation (ältere Seiten): Inhalte hängen in <frame>/<iframe src=…>
+_FRAME_SRC_RE = re.compile(r"<i?frame[^>]+src=[\"\']([^\"\'>]+)", re.I)
+# Übliche Impressum-Adressen, falls kein Link darauf zeigt (JavaScript-Menü, fremde Domain im Menü)
+_IMPRESSUM_GUESSES = ("/impressum", "/impressum.html", "/impressum.php", "/impressum/index.html")
+_IMPRESSUM_CONTENT_RE = re.compile(
+    r"impressum|anbieterkennzeichnung|angaben\s+gemäß|vertreten\s+durch|geschäftsführ|inhaber|"
+    r"umsatzsteuer|ust[\s.-]*id|handelsregister|\bHR[AB]\b|verantwortlich",
+    re.I,
+)
 
 
 @dataclass
@@ -332,7 +341,14 @@ class SiteCrawler:
             detail = f" ({self.last_error})" if self.last_error else ""
             result.errors.append(f"Startseite nicht erreichbar{detail}")
             return result
+        if normalize_domain(home.final_url) != normalize_domain(result.website):
+            # Weiterleitung auf eine andere Domain (Umfirmierung, Projektseite): Links gehören zur
+            # Zieldomain, sonst verwirft _collect_candidates die gesamte Navigation.
+            result.website = home.final_url
+            result.pending.clear()
+            self._collect_candidates(home, result)
         result.website = home.final_url
+        self._collect_frames(home, result)
         if name_hints:
             for entry in list(result.pending):
                 if entry[0] > 4 and self._matches_hint(entry, name_hints):
@@ -340,6 +356,7 @@ class SiteCrawler:
                     result.pending.append((4, entry[1], entry[2]))
             result.pending.sort(key=lambda t: t[0])
         await self._drain(result, budget=self.settings.max_pages_per_site, name_hints=name_hints or [])
+        await self._guess_impressum(result)
         await self._load_vcards(result)
         if len(result.pages) == 1 and len(home.lines) < 15:
             result.errors.append("wenig Text (SPA oder Cookie-Wall?)")
@@ -380,6 +397,38 @@ class SiteCrawler:
         await self._drain(result, budget=budget, name_hints=name_hints, only_hints=True)
         await self._load_vcards(result)
         return result
+
+    def _collect_frames(self, page: Page, result: CrawlResult) -> None:
+        """Frameset-Seiten haben keine Links – die Unterseiten hängen in <frame src=…>."""
+        base_domain = normalize_domain(result.website)
+        for m in _FRAME_SRC_RE.finditer(page.html):
+            href = urljoin(page.final_url, m.group(1).strip())
+            if normalize_domain(href) != base_domain or _SKIP_EXT_RE.search(href):
+                continue
+            key = _norm_key(href)
+            if key in result.loaded or any(key == _norm_key(u) for _, u, _ in result.pending):
+                continue
+            prio, _kind = classify_url(href)
+            result.pending.append((min(prio, 5), href, ""))
+        result.pending.sort(key=lambda t: t[0])
+
+    async def _guess_impressum(self, result: CrawlResult) -> None:
+        """Kein Impressum verlinkt (JavaScript-Menü, Menü zeigt auf eine andere Domain)? Übliche
+        Adressen direkt probieren – § 5 DDG verlangt eine leicht erkennbare Anbieterkennzeichnung."""
+        if any(p.kind == "impressum" for p in result.pages) or not result.pages:
+            return
+        parts = urlsplit(result.website)
+        base = f"{parts.scheme}://{parts.netloc}"
+        for path in _IMPRESSUM_GUESSES:
+            url = base + path
+            if _norm_key(url) in result.loaded:
+                continue
+            page = await self._load_page(url, "impressum", result)
+            if page is None:
+                continue
+            if _IMPRESSUM_CONTENT_RE.search("\n".join(page.lines[:80])):
+                return
+            result.pages.remove(page)  # Server antwortet auf alles mit 200 (Soft-404)
 
     async def _load_vcards(self, result: CrawlResult) -> None:
         have = {v.url for v in result.vcards}

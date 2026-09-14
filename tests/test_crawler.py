@@ -214,3 +214,59 @@ def test_low_value_pages_and_redirect_duplicates(httpx_mock):
     paths = [httpx.URL(p.final_url).path for p in result.pages]
     assert paths.count("/kontakt/") == 1
     assert sum(1 for p in paths if p.startswith("/immobilien/")) == 3
+
+
+def test_redirect_to_other_domain_keeps_navigation(httpx_mock):
+    """van-b.de leitet auf bauwerk.de/projekte/van-b.html um – die Navigation gehört dann zur Zieldomain."""
+    target = (
+        '<html><body><a href="/impressum.html">Impressum</a>'
+        '<a href="/ueber-uns.html">Über uns</a></body></html>'
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        host, path = request.url.host, request.url.path
+        if path == "/robots.txt":
+            return httpx.Response(404)
+        if host == "www.van-b.de":
+            return httpx.Response(301, headers={"location": "https://www.bauwerk.de/projekte/van-b.html"})
+        body = target if path == "/projekte/van-b.html" else f"<html><body>{path}</body></html>"
+        return httpx.Response(200, text=body, headers={"content-type": "text/html"})
+
+    httpx_mock.add_callback(handler, is_reusable=True)
+    crawler = SiteCrawler(_settings())
+    try:
+        result = asyncio.run(crawler.crawl("http://www.van-b.de/"))
+    finally:
+        asyncio.run(crawler.close())
+    paths = [httpx.URL(p.final_url).path for p in result.pages]
+    assert "/impressum.html" in paths and "/ueber-uns.html" in paths
+
+
+def test_frameset_and_impressum_guess(httpx_mock):
+    """Frameset ohne Links und ein Menü ohne Impressum-Link dürfen das Impressum nicht kosten."""
+    frameset = '<html><frameset><frame src="/inhalt.html"><frame src="menu.html"></frameset></html>'
+    pages = {
+        "/": frameset,
+        "/inhalt.html": "<html><body><p>Willkommen</p></body></html>",
+        "/menu.html": "<html><body><p>Menü</p></body></html>",
+        "/impressum": "<html><body><h1>Impressum</h1><p>Geschäftsführer: Max Muster</p></body></html>",
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        if path == "/robots.txt":
+            return httpx.Response(404)
+        if path in pages:
+            return httpx.Response(200, text=pages[path], headers={"content-type": "text/html"})
+        return httpx.Response(404)
+
+    httpx_mock.add_callback(handler, is_reusable=True)
+    crawler = SiteCrawler(_settings())
+    try:
+        result = asyncio.run(crawler.crawl("https://alt.example/"))
+    finally:
+        asyncio.run(crawler.close())
+    paths = [httpx.URL(p.final_url).path for p in result.pages]
+    assert "/inhalt.html" in paths  # Frame-Inhalt geladen
+    assert "/impressum" in paths  # geraten, weil nirgends verlinkt
+    assert any(p.kind == "impressum" for p in result.pages)
