@@ -45,9 +45,12 @@ _WORDNUMS = {
     "hundert": 100,
 }
 _WORDNUM = "|".join(_WORDNUMS)
+# „weniger als 10 Beschäftigte“ ist eine Obergrenze, keine Belegschaftsgröße – solche Angaben stammen
+# meist aus Pflichttexten (Kleinunternehmer, Barrierefreiheit) und dürfen keine Kopfzahl belegen.
+_UPPER_BOUND = r"weniger\s+als|unter|maximal|höchstens|nicht\s+mehr\s+als|bis\s+zu"
 _QUAL = (
-    r"(?P<qual>über|mehr\s+als|rund|ca\.?|circa|etwa|knapp|fast|bis\s+zu|nahezu|gut|~|>|inzwischen|mittlerweile|"
-    r"aktuell|derzeit|heute|insgesamt|zurzeit|momentan)?"
+    rf"(?P<qual>über|mehr\s+als|rund|ca\.?|circa|etwa|knapp|fast|nahezu|gut|~|>|inzwischen|mittlerweile|"
+    rf"aktuell|derzeit|heute|insgesamt|zurzeit|momentan|{_UPPER_BOUND})?"
 )
 
 _PATTERNS = [
@@ -148,11 +151,18 @@ def _quality(snippet: str) -> int:
     return 0
 
 
+def is_upper_bound(qual: str | None) -> bool:
+    """„weniger als 10“, „bis zu 8“ – die Zahl ist eine Obergrenze, der Betrieb kann winzig sein."""
+    return bool(qual and re.match(rf"\s*(?:{_UPPER_BOUND})", qual.strip(), re.I))
+
+
 def _apply_qual(qual: str | None, n: int) -> tuple[int, int, int]:
     q = (qual or "").lower().strip()
+    if is_upper_bound(q):
+        return 1, n, max(1, n // 2)
     if q.startswith(("über", "mehr", ">", "gut")):
         return n, max(n + 1, int(n * 1.5)), max(n + 1, int(n * 1.2))
-    if q.startswith(("knapp", "fast", "bis", "nahezu")):
+    if q.startswith(("knapp", "fast", "nahezu")):
         return max(1, int(n * 0.8)), n, max(1, int(n * 0.9))
     if q.startswith(("rund", "ca", "circa", "etwa", "~")):
         return max(1, int(n * 0.8)), int(n * 1.2) + 1, n
@@ -212,9 +222,9 @@ def _scan(url: str, text: str) -> list[_Hit]:
             ):
                 continue
             spans.append((start, end))
-            hits.append(
-                _Hit(lo, hi, point, bool(_GROUP_RE.search(window)), _quality(m.group(0)), snippet, url)
-            )
+            # Eine Obergrenze belegt nichts – Konfidenz absenken, damit sie nicht als Zahl durchgeht
+            qualitaet = 1 if is_upper_bound(qual) else _quality(m.group(0))
+            hits.append(_Hit(lo, hi, point, bool(_GROUP_RE.search(window)), qualitaet, snippet, url))
     return hits
 
 

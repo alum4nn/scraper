@@ -112,3 +112,18 @@ def test_plausible_person_name_requires_known_first_name_or_salutation(text, pla
 def test_find_plausible_names_uses_salutation_from_context():
     text = "Kontakt: Herr Yüksel Turan, Fachliche Kompetenz, Anna Heck, Stadtbezirk Hörde, Nazim Uzun"
     assert find_plausible_names(text) == ["Yüksel Turan", "Anna Heck"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Elektrotechnik Alexander Tibelius",
+        "Ingenieurbüro Konrad Smoczynski",
+        "Oliver Dietz Fass Factory",
+        "Malerbetrieb Stefan Krause",
+        "Hausmeisterservice Peter Wolf",
+    ],
+)
+def test_partner_companies_are_not_people(text):
+    """Handwerker- und Netzwerklisten nennen Firmen im Namensformat – keine Mitarbeitenden."""
+    assert not is_probable_person_name(text)

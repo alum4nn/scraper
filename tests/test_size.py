@@ -136,3 +136,19 @@ def test_ratings_are_not_headcounts(text):
 def test_team_von_insgesamt_wordnumber():
     est = estimate_size([(U, "Sohn Christoph verstärkt das Team von insgesamt fünf Mitarbeitern.")])
     assert est.point_estimate == 5 and est.confidence == "high"
+
+
+@pytest.mark.parametrize(
+    ("text", "lo", "hi"),
+    [
+        ("Als Unternehmen mit weniger als 10 Beschäftigten sind wir", 1, 10),
+        ("ein Team von unter 10 Mitarbeitern", 1, 10),
+        ("maximal 8 Mitarbeiter", 1, 8),
+        ("bis zu 12 Mitarbeitende", 1, 12),
+    ],
+)
+def test_upper_bounds_are_not_a_headcount(text, lo, hi):
+    """„weniger als 10 Beschäftigte“ stammt aus Pflichttexten und belegt keine Belegschaft."""
+    est = estimate_size([(U, text)])
+    assert (est.employees_min, est.employees_max) == (lo, hi)
+    assert est.confidence != "high"  # darf nicht als belegte Zahl in die Kopfzahl eingehen

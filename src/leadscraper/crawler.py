@@ -77,7 +77,8 @@ _LANG_PREFIX_RE = re.compile(r"^/(?:en|fr|nl|es|it|pl|tr|ru|cs|da|sv|pt)(?:/|$)"
 # Seiten ohne Ansprechpartner-Nutzen, die sonst das Budget fressen (Bewertungen, Blog, Lexikon, News)
 _LOW_VALUE_RE = re.compile(
     r"bewertung|kundenstimmen|testimonial|rezension|lexikon|glossar|ratgeber|blog|news|aktuelles|presse|"
-    r"faq|magazin|tagebuch|checkliste|datenschutz|agb|cookie|sitemap|newsletter|download",
+    r"faq|magazin|tagebuch|checkliste|datenschutz|agb|cookie|sitemap|newsletter|download|"
+    r"partner|netzwerk|kooperation|empfehlung|handwerker|dienstleister",
     re.I,
 )
 _MAX_SONSTIGE_PAGES = 3

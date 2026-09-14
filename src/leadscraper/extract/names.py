@@ -43,6 +43,15 @@ _STREET_SUFFIX = re.compile(
 _NOUN_SUFFIX = re.compile(
     r"(heit|keit|schaft|schaften|tion|tionen|ität|ismus|ierung|ungen|thek)$|^.{6,}ung$", re.I
 )
+# Firmen- und Gewerbebezeichnungen: „Elektrotechnik Alexander Tibelius“ ist eine Partnerfirma, kein
+# Mitarbeiter. Solche Wörter tauchen in Handwerker- und Netzwerklisten neben echten Namen auf.
+_TRADE_SUFFIX = re.compile(
+    r"(technik|büro|buero|service|dienst|dienste|bau|werk|werke|handel|kanzlei|praxis|zentrum|center|"
+    r"factory|company|systems|solutions|consulting|immobilien|makler|verwaltung|group|gruppe|team|"
+    r"studio|agentur|montage|logistik|transport|reinigung|entsorgung|gerüstbau|energie|betrieb|"
+    r"betriebe|meisterbetrieb|fachbetrieb|manufaktur|kontor|partners|projekte)$",
+    re.I,
+)
 
 STOPWORDS: frozenset[str] = frozenset(
     w.lower()
@@ -120,6 +129,8 @@ def is_probable_person_name(s: str) -> bool:
         if tok.lower().strip(".") in STOPWORDS:
             return False
         if _STREET_SUFFIX.search(tok) or _ROLE_SUFFIX.search(tok) or _NOUN_SUFFIX.search(tok):
+            return False
+        if _TRADE_SUFFIX.search(tok):
             return False
         if len(tok) > 3 and tok.isupper():
             return False
