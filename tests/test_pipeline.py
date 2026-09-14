@@ -9,7 +9,7 @@ from leadscraper.cache import Cache
 from leadscraper.crawler import SiteCrawler
 from leadscraper.excel import write_workbook
 from leadscraper.funding import funding_reference_rows
-from leadscraper.models import Company, SearchSpec
+from leadscraper.models import Company, Enrichment, SearchSpec
 from leadscraper.places import PlacesClient
 
 web = pytest.mark.usefixtures("fixture_web")
@@ -179,3 +179,38 @@ def test_end_to_end_build_leads_and_excel(fast_settings, tmp_path: Path):
     assert row["Firmenname Quelle"] == "Impressum"
     assert row["Straße"] == leads[0].address[0]
     assert wb["Entscheider"].max_row >= 4
+
+
+@web
+def test_multiple_cities_are_searched_and_deduped(fast_settings, fixture_web):
+    spec = SearchSpec(
+        queries=["Immobilienmakler"], city="Köln", cities=["Bonn", "Köln"], max_results_per_query=10
+    )
+
+    async def go():
+        client = PlacesClient(fast_settings.google_places_api_key)
+        try:
+            return await pipeline.search_companies(spec, client)
+        finally:
+            await client.close()
+
+    companies = asyncio.run(go())
+    searches = [r for r in fixture_web if "places:searchText" in r]
+    assert len(searches) >= 4  # 2 Orte × (Geocode + Suche), Köln nur einmal
+    assert len({c.place_id for c in companies}) == len(companies)
+
+
+def test_warn_unreachable_reports_network_problem():
+    messages: list[str] = []
+    companies = [Company(place_id=str(i), name=f"F{i}", website=f"https://f{i}.de") for i in range(6)]
+    enrichments = [
+        Enrichment(website=c.website, errors=["Startseite nicht erreichbar (ConnectError: 403)"])
+        for c in companies
+    ]
+    pipeline.warn_unreachable(companies, enrichments, messages.append)
+    assert messages and "Netzwerk/Proxy" in messages[0] and "ConnectError" in messages[0]
+    enrichments[0].pages_crawled = ["https://f0.de/"]
+    enrichments[1].pages_crawled = ["https://f1.de/"]
+    messages.clear()
+    pipeline.warn_unreachable(companies, enrichments, messages.append)
+    assert not messages  # nur 4 von 6 → keine Warnung

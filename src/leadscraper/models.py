@@ -229,6 +229,9 @@ class SearchSpec(BaseModel):
 
     queries: list[str]
     city: str | None = None
+    cities: list[str] = Field(
+        default_factory=list
+    )  # weitere Orte (Google liefert max. 60 Treffer je Suche+Ort)
     lat: float | None = None
     lng: float | None = None
     radius_km: float = 25.0

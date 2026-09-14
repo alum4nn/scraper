@@ -27,10 +27,22 @@ e.K./GbR), E-Mail; Abzüge für geschlossene Betriebe, unerreichbare Websites, G
 
 ## Installation
 ```bash
+# macOS / Linux
 python3.11 -m venv .venv && . .venv/bin/activate
 pip install -e ".[dev]"
 cp .env.example .env        # GOOGLE_PLACES_API_KEY eintragen (optional, siehe unten)
 ```
+```powershell
+# Windows (PowerShell): Python 3.11+ von python.org, dann im Projektordner
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e ".[dev]"
+copy .env.example .env      # GOOGLE_PLACES_API_KEY eintragen
+leadscraper demo
+```
+Das Tool braucht **freien Internetzugang zu beliebigen Firmenwebsites**. Hinter einem Firmen-Proxy oder in einer
+Sandbox mit Allowlist bleibt der Crawl leer – der Lauf meldet dann „⚠ … Websites nicht erreichbar – Netzwerk/
+Proxy/Firewall prüfen“. In dem Fall lokal auf dem eigenen Rechner ausführen.
 
 ### Google-API-Key (für `run`)
 Google Cloud Console → Projekt → Abrechnung aktivieren → **„Places API (New)“** aktivieren → API-Key (auf diese API
@@ -51,7 +63,8 @@ im Website-Crawl**.
 ```bash
 # Standard: Immobilienmakler-Profil, 5–50 Mitarbeitende, 25 km Radius
 leadscraper run --city "Köln"
-leadscraper run --city "Bonn" --radius-km 15 --max-employees 30 --require-mobile
+# Nur Diamanten (Entscheider mit namentlicher Handynummer + belegte Mitarbeiterzahl), mehrere Orte
+leadscraper run -c Köln -c Bonn -c Leverkusen -c Bergisch\ Gladbach --radius-km 15 --premium
 
 # Eigene Suchbegriffe / anderes Profil (siehe `leadscraper profiles`)
 leadscraper run -q "Immobilienbüro" -q "Hausverwaltung" -c Düsseldorf --included-type real_estate_agency
@@ -70,7 +83,8 @@ leadscraper demo --out output/demo.xlsx
 | Option | Bedeutung |
 |---|---|
 | `--query/-q`, `--profile/-p` | Suchbegriffe bzw. Profil aus `config/branchen.yaml`; ohne Angabe: Profil `makler` |
-| `--city/-c`, `--radius-km` | Ort/Region und Radius (max. 50 km) |
+| `--city/-c`, `--radius-km` | Ort/Region und Radius (max. 50 km); `-c` mehrfach für mehrere Orte (Google liefert max. 60 Treffer je Suchbegriff und Ort – Stadtteile/Nachbarstädte einzeln angeben) |
+| `--premium` | Nur Diamanten: aktiver Betrieb, Website erreichbar, Entscheider aus dem Impressum, Handynummer **namentlich** bei diesem Entscheider, Mitarbeiterzahl belegt (hoch/mittel) und im Zielbereich. Ohne `--premium` zeigt die Spalte „Premium-Check“, was jeweils fehlt |
 | `--min-employees/--max-employees` | Zielgröße (Default 5–50); sicher außerhalb liegende Firmen fliegen raus, unbekannte bleiben (abgewertet) |
 | `--require-mobile` | Nur Firmen mit gefundener Handynummer |
 | `--included-type` | Google-Place-Type, z. B. `real_estate_agency` (nur ein Typ) |

@@ -289,30 +289,33 @@ def passes_filters(lead: Lead, spec: SearchSpec) -> bool:
 async def search_companies(
     spec: SearchSpec, places: PlacesClient, progress: ProgressFn | None = None
 ) -> list[Company]:
-    lat, lng = spec.lat, spec.lng
-    if (lat is None or lng is None) and spec.city:
-        coords = await places.geocode(spec.city, language=spec.language, region=spec.region)
-        if coords:
-            lat, lng = coords
-            spec.lat, spec.lng = lat, lng
+    cities: list[str | None] = list(dict.fromkeys([spec.city, *spec.cities])) or [None]
     companies: list[Company] = []
-    for q in spec.queries:
-        text = f"{q} {spec.city}" if spec.city and spec.city.lower() not in q.lower() else q
-        found = await places.text_search(
-            text,
-            lat=lat,
-            lng=lng,
-            radius_km=spec.radius_km,
-            included_type=spec.included_type,
-            max_results=spec.max_results_per_query,
-            language=spec.language,
-            region=spec.region,
-        )
-        for c in found:
-            c.query = q
-        companies.extend(found)
-        if progress:
-            progress(f"Suche „{text}“: {len(found)} Treffer")
+    for city in cities:
+        lat, lng = (spec.lat, spec.lng) if city == spec.city else (None, None)
+        if (lat is None or lng is None) and city:
+            coords = await places.geocode(city, language=spec.language, region=spec.region)
+            if coords:
+                lat, lng = coords
+                if city == spec.city:
+                    spec.lat, spec.lng = lat, lng
+        for q in spec.queries:
+            text = f"{q} {city}" if city and city.lower() not in q.lower() else q
+            found = await places.text_search(
+                text,
+                lat=lat,
+                lng=lng,
+                radius_km=spec.radius_km,
+                included_type=spec.included_type,
+                max_results=spec.max_results_per_query,
+                language=spec.language,
+                region=spec.region,
+            )
+            for c in found:
+                c.query = q
+            companies.extend(found)
+            if progress:
+                progress(f"Suche „{text}“: {len(found)} Treffer")
     deduped = dedupe_companies(companies)
     dropped: list = []
     if spec.exclude_chains:
@@ -362,6 +365,22 @@ async def enrich_all(
     return results
 
 
+def warn_unreachable(
+    companies: list[Company], enrichments: list[Enrichment | None], progress: ProgressFn | None
+) -> None:
+    """Fast keine Website erreichbar → meist Netzwerk/Proxy/Firewall – deutlich sagen."""
+    with_site = [(c, e) for c, e in zip(companies, enrichments, strict=True) if c.website]
+    if len(with_site) < 5 or progress is None:
+        return
+    failed = [(c, e) for c, e in with_site if e is None or not e.pages_crawled]
+    if len(failed) / len(with_site) >= 0.8:
+        first = next((err for _, e in failed if e for err in e.errors), "")
+        progress(
+            f"⚠ {len(failed)} von {len(with_site)} Websites nicht erreichbar – Netzwerk/Proxy/Firewall "
+            f"prüfen. Erster Fehler: {first}"
+        )
+
+
 async def run(spec: SearchSpec, settings: Settings, progress: ProgressFn | None = None) -> list[Lead]:
     if not settings.google_places_api_key:
         raise RuntimeError("GOOGLE_PLACES_API_KEY fehlt (.env anlegen, siehe .env.example)")
@@ -386,6 +405,7 @@ async def build_leads(
     progress: ProgressFn | None = None,
 ) -> list[Lead]:
     enrichments = await enrich_all(companies, settings, cache, progress)
+    warn_unreachable(companies, enrichments, progress)
     cfg = funding.load_funding_config()
     leads = [finalize_lead(c, e, spec, cfg) for c, e in zip(companies, enrichments, strict=True)]
     leads = [ld for ld in leads if passes_filters(ld, spec)]

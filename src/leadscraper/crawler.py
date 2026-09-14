@@ -154,6 +154,7 @@ class SiteCrawler:
         )
         self._last_request: dict[str, float] = {}
         self._robots: dict[str, robotparser.RobotFileParser | None] = {}
+        self.last_error: str | None = None  # letzter Netzwerk-/HTTP-Fehler (für Diagnose)
 
     async def close(self) -> None:
         if self._own_client:
@@ -211,10 +212,12 @@ class SiteCrawler:
         try:
             resp = await self.http.get(url)
         except httpx.HTTPError as exc:
+            self.last_error = f"{type(exc).__name__}: {str(exc)[:120]}"
             log.debug("Fehler beim Laden von %s: %s", url, exc)
             return None
         ctype = resp.headers.get("content-type", "").lower()
         if resp.status_code >= 400 or not any(t in ctype for t in accept):
+            self.last_error = f"HTTP {resp.status_code} ({ctype.split(';')[0] or 'ohne Content-Type'})"
             if self.cache is not None:
                 self.cache.set("html", key, {"skip": True})
             return None
@@ -307,13 +310,15 @@ class SiteCrawler:
         if not start:
             result.errors.append("keine Website")
             return result
+        self.last_error = None
         home = await self._load_page(start, "startseite", result)
         if home is None and start.startswith("https://"):
             alt = "http://" + start[len("https://") :]
             result.loaded.discard(_norm_key(start))
             home = await self._load_page(alt, "startseite", result)
         if home is None:
-            result.errors.append("Startseite nicht erreichbar")
+            detail = f" ({self.last_error})" if self.last_error else ""
+            result.errors.append(f"Startseite nicht erreichbar{detail}")
             return result
         result.website = home.final_url
         if name_hints:

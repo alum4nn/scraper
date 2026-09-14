@@ -61,9 +61,11 @@ def _spec_from_args(
         types = profiles[profile].get("included_types") or []
         if included_type is None and len(types) == 1:
             included_type = types[0]  # z. B. real_estate_agency – filtert Portale/Fremdtreffer
+    cities = [c.strip() for c in city if c and c.strip()]
     return SearchSpec(
         queries=list(dict.fromkeys(queries)),
-        city=city,
+        city=cities[0] if cities else None,
+        cities=cities[1:],
         radius_km=radius_km,
         included_type=included_type,
         max_results_per_query=max_results,
@@ -104,8 +106,8 @@ def run(
     profile: str | None = typer.Option(
         None, "--profile", "-p", help="Profil aus config/branchen.yaml (Default ohne --query: makler)"
     ),
-    city: str | None = typer.Option(
-        None, "--city", "-c", help="Ort/Region, z. B. 'Köln' oder 'Landkreis Rosenheim'"
+    city: list[str] = typer.Option(
+        [], "--city", "-c", help="Ort/Region (mehrfach möglich: -c Köln -c Bonn -c Leverkusen)"
     ),
     radius_km: float = typer.Option(25.0, help="Suchradius um den Ort (max 50)"),
     included_type: str | None = typer.Option(None, help="Google-Place-Type, z. B. real_estate_agency"),
@@ -145,7 +147,7 @@ def run(
         chain_filter,
         premium,
     )
-    where = f"{spec.city or 'ohne Ort'}, {spec.radius_km:.0f} km"
+    where = f"{', '.join([spec.city, *spec.cities]) if spec.city else 'ohne Ort'}, {spec.radius_km:.0f} km"
     console.print(f"[bold]Suche:[/] {', '.join(spec.queries)}  [dim]({where})[/]")
     try:
         leads = asyncio.run(pipeline.run(spec, settings, progress=lambda m: console.print(f"[dim]{m}[/]")))

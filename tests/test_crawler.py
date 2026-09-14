@@ -134,7 +134,7 @@ def test_http_fallback_and_unreachable(httpx_mock):
     httpx_mock.add_callback(lambda r: httpx.Response(500), is_reusable=True)
     dead = asyncio.run(crawler.crawl("https://dead.de"))
     asyncio.run(crawler.close())
-    assert dead.pages == [] and "nicht erreichbar" in dead.errors[0]
+    assert dead.pages == [] and "nicht erreichbar" in dead.errors[0] and "HTTP 500" in dead.errors[0]
 
 
 def test_non_html_skipped_and_cache_used(httpx_mock, tmp_path):
