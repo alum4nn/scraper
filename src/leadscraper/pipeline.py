@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import re
 from collections.abc import Callable
 from datetime import datetime
+from pathlib import Path
 
 from leadscraper import funding, scoring
 from leadscraper.cache import Cache
@@ -200,6 +202,7 @@ def build_enrichment(company: Company, crawl: CrawlResult) -> Enrichment:
         rechtsform=enr.rechtsform,
         user_rating_count=company.user_rating_count,
     )
+    enr.employment_signal, enr.employment_evidence = employment_signal(crawl, enr)
     enr.call_indicators = call_indicators(crawl, enr)
     if len(crawl.pages) == 1 and len(crawl.pages[0].lines) < 15 and "wenig Text" not in " ".join(enr.errors):
         enr.errors.append("wenig Text (SPA oder Cookie-Wall?)")
@@ -215,6 +218,55 @@ _WEITERBILDUNG_RE = re.compile(r"weiterbildung|fortbildung|schulung|qualifizieru
 _JOBS_RE = re.compile(
     r"stellenangebot|stellenanzeige|wir suchen|bewirb|bewerbung|job|offene stellen|verstärkung", re.I
 )
+
+
+_EMPLOYED_RE = re.compile(
+    r"festanstellung|festangestellt|unbefristet|sozialversicherungspflichtig|angestellte[nr]?\b|innendienst|"
+    r"backoffice|back-office|büroleit|teamassisten|assistenz der geschäftsführung|vertriebsassisten|"
+    r"immobilienassisten|empfang|sekretariat|buchhaltung|auszubildende|azubi|ausbildungsplatz|ausbildung zum|"
+    r"ausbildung zur|immobilienkaufmann|immobilienkauffrau|werkstudent|vollzeit|teilzeit|"
+    r"\d+\s*(?:mitarbeiter|beschäftigte|angestellte)",
+    re.I,
+)
+_FREELANCE_RE = re.compile(
+    r"freie[rn]?\s+(?:mitarbeiter|immobilienberater|immobilienmakler|handelsvertreter|vertriebspartner)|"
+    r"freiberuflich|handelsvertreter|selbst(?:st)?ändige[rn]?\s+(?:immobilienberater|makler|vertriebspartner|"
+    r"partner)|auf\s+provisionsbasis|provisionsbasis|lizenzpartner|franchise|§\s*84\s*hgb",
+    re.I,
+)
+_EMPLOYED_ROLE_RE = re.compile(
+    r"assisten|büroleit|innendienst|backoffice|empfang|sekretariat|buchhalt|auszubildende|azubi|"
+    r"immobilienkaufmann|immobilienkauffrau|marketing|office|verwaltung|vermietung",
+    re.I,
+)
+
+
+def employment_signal(crawl: CrawlResult, enr: Enrichment) -> tuple[str, list[str]]:
+    """Sozialversicherungspflichtige Beschäftigte erkennbar (§ 82 SGB III) oder freie Vertreter?"""
+    positive: list[str] = []
+    negative: list[str] = []
+    for page in crawl.pages:
+        for m in _EMPLOYED_RE.finditer(page.text):
+            positive.append(
+                f"„{page.text[max(0, m.start() - 25) : m.end() + 25].strip()}“ ({page.final_url})"
+            )
+            if len(positive) >= 3:
+                break
+        for m in _FREELANCE_RE.finditer(page.text):
+            negative.append(
+                f"„{page.text[max(0, m.start() - 25) : m.end() + 25].strip()}“ ({page.final_url})"
+            )
+            if len(negative) >= 3:
+                break
+    for person in enr.people:
+        if person.role and _EMPLOYED_ROLE_RE.search(person.role):
+            positive.append(f"Rolle „{person.role}“: {person.name}")
+    evidence = [f"+ {x}" for x in positive[:3]] + [f"− {x}" for x in negative[:3]]
+    if negative and not positive:
+        return "frei", evidence
+    if positive:
+        return "angestellt", evidence
+    return "unklar", evidence
 
 
 def call_indicators(crawl: CrawlResult, enr: Enrichment) -> list[str]:
@@ -233,6 +285,10 @@ def call_indicators(crawl: CrawlResult, enr: Enrichment) -> list[str]:
         out.append("HR-/Ausbildungsverantwortliche benannt")
     if enr.size.employees_max is not None and enr.size.employees_max <= 49:
         out.append("Betriebsgröße < 50 → 100 % Lehrgangskosten möglich (§ 82 SGB III)")
+    if enr.employment_signal == "angestellt":
+        out.append("Festangestellte erkennbar (förderfähig)")
+    elif enr.employment_signal == "frei":
+        out.append("⚠ freie Handelsvertreter/Franchise erwähnt – Beschäftigte prüfen")
     return out
 
 
@@ -417,3 +473,98 @@ async def build_leads(
             f"{len(leads)} Leads, davon {with_mobile} mit Handynummer, {dm_mobile} Entscheider mit Handy"
         )
     return leads
+
+
+# --- Bundesweiter Lauf: Ort für Ort, Ergebnisse als JSONL, Wiederaufnahme nach Abbruch --------------
+
+
+def load_orte(path: Path | None = None, bundeslaender: list[str] | None = None) -> list[dict]:
+    """Ortsraster aus config/orte.yaml (optional auf Bundesländer gefiltert)."""
+    import yaml
+
+    from leadscraper.geo import normalize_bundesland
+    from leadscraper.settings import CONFIG_DIR
+
+    with open(path or CONFIG_DIR / "orte.yaml", encoding="utf-8") as fh:
+        orte = yaml.safe_load(fh)["orte"]
+    if bundeslaender:
+        wanted = {normalize_bundesland(b) or b for b in bundeslaender}
+        orte = [o for o in orte if o["bundesland"] in wanted]
+    return orte
+
+
+def read_leads_jsonl(path: Path) -> list[Lead]:
+    if not path.exists():
+        return []
+    return [
+        Lead.model_validate_json(line)
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+
+
+async def run_cities(
+    spec: SearchSpec,
+    settings: Settings,
+    orte: list[dict],
+    jsonl_path: Path,
+    progress: ProgressFn | None = None,
+    checkpoint: Callable[[list[Lead]], None] | None = None,
+) -> list[Lead]:
+    """Alle Orte nacheinander; fertige Orte stehen in <jsonl>.state.json, Leads sofort in der JSONL-Datei.
+    Ein erneuter Aufruf mit derselben Datei macht dort weiter, wo abgebrochen wurde."""
+    if not settings.google_places_api_key:
+        raise RuntimeError("GOOGLE_PLACES_API_KEY fehlt (.env anlegen, siehe .env.example)")
+    jsonl_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path = jsonl_path.with_suffix(".state.json")
+    state = (
+        json.loads(state_path.read_text(encoding="utf-8"))
+        if state_path.exists()
+        else {"done": [], "seen": []}
+    )
+    done, seen = set(state["done"]), set(state["seen"])
+    all_leads = read_leads_jsonl(jsonl_path)
+    cache = Cache(settings.cache_path)
+    places = PlacesClient(
+        settings.google_places_api_key, cache=cache, cache_ttl_days=settings.places_cache_ttl_days
+    )
+    try:
+        for i, ort in enumerate(orte, start=1):
+            key = f"{ort['name']}|{ort['bundesland']}"
+            if key in done:
+                continue
+            if progress:
+                progress(f"[Ort {i}/{len(orte)}] {ort['name']} ({ort['bundesland']})")
+            city_spec = spec.model_copy(
+                update={
+                    "city": ort["name"],
+                    "cities": [],
+                    "lat": None,
+                    "lng": None,
+                    "radius_km": float(ort.get("radius_km", spec.radius_km)),
+                }
+            )
+            companies = await search_companies(city_spec, places, progress)
+            fresh = []
+            for c in companies:
+                dom = c.domain or ""
+                if c.place_id in seen or (dom and dom in seen):
+                    continue
+                seen.add(c.place_id)
+                if dom:
+                    seen.add(dom)
+                fresh.append(c)
+            leads = await build_leads(fresh, spec, settings, cache, progress) if fresh else []
+            with open(jsonl_path, "a", encoding="utf-8") as fh:
+                for ld in leads:
+                    fh.write(ld.model_dump_json() + "\n")
+            all_leads.extend(leads)
+            done.add(key)
+            state_path.write_text(json.dumps({"done": sorted(done), "seen": sorted(seen)}), encoding="utf-8")
+            if checkpoint and i % 10 == 0:
+                checkpoint(all_leads)
+    finally:
+        await places.close()
+        cache.close()
+    all_leads.sort(key=scoring.sort_key)
+    return all_leads

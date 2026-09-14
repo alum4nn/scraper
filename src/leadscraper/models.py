@@ -146,6 +146,10 @@ class Enrichment(BaseModel):
     call_indicators: list[str] = Field(
         default_factory=list
     )  # Anhaltspunkte für mutmaßliches Interesse (§ 7 UWG)
+    # Beschäftigtenstatus: "angestellt" (sozialversicherungspflichtige Mitarbeiter erkennbar), "frei" (freie
+    # Handelsvertreter/Franchise/Provisionsbasis – nicht nach § 82 SGB III förderfähig), "unklar"
+    employment_signal: Literal["angestellt", "frei", "unklar"] = "unklar"
+    employment_evidence: list[str] = Field(default_factory=list)
     pages_crawled: list[str] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
 

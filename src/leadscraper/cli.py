@@ -125,6 +125,19 @@ def run(
         "--premium",
         help="Nur Diamanten: Entscheider mit namentlicher Handynummer und belegter Mitarbeiterzahl",
     ),
+    deutschland: bool = typer.Option(
+        False,
+        "--deutschland",
+        help="Ortsraster aus config/orte.yaml abarbeiten (unterbrechungssicher, wiederaufnehmbar)",
+    ),
+    bundesland: list[str] = typer.Option(
+        [], "--bundesland", "-b", help="Nur diese Bundesländer (mit --deutschland)"
+    ),
+    state: Path = typer.Option(
+        Path("output/deutschland.jsonl"),
+        "--state",
+        help="Ergebnisdatei für --deutschland; erneuter Aufruf setzt fort",
+    ),
     out: Path | None = typer.Option(None, "--out", "-o", help="Ziel-Excel (Default: output/leads_<…>.xlsx)"),
     json_out: Path | None = typer.Option(None, help="Zusätzlich Roh-Leads als JSON speichern"),
     verbose: bool = typer.Option(False, "-v", help="Debug-Logging"),
@@ -147,6 +160,36 @@ def run(
         chain_filter,
         premium,
     )
+    if deutschland:
+        if not query:
+            spec.queries = spec.queries[:2]  # Kostenbremse: 2 Suchbegriffe je Ort reichen bei Maklern
+        orte = pipeline.load_orte(bundeslaender=bundesland)
+        target = out or state.with_suffix(".xlsx")
+        console.print(
+            f"[bold]Bundesweit:[/] {len(orte)} Orte, Suchbegriffe {', '.join(spec.queries)}, Stand in {state}"
+        )
+
+        def checkpoint(leads: list[Lead]) -> None:
+            write_workbook(leads, spec, target, funding_rows=funding.funding_reference_rows())
+            console.print(f"[dim]Zwischenstand gespeichert: {target} ({len(leads)} Leads)[/]")
+
+        try:
+            leads = asyncio.run(
+                pipeline.run_cities(
+                    spec,
+                    settings,
+                    orte,
+                    state,
+                    progress=lambda m: console.print(f"[dim]{m}[/]"),
+                    checkpoint=checkpoint,
+                )
+            )
+        except (PlacesError, RuntimeError) as exc:
+            raise typer.Exit(code=_err(str(exc))) from None
+        write_workbook(leads, spec, target, funding_rows=funding.funding_reference_rows())
+        _print_summary(leads)
+        console.print(f"\n[green]✔[/] Excel gespeichert: [bold]{target}[/]  (Rohdaten: {state})")
+        return
     where = f"{', '.join([spec.city, *spec.cities]) if spec.city else 'ohne Ort'}, {spec.radius_km:.0f} km"
     console.print(f"[bold]Suche:[/] {', '.join(spec.queries)}  [dim]({where})[/]")
     try:
@@ -322,6 +365,29 @@ def enrich_list(
     write_workbook(leads, spec, target, funding_rows=funding.funding_reference_rows())
     _print_summary(leads)
     console.print(f"\n[green]✔[/] Excel gespeichert: [bold]{target}[/]")
+
+
+@app.command()
+def export(
+    jsonl: Path = typer.Argument(..., help="JSONL-Datei aus --deutschland (oder --json-out)"),
+    out: Path | None = typer.Option(None, "--out", "-o", help="Ziel-Excel"),
+    premium: bool = typer.Option(False, "--premium", help="Nur Premium-Leads exportieren"),
+    min_score: int = typer.Option(0, help="Mindest-Score"),
+) -> None:
+    """Excel aus gespeicherten Leads bauen (z. B. nur Premium, ohne neuen Crawl)."""
+    if jsonl.suffix == ".json":
+        leads = [Lead.model_validate(item) for item in json.loads(jsonl.read_text(encoding="utf-8"))]
+    else:
+        leads = pipeline.read_leads_jsonl(jsonl)
+    if premium:
+        leads = [ld for ld in leads if ld.premium]
+    leads = [ld for ld in leads if ld.score >= min_score]
+    leads.sort(key=lambda ld: (-ld.score, ld.display_name.lower()))
+    target = out or jsonl.with_name(jsonl.stem + ("_premium" if premium else "") + ".xlsx")
+    spec = SearchSpec(queries=[f"Export: {jsonl.name}"], premium=premium)
+    write_workbook(leads, spec, target, funding_rows=funding.funding_reference_rows())
+    _print_summary(leads)
+    console.print(f"\n[green]✔[/] {len(leads)} Leads → [bold]{target}[/]")
 
 
 @app.command()

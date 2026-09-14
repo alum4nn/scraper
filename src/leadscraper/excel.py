@@ -91,6 +91,8 @@ LEAD_COLUMNS: tuple[str, ...] = (
     "Landesprogramm",
     "Pitch",
     "Anruf-Indikatoren",
+    "Beschäftigte",
+    "Beschäftigte Beleg",
     "Branche (Places)",
     "Straße",
     "PLZ",
@@ -166,7 +168,16 @@ _LEAD_LINK_COLUMNS = frozenset(
     {"Handy Fundstelle", "Website", "Impressum-URL", "Google Maps", "LinkedIn", "XING", "WhatsApp"}
 )
 _LEAD_WRAP_COLUMNS = frozenset(
-    {"Pitch", "MA Beleg", "Score-Begründung", "Notizen", "Fehler", "Anruf-Indikatoren", "Premium-Check"}
+    {
+        "Pitch",
+        "MA Beleg",
+        "Score-Begründung",
+        "Notizen",
+        "Fehler",
+        "Anruf-Indikatoren",
+        "Premium-Check",
+        "Beschäftigte Beleg",
+    }
 )
 
 _KIND_LABEL = {"mobile": "mobil", "landline": "festnetz", "voip": "voip", "unknown": "unbekannt"}
@@ -286,6 +297,12 @@ def _lead_row(lead: Lead) -> dict[str, Any]:
         "Landesprogramm": funding.landesprogramm or "",
         "Pitch": funding.pitch or "",
         "Anruf-Indikatoren": "\n".join(enr.call_indicators) if enr else "",
+        "Beschäftigte": {"angestellt": "angestellt", "frei": "freie Vertreter?", "unklar": "unklar"}[
+            enr.employment_signal
+        ]
+        if enr
+        else "",
+        "Beschäftigte Beleg": "\n".join(enr.employment_evidence[:4]) if enr else "",
         "Branche (Places)": company.primary_type or "",
         "Straße": street or "",
         "PLZ": plz or "",

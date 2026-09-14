@@ -144,9 +144,19 @@ def test_premium_check_all_criteria():
             people=[gf],
             phones=[_mobile("Thomas Berger")],
             size=SizeEstimate(point_estimate=8, employees_min=8, employees_max=8, confidence="medium"),
+            employment_signal="angestellt",
         ),
     )
     assert premium_check(ok, SPEC) == []
+
+    # Status unklar + nur Team-Seite gezählt → kein Beleg für sozialversicherungspflichtige Mitarbeiter
+    unclear = ok.model_copy(deep=True)
+    unclear.enrichment.employment_signal = "unklar"
+    assert premium_check(unclear, SPEC) == ["sozialversicherungspflichtige Beschäftigte nicht belegt"]
+    unclear.enrichment.size = SizeEstimate(
+        point_estimate=8, employees_min=8, employees_max=8, confidence="high"
+    )
+    assert premium_check(unclear, SPEC) == []  # explizite Mitarbeiterzahl reicht als Beleg
 
     # anonyme Firmen-Handynummer reicht nicht
     anon = ok.model_copy(deep=True)

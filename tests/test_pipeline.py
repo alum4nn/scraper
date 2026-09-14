@@ -9,7 +9,7 @@ from leadscraper.cache import Cache
 from leadscraper.crawler import SiteCrawler
 from leadscraper.excel import write_workbook
 from leadscraper.funding import funding_reference_rows
-from leadscraper.models import Company, Enrichment, SearchSpec
+from leadscraper.models import Company, Enrichment, Lead, SearchSpec
 from leadscraper.places import PlacesClient
 
 web = pytest.mark.usefixtures("fixture_web")
@@ -214,3 +214,56 @@ def test_warn_unreachable_reports_network_problem():
     messages.clear()
     pipeline.warn_unreachable(companies, enrichments, messages.append)
     assert not messages  # nur 4 von 6 → keine Warnung
+
+
+def test_employment_signal_on_fixture_sites(fast_settings, fixture_web):
+    steuer = _enrich(fast_settings, "https://www.weber-lind-steuerberater.de")
+    assert steuer.employment_signal == "angestellt"  # "Steuerfachangestellte", Azubi-Rollen
+    assert any(e.startswith("+") for e in steuer.employment_evidence)
+    makler = _enrich(fast_settings, "https://www.rheinblick-immobilien-koeln.de/")
+    assert makler.employment_signal == "angestellt"  # "9 Mitarbeitern", Auszubildende, Büroleitung
+    assert "Festangestellte erkennbar (förderfähig)" in makler.call_indicators
+
+
+def test_freelance_signal_blocks_premium():
+    from leadscraper.crawler import CrawlResult, Page
+    from leadscraper.scoring import premium_check
+
+    text = "Wir suchen freie Handelsvertreter auf Provisionsbasis. Ihr Ansprechpartner: Max Muster"
+    page = Page(
+        url="https://f.de/",
+        final_url="https://f.de/",
+        kind="startseite",
+        html="",
+        text=text,
+        lines=[text],
+        links=[],
+    )
+    crawl = CrawlResult(website="https://f.de/", pages=[page])
+    enr = pipeline.build_enrichment(Company(place_id="f", name="F Immobilien", website="https://f.de"), crawl)
+    assert enr.employment_signal == "frei"
+    lead = Lead(company=Company(place_id="f", name="F Immobilien", website="https://f.de"), enrichment=enr)
+    assert any("freie Handelsvertreter" in m for m in premium_check(lead, SearchSpec(queries=["x"])))
+
+
+def test_run_cities_is_resumable(fast_settings, fixture_web, tmp_path: Path):
+    spec = SearchSpec(queries=["Immobilienmakler"], max_results_per_query=10, radius_km=20)
+    orte = [
+        {"name": "Köln", "bundesland": "Nordrhein-Westfalen"},
+        {"name": "Bonn", "bundesland": "Nordrhein-Westfalen", "radius_km": 6},
+    ]
+    jsonl = tmp_path / "de.jsonl"
+    leads = asyncio.run(pipeline.run_cities(spec, fast_settings, orte, jsonl))
+    assert leads and jsonl.exists() and jsonl.with_suffix(".state.json").exists()
+    n_requests = len(fixture_web)
+    again = asyncio.run(pipeline.run_cities(spec, fast_settings, orte, jsonl))
+    assert len(fixture_web) == n_requests  # beide Orte erledigt → keine neuen Requests
+    assert [ld.company.place_id for ld in again] == [ld.company.place_id for ld in leads]
+    assert len({ld.company.place_id for ld in leads}) == len(leads)  # keine Duplikate über Orte hinweg
+
+
+def test_load_orte_filter():
+    orte = pipeline.load_orte(bundeslaender=["NRW", "Bremen"])
+    assert orte and {o["bundesland"] for o in orte} == {"Nordrhein-Westfalen", "Bremen"}
+    assert any(o["name"] == "Köln" for o in orte)
+    assert len(pipeline.load_orte()) > 400

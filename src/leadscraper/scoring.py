@@ -94,6 +94,12 @@ def score_lead(lead: Lead, spec: SearchSpec) -> tuple[int, list[str]]:
         else:
             reasons.append("Größe unbekannt")
 
+        if enr.employment_signal == "angestellt":
+            score += 8
+            reasons.append("Festangestellte erkennbar")
+        elif enr.employment_signal == "frei":
+            score -= 20
+            reasons.append("freie Handelsvertreter/Franchise – Förderfähigkeit fraglich")
         if enr.emails:
             score += 3
             reasons.append("E-Mail")
@@ -117,6 +123,8 @@ def premium_check(lead: Lead, spec: SearchSpec) -> list[str]:
     3. Handynummer namentlich diesem Entscheider zugeordnet (Team-/Objektseite, vCard, tel:-Link) –
        eine anonyme Firmen-Handynummer reicht nicht
     4. Mitarbeiterzahl belegt (explizite Angabe oder Team-Seite, Konfidenz hoch/mittel) und im Zielbereich
+    5. Sozialversicherungspflichtige Beschäftigte erkennbar (Festanstellung/Innendienst/Assistenz/Azubis oder
+       explizite Mitarbeiterzahl) und keine Hinweise auf freie Handelsvertreter/Franchise/Provisionsbasis
     """
     missing: list[str] = []
     company = lead.company
@@ -136,4 +144,9 @@ def premium_check(lead: Lead, spec: SearchSpec) -> list[str]:
         missing.append("Mitarbeiterzahl nicht belegt")
     elif size.in_range(spec.min_employees, spec.max_employees) is not True:
         missing.append(f"Mitarbeiterzahl außerhalb {spec.min_employees}–{spec.max_employees}")
+    # § 82 SGB III fördert nur sozialversicherungspflichtig Beschäftigte – freie Handelsvertreter zählen nicht
+    if enr.employment_signal == "frei":
+        missing.append("freie Handelsvertreter/Franchise – keine förderfähigen Beschäftigten erkennbar")
+    elif enr.employment_signal != "angestellt" and size.confidence != "high":
+        missing.append("sozialversicherungspflichtige Beschäftigte nicht belegt")
     return missing

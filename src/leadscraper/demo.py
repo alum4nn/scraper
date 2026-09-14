@@ -43,6 +43,11 @@ def demo_leads(spec: SearchSpec) -> list[Lead]:
         impressum_street="Rheinuferstraße 12",
         impressum_plz="50667",
         impressum_city="Köln",
+        employment_signal="angestellt",
+        employment_evidence=[
+            "+ „Unser Team aus 9 Mitarbeitern“",
+            "+ Rolle „Auszubildende Immobilienkauffrau“: Lea Winter",
+        ],
         people=[
             Person(
                 name="Thomas Berger",
@@ -111,6 +116,8 @@ def demo_leads(spec: SearchSpec) -> list[Lead]:
         impressum_street="Poppelsdorfer Allee 8",
         impressum_plz="53115",
         impressum_city="Bonn",
+        employment_signal="angestellt",
+        employment_evidence=["+ Rolle „Assistenz der Geschäftsführung“: Nadine Koch"],
         people=[
             Person(
                 name="Claudia Sonnenhof",

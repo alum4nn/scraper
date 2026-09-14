@@ -69,3 +69,17 @@ def test_search_reports_places_error_without_traceback(httpx_mock, monkeypatch, 
     assert result.exit_code == 1
     assert "Zugriff verweigert" in result.stdout and "Places API (New)" in result.stdout
     assert "Traceback" not in result.stdout
+
+
+def test_export_from_jsonl(tmp_path: Path):
+    from leadscraper.demo import demo_leads
+    from leadscraper.models import SearchSpec
+
+    jsonl = tmp_path / "leads.jsonl"
+    jsonl.write_text(
+        "\n".join(ld.model_dump_json() for ld in demo_leads(SearchSpec(queries=["x"]))), encoding="utf-8"
+    )
+    result = runner.invoke(app, ["export", str(jsonl), "--premium"])
+    assert result.exit_code == 0, result.stdout
+    assert (tmp_path / "leads_premium.xlsx").exists()
+    assert "2 Leads" in result.stdout
