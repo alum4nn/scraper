@@ -82,8 +82,16 @@ leadscraper export output/de.jsonl output/de_bayern.jsonl --premium -o output/pr
 leadscraper trello output/de.jsonl -o output/trello.csv
 
 # Nach Regel-/Extraktor-Verbesserungen ohne neue Google-Anfragen nachziehen
-leadscraper refresh output/de.jsonl     # nur neu bewerten (Indizien, Score, Premium)
+leadscraper refresh output/de.jsonl     # nur neu bewerten (Score, Premium, Belegschaft)
 leadscraper rebuild output/de.jsonl     # Websites erneut auslesen (HTML-Cache) und neu bewerten
+```
+
+### Bundesweit über Tage hinweg
+```bash
+./status.sh    # je Bundesland: fertige Orte, gefundene Firmen, Premium-Leads
+./pause.sh     # alle Läufe geordnet anhalten, Zwischenstand bleibt erhalten
+./resume.sh    # überall dort weitermachen, wo Orte offen sind
+./run_hv.sh "Bayern:bayern"   # zweiter Durchlauf nur für Hausverwaltungen
 
 # Nur Google-Suche testen / eine Website prüfen / Beispiel-Excel
 leadscraper search "Immobilienmakler" --city Leverkusen
@@ -112,15 +120,24 @@ leadscraper demo --out output/demo.xlsx
 3. Handynummer diesem Entscheider zugeordnet. Die Spalte **Handy-Zuordnung** sagt, wie sicher:
    *namentlich* (Name stand neben der Nummer) oder *eindeutig* (einzige Handynummer der Website bei genau
    einem Entscheider).
-4. Betriebsgröße im Zielbereich. **Eine Zahl auf der Website ist nicht nötig** – es zählen Indizien:
-   namentliche Mitarbeitende auf Team-/Kontaktseiten, persönliche Postfächer (`vorname.nachname@`), eigene
-   Durchwahlen, Rechtsform. Aussortiert wird nur, wer belegt zu groß oder zu klein ist.
-5. Sozialversicherungspflichtige Beschäftigte plausibel (§ 82 SGB III): Festanstellung/Innendienst/Assistenz/
-   Azubis, mehrere Mitarbeitende neben der Geschäftsführung oder belegte Größe – und keine Hinweise auf
-   ausschließlich freie Handelsvertreter, Franchise oder Provisionsbasis.
+4. **Mindestens fünf Beschäftigte belegt.** Das ist das schärfste Kriterium: gezählt werden
+   unterscheidbare Menschen, nicht Vermutungen. Eine Stichprobe an 30 echten Makler-Websites zeigte, dass
+   ohne diese Hürde überwiegend Ein-Personen-Büros in der Liste landen.
+   | Beleg | zählt als |
+   |---|---|
+   | Ausdrückliche Angabe („Team aus 14 Mitarbeitern“) | die genannte Zahl |
+   | Namentlich genannte Mitarbeitende auf Team-/Kontaktseiten (auch aus Bild-Alternativtexten und Links auf Personen-Unterseiten) | eine Person je Nachname |
+   | Persönliche Postfächer `vorname.nachname@`; `info@`, `buchhaltung@` zählen nicht | eine Person je Postfach |
+   | Eigene Durchwahlen: mehrere Festnetznummern mit gleichem Stamm | ein Arbeitsplatz je Durchwahl |
 
-`leadscraper export --near-premium` nimmt zusätzlich die Fälle auf, bei denen nur der Beleg für die
-Beschäftigten fehlt – im Telefonat ohnehin zu klären.
+   Die Signale werden über den Nachnamen **zusammengeführt, nicht addiert** – dieselbe Person hat Name,
+   Postfach und Durchwahl. Die Rechtsform allein („GmbH, also wohl 5–49“) reicht nicht mehr.
+5. Betriebsgröße nicht belegt über der Obergrenze und keine Hinweise auf ausschließlich freie
+   Handelsvertreter, Franchise oder Provisionsbasis (§ 82 SGB III fördert keine Selbstständigen).
+
+Spalten **Beschäftigte belegt** und **Beleg Beschäftigte** zeigen Zahl und Fundstelle, sodass sich jeder
+Lead vor dem Anruf prüfen lässt. `leadscraper export --near-premium` nimmt zusätzlich die Fälle auf, bei
+denen nur der Beleg fehlt.
 
 ## Die Excel-Datei
 | Blatt | Inhalt |

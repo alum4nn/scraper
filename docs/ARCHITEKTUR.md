@@ -22,6 +22,16 @@ funding.py (Förderquote §82 SGB III + Landesprogramm)  →  scoring.py  →  e
    Person im Text zugeordnet (gleiche Karte / ±4 Zeilen / vCard-Datensatz).
 4. Lead-Score bevorzugt: Entscheider **mit** Handynummer > Firma mit Handynummer ohne Namen > nur Festnetz.
 
+## Belegschaft: `extract/staff.py`
+Für § 82 SGB III zählen nur sozialversicherungspflichtig Beschäftigte, und der Auftraggeber braucht
+Betriebe ab fünf davon. Weil die Mitarbeiterzahl fast nie auf der Website steht, zählt `count_staff()`
+**unterscheidbare Menschen** und führt sie über den Nachnamen zusammen (Namen, persönliche Postfächer,
+eigene Durchwahlen). `Enrichment.staff.headcount` ist damit eine belastbare Untergrenze und die Grundlage
+des Premium-Kriteriums; `SizeEstimate` bleibt die weichere Schätzung für Förderquote und Score.
+
+Namen kommen aus drei Quellen, weil Team-Seiten unterschiedlich gebaut sind: Fließtext (`people.find_people`),
+Bild-Alternativtexte und Links auf Personen-Unterseiten (`people.staff_from_links_and_images`).
+
 ## Betriebsgröße und Beschäftigte ohne Zahlenangabe
 Die wenigsten Makler schreiben ihre Mitarbeiterzahl auf die Website. `extract/size.py` wertet deshalb
 zuerst explizite Angaben („Team aus 14 Mitarbeitern“, Konfidenz *hoch*) und sonst Indizien
