@@ -163,8 +163,9 @@ def _scope_to_own_location(urls: set[str], website: str | None) -> set[str]:
     basis = urlsplit(website).path.rstrip("/")
     if basis.count("/") < 2:  # normale Firmenseite, kein Standort-Unterpfad
         return urls
-    eigene = {u for u in urls if urlsplit(u).path.rstrip("/").startswith(basis)}
-    return eigene or urls
+    # Bewusst ohne Rückfall auf alle Seiten: Findet sich unter dem eigenen Standort keine Team-Seite,
+    # ist die Belegschaft eben unbelegt – die der Zentrale gehört nicht diesem Betrieb.
+    return {u for u in urls if urlsplit(u).path.rstrip("/").startswith(basis)}
 
 
 def build_enrichment(company: Company, crawl: CrawlResult) -> Enrichment:

@@ -82,6 +82,18 @@ _LOW_VALUE_RE = re.compile(
     re.I,
 )
 _MAX_SONSTIGE_PAGES = 3
+# Eine Team-Seite erkennt man am Pfadabschnitt, nicht an einem Wort irgendwo im Slug:
+# „/team/“ und „/ueber-uns/“ ja, „/immobilienmakler-essen-borbeck/“ nein. Solche SEO-Ortsseiten tragen
+# Kundenstimmen, die sonst als Belegschaft gezählt werden.
+_TEAM_SEGMENT_RE = re.compile(
+    r"^(?:(?:unser|das|unsere|mein)[-_])?(?:team|teams)$|"
+    r"^(?:ueber|uber|über)[-_ ]?uns(?:[-_]\w+)?$|^about(?:[-_]us)?$|^wir(?:[-_](?:ueber|über)[-_]uns)?$|"
+    r"^(?:unsere[-_])?(?:mitarbeiter|mitarbeitende|makler|berater|experten|koepfe|köpfe|menschen)(?:innen)?$|"
+    r"^(?:geschaeftsfuehrung|geschäftsführung|geschaeftsleitung|geschäftsleitung|management|leitung|"
+    r"inhaber|partner|ansprechpartner|praxisteam|anwaelte|anwälte|aerzte|ärzte)$|"
+    r"^(?:unternehmen|firma|philosophie|historie|geschichte|profil|karriere|jobs|stellen|ausbildung)$",
+    re.I,
+)
 _PERSON_PATH_RE = re.compile(
     r"/(?:team|mitarbeiter|makler|berater|ansprechpartner|ueber-uns|about)/[a-z]+-[a-z-]+/?$", re.I
 )
@@ -148,15 +160,27 @@ def _norm_key(url: str) -> str:
     return f"{host}{path}{'?' + parts.query if parts.query else ''}"
 
 
+def _is_team_page(segmente: list[str], anchor_text: str) -> bool:
+    """Team-Seite? Entweder ein passender Pfadabschnitt oder ein eindeutiger Linktext („Unser Team“)."""
+    if any(_TEAM_SEGMENT_RE.match(seg.rsplit(".", 1)[0]) for seg in segmente):
+        return True
+    text = re.sub(r"\s+", "-", (anchor_text or "").strip().lower())
+    return bool(text and _TEAM_SEGMENT_RE.match(text))
+
+
 def classify_url(url: str, anchor_text: str = "") -> tuple[int, PageKind]:
     parts = _split(url)
     path = parts.path or "/"
     haystack = f"{path} {anchor_text}"
     penalty = 1 if _LANG_PREFIX_RE.match(path) else 0
+    segmente = [seg for seg in path.split("/") if seg]
     for prio, kind, pat in _KIND_PATTERNS:
         if pat.search(haystack):
             if kind in ("team", "karriere", "sonstige") and _LOW_VALUE_RE.search(path):
                 return 9, "sonstige"  # /ueber-uns/kundenbewertungen/, /news/, /immobilienlexikon/
+            if kind == "team" and not _is_team_page(segmente, anchor_text):
+                # „/immobilienmakler-essen-borbeck/“ ist eine Ortsseite, keine Team-Seite
+                return 4, "sonstige"
             return prio + penalty, kind
     return 9, "sonstige"
 

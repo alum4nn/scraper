@@ -289,3 +289,16 @@ def test_broken_link_does_not_abort_the_crawl(httpx_mock):
     finally:
         asyncio.run(crawler.close())
     assert [httpx.URL(p.final_url).path for p in result.pages] == ["/", "/impressum"]
+
+
+def test_seo_location_pages_are_not_team_pages():
+    """„/immobilienmakler-essen-borbeck/“ ist eine Ortsseite mit Kundenstimmen, keine Team-Seite."""
+    assert classify_url("https://x.de/team/") == (2, "team")
+    assert classify_url("https://x.de/unser-team/") == (2, "team")
+    assert classify_url("https://x.de/ueber-uns/") == (2, "team")
+    assert classify_url("https://x.de/unsere-makler/") == (2, "team")
+    assert classify_url("https://x.de/immobilienmakler-essen-borbeck/") == (4, "sonstige")
+    assert classify_url("https://x.de/immobilienmakler-koeln.html") == (4, "sonstige")
+    assert classify_url("https://x.de/hausverwaltung-bonn-beuel/")[1] == "sonstige"
+    # Ein eindeutiger Linktext reicht weiterhin, auch ohne sprechenden Pfad
+    assert classify_url("https://x.de/x", "Unser Team") == (2, "team")
