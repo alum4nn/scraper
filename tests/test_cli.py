@@ -45,10 +45,10 @@ def test_enrich_list_reads_csv_and_writes_excel(fixture_web, tmp_path: Path, mon
         "Firma;Website;PLZ\nRheinblick;www.rheinblick-immobilien-koeln.de;50667\n", encoding="utf-8"
     )
     out = tmp_path / "liste.xlsx"
-    result = runner.invoke(app, ["enrich-list", str(csv), "--out", str(out)])
+    result = runner.invoke(app, ["enrich-list", str(csv), "--out", str(out), "--premium"])
     assert result.exit_code == 0, result.stdout
     assert out.exists()
-    assert "Thomas Berger" in result.stdout
+    assert "Thomas Berger" in result.stdout and "★" in result.stdout
 
 
 def test_search_reports_places_error_without_traceback(httpx_mock, monkeypatch, tmp_path: Path):

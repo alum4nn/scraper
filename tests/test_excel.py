@@ -19,7 +19,7 @@ def test_workbook_structure_and_formats(tmp_path: Path):
     headers = [c.value for c in ws[1]]
     assert headers == list(LEAD_COLUMNS)
     assert ws.max_row == len(leads) + 1
-    assert ws.freeze_panes == "D2"
+    assert ws.freeze_panes == "E2"
     assert ws.auto_filter.ref
     col = headers.index("Handy Entscheider") + 1
     cell = ws.cell(row=2, column=col)
@@ -32,6 +32,7 @@ def test_workbook_structure_and_formats(tmp_path: Path):
     people = wb["Entscheider"]
     first = [c.value for c in people[2]]
     assert first[5]  # erste Zeile hat Handy (Handy-Einträge zuerst)
+    assert [ws.cell(row=r, column=2).value for r in range(2, ws.max_row + 1)].count("ja") == 2
     meta = {row[0].value: row[1].value for row in wb["Meta"].iter_rows(min_row=2)}
     assert meta["Anzahl Firmen"] == len(leads)
     assert meta["Entscheider mit Handy"] == 2

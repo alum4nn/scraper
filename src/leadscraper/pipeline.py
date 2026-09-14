@@ -270,10 +270,14 @@ def finalize_lead(
     lead.funding = funding.assess(size, company.bundesland, config=funding_cfg) if size else None
     lead.in_target_size = scoring.in_target_size(lead, spec)
     lead.score, lead.score_reasons = scoring.score_lead(lead, spec)
+    lead.premium_missing = scoring.premium_check(lead, spec)
+    lead.premium = not lead.premium_missing
     return lead
 
 
 def passes_filters(lead: Lead, spec: SearchSpec) -> bool:
+    if spec.premium and not lead.premium:
+        return False
     if spec.require_mobile and lead.best_mobile is None:
         return False
     # Größe: nur sicher Unpassende aussortieren; Unbekannte bleiben drin (werden im Score abgewertet)

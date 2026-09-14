@@ -68,6 +68,8 @@ SHEET_META = "Meta"
 CRM_COLUMNS: tuple[str, ...] = ("Status Akquise", "Termin am", "Notizen", "Nächster Schritt")
 LEAD_COLUMNS: tuple[str, ...] = (
     "Score",
+    "Premium",
+    "Premium-Check",
     "Firma",
     "Entscheider",
     "Rolle",
@@ -164,7 +166,7 @@ _LEAD_LINK_COLUMNS = frozenset(
     {"Handy Fundstelle", "Website", "Impressum-URL", "Google Maps", "LinkedIn", "XING", "WhatsApp"}
 )
 _LEAD_WRAP_COLUMNS = frozenset(
-    {"Pitch", "MA Beleg", "Score-Begründung", "Notizen", "Fehler", "Anruf-Indikatoren"}
+    {"Pitch", "MA Beleg", "Score-Begründung", "Notizen", "Fehler", "Anruf-Indikatoren", "Premium-Check"}
 )
 
 _KIND_LABEL = {"mobile": "mobil", "landline": "festnetz", "voip": "voip", "unknown": "unbekannt"}
@@ -213,7 +215,7 @@ def write_workbook(
         text_columns=_LEAD_TEXT_COLUMNS,
         link_columns=_LEAD_LINK_COLUMNS,
         wrap_columns=_LEAD_WRAP_COLUMNS,
-        freeze="D2",
+        freeze="E2",
     )
     _format_leads_sheet(ws_leads, n_leads)
 
@@ -261,6 +263,8 @@ def _lead_row(lead: Lead) -> dict[str, Any]:
     street, plz, city = lead.address
     row: dict[str, Any] = {
         "Score": lead.score,
+        "Premium": "ja" if lead.premium else "nein",
+        "Premium-Check": "erfüllt" if lead.premium else "\n".join(lead.premium_missing),
         "Firma": lead.display_name,
         "Entscheider": person.name if person else "",
         "Rolle": _role_label(person) if person else "",
@@ -374,6 +378,8 @@ def _meta_rows(leads: list[Lead], spec: SearchSpec) -> list[tuple[str, Any]]:
         ("Mitarbeiter von", spec.min_employees),
         ("Mitarbeiter bis", spec.max_employees),
         ("Nur mit Handy", "ja" if spec.require_mobile else "nein"),
+        ("Premium-Filter", "ja" if spec.premium else "nein"),
+        ("Premium-Leads", sum(1 for ld in leads if ld.premium)),
         ("Anzahl Firmen", len(leads)),
         ("mit Handynummer", sum(1 for ld in leads if ld.best_mobile is not None)),
         ("Entscheider mit Handy", sum(1 for ld in leads if _has_decision_maker_with_mobile(ld))),

@@ -22,6 +22,8 @@ def _lead(company: Company, enr: Enrichment | None, spec: SearchSpec) -> Lead:
     lead.funding = funding.assess(enr.size, company.bundesland) if enr else None
     lead.in_target_size = scoring.in_target_size(lead, spec)
     lead.score, lead.score_reasons = scoring.score_lead(lead, spec)
+    lead.premium_missing = scoring.premium_check(lead, spec)
+    lead.premium = not lead.premium_missing
     return lead
 
 

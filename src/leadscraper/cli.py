@@ -48,16 +48,19 @@ def _spec_from_args(
     max_employees: int | None,
     require_mobile: bool,
     exclude_chains: bool = True,
+    premium: bool = False,
 ) -> SearchSpec:
     queries = list(query)
+    profiles = _load_profiles()
+    if not queries and not profile:
+        profile = "makler"  # Standardfokus: Immobilienmakler (höchste Handy-Trefferquote)
     if profile:
-        profiles = _load_profiles()
         if profile not in profiles:
             raise typer.BadParameter(f"Unbekanntes Profil „{profile}“. Verfügbar: {', '.join(profiles)}")
         queries.extend(profiles[profile]["queries"])
-    if not queries:
-        profile = "makler"  # Standardfokus: Immobilienmakler (höchste Handy-Trefferquote)
-        queries = list(_load_profiles()[profile]["queries"])
+        types = profiles[profile].get("included_types") or []
+        if included_type is None and len(types) == 1:
+            included_type = types[0]  # z. B. real_estate_agency – filtert Portale/Fremdtreffer
     return SearchSpec(
         queries=list(dict.fromkeys(queries)),
         city=city,
@@ -68,12 +71,13 @@ def _spec_from_args(
         max_employees=max_employees,
         require_mobile=require_mobile,
         exclude_chains=exclude_chains,
+        premium=premium,
     )
 
 
 def _print_summary(leads: list[Lead], limit: int = 25) -> None:
     table = Table(title=f"Top {min(limit, len(leads))} von {len(leads)} Leads", show_lines=False)
-    for col in ("Score", "Firma", "Entscheider", "Handy", "MA", "Ort"):
+    for col in ("Score", "Premium", "Firma", "Entscheider", "Handy", "MA", "Ort"):
         table.add_column(col)
     for ld in leads[:limit]:
         bc = ld.best_contact
@@ -82,7 +86,8 @@ def _print_summary(leads: list[Lead], limit: int = 25) -> None:
         ma = "?" if not size or size.point_estimate is None else str(size.point_estimate)
         table.add_row(
             str(ld.score),
-            ld.company.name[:40],
+            "★" if ld.premium else "",
+            ld.display_name[:40],
             f"{bc.name} ({bc.role_category})" if bc else "–",
             (bm.national + (f" ({bm.person})" if bm.person else "")) if bm else "–",
             ma,
@@ -113,6 +118,11 @@ def run(
         "--chain-filter/--no-chain-filter",
         help="Ketten/Franchise/Portale (config/ausschluss.yaml) aussortieren",
     ),
+    premium: bool = typer.Option(
+        False,
+        "--premium",
+        help="Nur Diamanten: Entscheider mit namentlicher Handynummer und belegter Mitarbeiterzahl",
+    ),
     out: Path | None = typer.Option(None, "--out", "-o", help="Ziel-Excel (Default: output/leads_<…>.xlsx)"),
     json_out: Path | None = typer.Option(None, help="Zusätzlich Roh-Leads als JSON speichern"),
     verbose: bool = typer.Option(False, "-v", help="Debug-Logging"),
@@ -133,6 +143,7 @@ def run(
         max_employees,
         require_mobile,
         chain_filter,
+        premium,
     )
     where = f"{spec.city or 'ohne Ort'}, {spec.radius_km:.0f} km"
     console.print(f"[bold]Suche:[/] {', '.join(spec.queries)}  [dim]({where})[/]")
@@ -274,6 +285,7 @@ def enrich_list(
     min_employees: int | None = typer.Option(5, help="Untergrenze Mitarbeiterzahl"),
     max_employees: int | None = typer.Option(50, help="Obergrenze Mitarbeiterzahl"),
     require_mobile: bool = typer.Option(False, help="Nur Leads mit gefundener Handynummer exportieren"),
+    premium: bool = typer.Option(False, "--premium", help="Nur Premium-Leads (siehe run --premium)"),
     out: Path | None = typer.Option(None, "--out", "-o", help="Ziel-Excel"),
     verbose: bool = typer.Option(False, "-v", help="Debug-Logging"),
 ) -> None:
@@ -293,6 +305,7 @@ def enrich_list(
         min_employees=min_employees,
         max_employees=max_employees,
         require_mobile=require_mobile,
+        premium=premium,
     )
     cache = Cache(settings.cache_path)
     try:

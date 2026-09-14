@@ -1,5 +1,5 @@
 from leadscraper.models import Company, Enrichment, Lead, Person, PhoneNumber, SearchSpec, SizeEstimate
-from leadscraper.scoring import in_target_size, score_lead, sort_key
+from leadscraper.scoring import in_target_size, premium_check, score_lead, sort_key
 
 SPEC = SearchSpec(queries=["x"], min_employees=5, max_employees=50)
 
@@ -128,3 +128,54 @@ def test_owner_signal_bonus():
         company=Company(place_id="9", name="Lang Logistik GmbH", website="https://z"), enrichment=enr3
     )
     assert owner_signal(lead3) is None  # HR zählt nicht als Inhaber-Signal
+
+
+def test_premium_check_all_criteria():
+    gf = Person(name="Thomas Berger", role_category="geschaeftsfuehrung", phones=[_mobile("Thomas Berger")])
+    ok = Lead(
+        company=Company(
+            place_id="p1",
+            name="Berger Immobilien GmbH",
+            website="https://b.de",
+            business_status="OPERATIONAL",
+        ),
+        enrichment=Enrichment(
+            pages_crawled=["https://b.de/"],
+            people=[gf],
+            phones=[_mobile("Thomas Berger")],
+            size=SizeEstimate(point_estimate=8, employees_min=8, employees_max=8, confidence="medium"),
+        ),
+    )
+    assert premium_check(ok, SPEC) == []
+
+    # anonyme Firmen-Handynummer reicht nicht
+    anon = ok.model_copy(deep=True)
+    anon.enrichment.people[0].phones = []
+    assert premium_check(anon, SPEC) == ["keine Handynummer namentlich beim Entscheider"]
+
+    # Mitarbeiterzahl nur aus Rechtsform (low) → nicht belegt
+    weak = ok.model_copy(deep=True)
+    weak.enrichment.size = SizeEstimate(
+        point_estimate=12, employees_min=5, employees_max=49, confidence="low"
+    )
+    assert premium_check(weak, SPEC) == ["Mitarbeiterzahl nicht belegt"]
+
+    # zu groß
+    big = ok.model_copy(deep=True)
+    big.enrichment.size = SizeEstimate(
+        point_estimate=80, employees_min=80, employees_max=80, confidence="high"
+    )
+    assert premium_check(big, SPEC) == ["Mitarbeiterzahl außerhalb 5–50"]
+
+    # HR mit Handy ist kein Entscheider im Premium-Sinn
+    hr = ok.model_copy(deep=True)
+    hr.enrichment.people = [Person(name="Anja Roth", role_category="hr", phones=[_mobile("Anja Roth")])]
+    assert premium_check(hr, SPEC) == ["kein Entscheider im Impressum erkannt"]
+
+    # geschlossen / keine Website
+    closed = ok.model_copy(deep=True)
+    closed.company.business_status = "CLOSED_PERMANENTLY"
+    assert premium_check(closed, SPEC)[0].startswith("Google-Status")
+    assert premium_check(Lead(company=Company(place_id="x", name="X")), SPEC) == [
+        "Website nicht erreichbar/keine Website"
+    ]

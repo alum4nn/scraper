@@ -106,3 +106,34 @@ def score_lead(lead: Lead, spec: SearchSpec) -> tuple[int, list[str]]:
 
 def sort_key(lead: Lead) -> tuple:
     return (-lead.score, lead.company.name.lower())
+
+
+def premium_check(lead: Lead, spec: SearchSpec) -> list[str]:
+    """Premium = sofort terminierbar. Liefert die Liste der NICHT erfüllten Kriterien (leer = Premium).
+
+    Kriterien:
+    1. Betrieb aktiv (Google-Status OPERATIONAL oder unbekannt) und Website erreichbar
+    2. Entscheider (Geschäftsführung/Inhaber/Vorstand) aus dem Impressum bekannt
+    3. Handynummer namentlich diesem Entscheider zugeordnet (Team-/Objektseite, vCard, tel:-Link) –
+       eine anonyme Firmen-Handynummer reicht nicht
+    4. Mitarbeiterzahl belegt (explizite Angabe oder Team-Seite, Konfidenz hoch/mittel) und im Zielbereich
+    """
+    missing: list[str] = []
+    company = lead.company
+    enr = lead.enrichment
+    if company.business_status and company.business_status != "OPERATIONAL":
+        missing.append(f"Google-Status {company.business_status}")
+    if not enr or not enr.pages_crawled:
+        missing.append("Website nicht erreichbar/keine Website")
+        return missing
+    deciders = [p for p in enr.decision_makers if p.role_category in _DECIDERS]
+    if not deciders:
+        missing.append("kein Entscheider im Impressum erkannt")
+    elif not any(p.mobile for p in deciders):
+        missing.append("keine Handynummer namentlich beim Entscheider")
+    size = enr.size
+    if size.confidence not in ("high", "medium"):
+        missing.append("Mitarbeiterzahl nicht belegt")
+    elif size.in_range(spec.min_employees, spec.max_employees) is not True:
+        missing.append(f"Mitarbeiterzahl außerhalb {spec.min_employees}–{spec.max_employees}")
+    return missing

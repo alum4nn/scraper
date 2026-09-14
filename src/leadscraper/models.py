@@ -179,6 +179,8 @@ class Lead(BaseModel):
     score: int = 0
     score_reasons: list[str] = Field(default_factory=list)
     in_target_size: bool | None = None
+    premium: bool = False  # alle Premium-Kriterien erfüllt (scoring.premium_check)
+    premium_missing: list[str] = Field(default_factory=list)  # was für Premium fehlt
     scraped_at: datetime = Field(default_factory=datetime.now)
 
     # --- Convenience für Export/Scoring -------------------------------------------------
@@ -236,5 +238,6 @@ class SearchSpec(BaseModel):
     max_employees: int | None = 50
     require_mobile: bool = False
     exclude_chains: bool = True  # Ketten/Franchise/Portale (config/ausschluss.yaml) aussortieren
+    premium: bool = False  # nur Leads exportieren, die alle Premium-Kriterien erfüllen
     language: str = "de"
     region: str = "DE"
