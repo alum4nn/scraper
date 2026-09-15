@@ -236,7 +236,9 @@ def search(
     from leadscraper.places import PlacesClient
 
     async def go() -> list[Company]:
-        client = PlacesClient(settings.google_places_api_key)
+        from leadscraper.budget import request_budget
+
+        client = PlacesClient(settings.google_places_api_key, budget=request_budget(settings))
         try:
             spec = SearchSpec(
                 queries=[query],
@@ -581,6 +583,24 @@ def trello(
     out.parent.mkdir(parents=True, exist_ok=True)
     write_trello_csv(leads, out)
     console.print(f"[green]✔[/] {len(leads)} Karten → [bold]{out}[/]  (Trello: Import → CSV)")
+
+
+@app.command()
+def kosten(
+    zuruecksetzen: bool = typer.Option(False, "--zuruecksetzen", help="Zähler auf null setzen"),
+) -> None:
+    """Wie viele bezahlte Google-Anfragen wurden in diesem Monat gesendet?"""
+    from leadscraper.budget import request_budget
+
+    budget = request_budget(get_settings())
+    if zuruecksetzen:
+        budget.zuruecksetzen()
+        console.print("[yellow]Zähler zurückgesetzt.[/]")
+    verbraucht, rest = budget.verbraucht(), budget.rest()
+    farbe = "green" if rest > budget.limit * 0.2 else "red"
+    console.print(f"[{farbe}]{budget.bericht()}[/]")
+    if verbraucht == 0:
+        console.print("[dim]Keine bezahlte Anfrage in diesem Monat – alles kam aus dem Zwischenspeicher.[/]")
 
 
 @app.command()

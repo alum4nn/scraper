@@ -36,6 +36,9 @@ class Settings(BaseSettings):
         default=PROJECT_ROOT / "cache" / "leadscraper.sqlite", alias="LEADSCRAPER_CACHE_PATH"
     )
     places_cache_ttl_days: int = Field(default=1, alias="LEADSCRAPER_PLACES_CACHE_TTL_DAYS")
+    # Google rechnet jede Anfrage ab. Die Vorgabe liegt bewusst weit unter jedem Freikontingent,
+    # damit die Recherche nichts kostet. Erhöhen erst nach Blick in die Google Cloud Console.
+    google_monatslimit: int = Field(default=1000, alias="LEADSCRAPER_GOOGLE_MONATSLIMIT")
     html_cache_ttl_days: int = Field(default=14, alias="LEADSCRAPER_HTML_CACHE_TTL_DAYS")
 
     output_dir: Path = Field(default=PROJECT_ROOT / "output", alias="LEADSCRAPER_OUTPUT_DIR")

@@ -14,6 +14,7 @@ from urllib.parse import urlsplit
 from pydantic import ValidationError
 
 from leadscraper import funding, scoring
+from leadscraper.budget import request_budget
 from leadscraper.cache import Cache
 from leadscraper.crawler import CrawlResult, Page, SiteCrawler
 from leadscraper.dedupe import dedupe_companies
@@ -573,7 +574,10 @@ async def run(spec: SearchSpec, settings: Settings, progress: ProgressFn | None 
         raise RuntimeError("GOOGLE_PLACES_API_KEY fehlt (.env anlegen, siehe .env.example)")
     cache = Cache(settings.cache_path)
     places = PlacesClient(
-        settings.google_places_api_key, cache=cache, cache_ttl_days=settings.places_cache_ttl_days
+        settings.google_places_api_key,
+        cache=cache,
+        cache_ttl_days=settings.places_cache_ttl_days,
+        budget=request_budget(settings),
     )
     try:
         companies = await search_companies(spec, places, progress)
@@ -721,7 +725,10 @@ async def run_cities(
     all_leads = read_leads_jsonl(jsonl_path)
     cache = Cache(settings.cache_path)
     places = PlacesClient(
-        settings.google_places_api_key, cache=cache, cache_ttl_days=settings.places_cache_ttl_days
+        settings.google_places_api_key,
+        cache=cache,
+        cache_ttl_days=settings.places_cache_ttl_days,
+        budget=request_budget(settings),
     )
     try:
         for i, ort in enumerate(orte, start=1):

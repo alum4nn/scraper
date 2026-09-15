@@ -34,5 +34,12 @@ Liste (`config/ausschluss.yaml`, `Enrichment.employment_signal`).
 - Der API-Key steht in `.env` und gehört nie in einen Commit oder eine Ausgabe.
 - Nach Änderungen an den Extraktoren wirken diese über `leadscraper rebuild` (liest aus dem HTML-Cache,
   keine Google-Anfragen) rückwirkend auf bereits abgearbeitete Orte; `leadscraper refresh` bewertet nur neu.
-- Google-Anfragen kosten Geld: erst nachrechnen, dann starten. Ein Ort kostet zwei Textsuchen plus
-  ein Geocoding.
+- Google-Anfragen kosten Geld. Der Auftraggeber will dafür nichts bezahlen, deshalb bremst
+  `LEADSCRAPER_GOOGLE_MONATSLIMIT` (Vorgabe 1000) jede bezahlte Anfrage: Der Zähler steht in
+  `output/google_verbrauch.json`, `leadscraper kosten` zeigt den Stand, und oberhalb der Grenze wird
+  nichts mehr gesendet. Vor dem Erhöhen das eigene Freikontingent in der Google Cloud Console nachsehen.
+  Ein Ort kostet zwei Textsuchen plus ein Geocoding. Treffer aus dem Zwischenspeicher kosten nichts.
+- Ohne Google geht es auch: `leadscraper enrich-list <datei.csv>` schickt eine eigene Firmenliste
+  (Spalten Firma, Website, optional Telefon, Straße, PLZ, Ort) durch dieselbe Pipeline. Für neue
+  Branchen ist das der bevorzugte Weg, `leadscraper rebuild` und `refresh` arbeiten ohnehin
+  ausschließlich aus dem Zwischenspeicher.

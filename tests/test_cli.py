@@ -53,6 +53,8 @@ def test_enrich_list_reads_csv_and_writes_excel(fixture_web, tmp_path: Path, mon
 
 def test_search_reports_places_error_without_traceback(httpx_mock, monkeypatch, tmp_path: Path):
     monkeypatch.setenv("GOOGLE_PLACES_API_KEY", "test-key")
+    # Der Anfragezähler darf nicht in den echten Ausgabeordner schreiben
+    monkeypatch.setenv("LEADSCRAPER_OUTPUT_DIR", str(tmp_path / "out"))
     monkeypatch.chdir(tmp_path)
     httpx_mock.add_response(
         status_code=403,

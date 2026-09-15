@@ -53,6 +53,7 @@ from tenacity import (
 )
 
 from leadscraper import geo
+from leadscraper.budget import RequestBudget
 from leadscraper.cache import Cache
 from leadscraper.models import Company
 
@@ -263,12 +264,14 @@ class PlacesClient:
         cache: Cache | None = None,
         cache_ttl_days: int = 30,
         http: httpx.AsyncClient | None = None,
+        budget: RequestBudget | None = None,
     ) -> None:
         if not api_key or not api_key.strip():
             raise PlacesError("Google-Places-API-Key fehlt")
         self._api_key = api_key.strip()
         self._cache = cache
         self._cache_ttl_days = cache_ttl_days
+        self._budget = budget
         self._owns_http = http is None
         self._http = http or httpx.AsyncClient(timeout=httpx.Timeout(30.0))
 
@@ -388,6 +391,10 @@ class PlacesClient:
         return data
 
     async def _post(self, path: str, body: dict[str, Any], field_mask: str) -> dict[str, Any]:
+        # Einziger Punkt, an dem eine bezahlte Anfrage das Haus verlässt – hier greift die Ausgabenbremse.
+        # Zwischenspeicher-Treffer kommen hier gar nicht an und kosten deshalb nichts.
+        if self._budget is not None:
+            self._budget.reservieren()
         url = f"{PLACES_BASE}/{path}"
         headers = {
             "X-Goog-Api-Key": self._api_key,
