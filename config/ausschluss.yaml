@@ -96,6 +96,84 @@ domains:
   - tuev-sued.de
   - tuv.com
   - dekra.de
+  # Ketten und Portale der neuen Zielbranchen (Recherche 15.09.2026)
+  # Steuerberatung
+  - etl.de
+  - ecovis.com
+  - roedl.com
+  - bakertilly.de
+  - rsm.de
+  - ebnerstolz.de
+  - wts.com
+  - felix1.de
+  - lohi.de
+  - vlh.de
+  - datev.de
+  # Pflege
+  - korian.de
+  - alloheim.de
+  - kursana.de
+  - advita.de
+  - homeinstead.de
+  - promedicaplus.de
+  - pro-seniore.de
+  - caritas.de
+  - diakonie.de
+  - awo.org
+  - drk.de
+  - johanniter.de
+  - malteser.de
+  - asb.de
+  - volkssolidaritaet.de
+  # Apotheken (Versender und Portale, keine Vor-Ort-Betriebe)
+  - docmorris.de
+  - shop-apotheke.com
+  - redcare-pharmacy.com
+  - gesund.de
+  - aponet.de
+  # Zahnmedizin (Investoren-MVZ-Ketten und Buchungsportale)
+  - zahneins.com
+  - colosseumdental.de
+  - dental21.de
+  - jameda.de
+  - doctolib.de
+  # Kfz
+  - emilfrey.de
+  - avag.eu
+  - weller.de
+  - gottfried-schultz.de
+  - autohaus-dello.de
+  - mobile.de
+  - autoscout24.de
+  # Spedition und Logistik
+  - dachser.com
+  - kuehne-nagel.com
+  - dbschenker.com
+  - rhenus.com
+  - hellmann.com
+  - dhl.de
+  - dpd.com
+  - gls-group.com
+  - hermesworld.com
+  - ups.com
+  - fedex.com
+  - emons.de
+  - raben-group.com
+  - nagel-group.com
+  # Planung und Technik
+  - dreso.com
+  - arcadis.com
+  - wsp.com
+  - ramboll.com
+  - obermeyer-group.com
+  - thermondo.de
+  - enpal.de
+  - 1komma5grad.com
+  - techem.de
+  - ista.com
+  - spie.de
+  - apleona.com
+
 names:
   - "Engel & Völkers"
   - "RE/MAX"
@@ -157,3 +235,56 @@ names:
   - "Aengevelt"
   - "Grossmann & Berger"
   - "Angermann"
+  # Neue Zielbranchen: Verbünde, Vereine und Konzerne, bei denen die Entscheidung nicht vor Ort fällt
+  - "ETL "
+  - "Ecovis"
+  - "Rödl & Partner"
+  - "Baker Tilly"
+  - "Ebner Stolz"
+  - "Lohnsteuerhilfe"
+  - "Lohi"
+  - "Vereinigte Lohnsteuerhilfe"
+  - "Korian"
+  - "Alloheim"
+  - "Kursana"
+  - "advita"
+  - "Home Instead"
+  - "Promedica"
+  - "Pro Seniore"
+  - "Caritas"
+  - "Diakonie"
+  - "Arbeiterwohlfahrt"
+  - "AWO "
+  - "Deutsches Rotes Kreuz"
+  - "DRK "
+  - "Johanniter"
+  - "Malteser"
+  - "Arbeiter-Samariter"
+  - "Volkssolidarität"
+  - "DocMorris"
+  - "Shop Apotheke"
+  - "zahneins"
+  - "Colosseum Dental"
+  - "DENTAL21"
+  - "Emil Frey"
+  - "AVAG"
+  - "Gottfried Schultz"
+  - "Dachser"
+  - "Kühne + Nagel"
+  - "Kuehne + Nagel"
+  - "DB Schenker"
+  - "Rhenus"
+  - "Hellmann Worldwide"
+  - "DHL"
+  - "DPD"
+  - "GLS "
+  - "Hermes "
+  - "Drees & Sommer"
+  - "Arcadis"
+  - "Ramboll"
+  - "Obermeyer"
+  - "Thermondo"
+  - "Enpal"
+  - "1KOMMA5"
+  - "Techem"
+  - "ista "

@@ -16,6 +16,71 @@ profiles:
       - "Immobilienvermittlung"
       - "Makler Wohnung Haus"
     included_types: [real_estate_agency]
+  # --- Aus der Branchenrecherche vom 15.09.2026 (siehe docs/BRANCHEN.md) -------------------------
+  # Sortiert nach belegter Eignung. Entscheidend ist nicht der KI-Druck allein, sondern die
+  # Betriebsgröße: Bei Maklern haben 96,8 % der Niederlassungen unter zehn Beschäftigte
+  # (Destatis-Unternehmensregister 2024), deshalb blieb die Ausbeute bei 1,7 %.
+  steuerberatung:
+    beschreibung: "Steuerkanzleien – Ø 4,5 Beschäftigte je Einzelpraxis, Ø 32,8 je Berufsausübungsgesellschaft (STAX 2024); Kammer leitet aus Art. 4 KI-VO eine Fortbildungspflicht ab"
+    queries:
+      - "Steuerberater"
+      - "Steuerberatungsgesellschaft"
+      - "Steuerkanzlei"
+      - "Lohnbuchhaltung Büro"
+    included_types: [accounting]
+  pflegedienst:
+    beschreibung: "Ambulante Pflegedienste und Tagespflege – 15.549 Dienste, Ø 28,7 Beschäftigte, 68,5 % privat (Pflegestatistik 2023); Altenpflege ist mit rund einem Drittel aller Zugänge größter Nutzer der Förderung"
+    # Kein included_type: „Pflegedienst“ hat in Table A keinen eigenen Typ, ein falscher Typ
+    # lässt die Textsuche ins Leere laufen.
+    queries:
+      - "Ambulanter Pflegedienst"
+      - "Pflegedienst"
+      - "Tagespflege"
+      - "Intensivpflegedienst"
+      - "Seniorenbetreuung Pflege"
+  zahnarztpraxis:
+    beschreibung: "Zahnarztpraxen – 37.423 Praxen, Ø 8,13 Beschäftigte ohne Inhaber (KZBV-Jahrbuch 2025), fast ausschließlich sozialversicherungspflichtige ZFA"
+    queries:
+      - "Zahnarztpraxis"
+      - "Zahnarzt"
+      - "Kieferorthopädie Praxis"
+    included_types: [dentist]
+  apotheke:
+    beschreibung: "Apotheken – 16.601 Betriebe, knapp 10 Beschäftigte je Betrieb, 12.802 Inhaber (ABDA Juni 2026); Fremdbesitzverbot, also fast immer inhabergeführt"
+    queries:
+      - "Apotheke"
+      - "Stadtapotheke"
+    included_types: [pharmacy]
+  kfz_betrieb:
+    beschreibung: "Autohäuser und Kfz-Werkstätten – 36.030 Betriebe mit 428.000 Beschäftigten, Ø 11,9 (ZDK 2024); Kfz-Gewerbe liegt über dem Handwerksschnitt"
+    queries:
+      - "Autohaus"
+      - "Kfz-Werkstatt"
+      - "Kfz-Meisterbetrieb"
+      - "Autoservice Werkstatt"
+    included_types: [car_repair, car_dealer]
+  spedition:
+    beschreibung: "Speditionen und Logistikdienstleister – rund die Hälfte der 46.902 Güterkraftverkehrs-Unternehmen hat 5–49 Beschäftigte (BALM 2020); Berufskraftfahrer sind zweithäufigster geförderter Zielberuf"
+    queries:
+      - "Spedition"
+      - "Transportunternehmen"
+      - "Logistikunternehmen"
+      - "Lagerlogistik Dienstleister"
+  planungsbuero:
+    beschreibung: "Architektur- und Ingenieurbüros – 7.558 von 34.986 Architekturbüros haben 5–49 Beschäftigte (BAK/Destatis 2023); 77 % der Architekten wünschen KI-Fortbildung"
+    queries:
+      - "Architekturbüro"
+      - "Ingenieurbüro"
+      - "Planungsbüro Bau"
+      - "Statikbüro"
+  elektro_shk:
+    beschreibung: "Elektro- und SHK-Betriebe – 48.178 E-Betriebe (Ø 10,7) und 48.050 SHK-Betriebe (Ø 8,1); 76 % der Handwerksbetriebe sehen Digitalkompetenzbedarf, nur 4 % nutzen KI (Bitkom 2025)"
+    queries:
+      - "Elektrotechnik Betrieb"
+      - "Elektroinstallation Meisterbetrieb"
+      - "Sanitär Heizung Klima Betrieb"
+      - "Heizungsbau Betrieb"
+    included_types: [electrician, plumber]
   versicherung:
     beschreibung: "Versicherungs-/Finanzmakler – Vertriebler mit Handy, Büro-Personal mit Verwaltungsaufwand"
     queries:

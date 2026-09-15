@@ -43,3 +43,23 @@ def test_real_estate_chains_and_portals_are_dropped():
     keep, dropped = filter_chains([*chains, eigen])
     assert [c.name for c in keep] == ["Müller Immobilien GmbH"]
     assert len(dropped) == len(chains)
+
+
+def test_pflege_und_steuer_ketten_werden_aussortiert():
+    """Neue Zielbranchen: Trägerkonzerne, Kanzleiverbünde und Versender sind keine Einzelbetriebe."""
+    from leadscraper.exclusions import exclusion_reason
+    from leadscraper.models import Company
+
+    korian = Company(
+        place_id="k1", name="Korian Seniorenzentrum Lindenhof", website="https://www.korian.de/x"
+    )
+    caritas = Company(place_id="k2", name="Caritas Sozialstation St. Martin", website=None)
+    lohi = Company(place_id="k3", name="Lohnsteuerhilfeverein Beratungsstelle Bonn", website=None)
+    etl = Company(place_id="k4", name="ETL Steuerberatung Nord GmbH", website="https://www.etl.de/nord")
+    docmorris = Company(place_id="k5", name="DocMorris Apotheke", website="https://www.docmorris.de")
+    eigen = Company(
+        place_id="k6", name="Pflegedienst Sonnenschein GmbH", website="https://pflege-sonnenschein.example"
+    )
+    for kette in (korian, caritas, lohi, etl, docmorris):
+        assert exclusion_reason(kette) is not None, kette.name
+    assert exclusion_reason(eigen) is None
