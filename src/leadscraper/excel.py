@@ -32,6 +32,8 @@ Spaltenlogik "Name" / "Nummer" (Leads-Blatt):
   Lead.best_contact zurück.
 - Nummer = Handynummer dieser Person. Hat sie keine, wird eine Handynummer OHNE
   Personenzuordnung (z. B. WhatsApp-Nummer der Firma) eingetragen – nie die Nummer einer anderen Person.
+  Gibt es gar keine Handynummer, steht dort die Festnetznummer der Zentrale (Website vor Places),
+  damit die Spalte immer wählbar ist.
 - Weitere Handynummern = alle übrigen Handynummern, bei bekannter Person mit Name in Klammern.
 """
 
@@ -52,6 +54,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from leadscraper.models import (
     ROLE_PRIORITY,
+    Company,
     Enrichment,
     FundingAssessment,
     Lead,
@@ -286,7 +289,7 @@ def _lead_row(lead: Lead) -> dict[str, Any]:
         "Unternehmensname": lead.display_name,
         "Name": person.name if person else "",
         "Rolle": _role_label(person) if person else "",
-        "Nummer": mobile.national if mobile else "",
+        "Nummer": mobile.national if mobile else _fallback_number(company, enr),
         "Handy-Zuordnung": _mobile_assignment_label(enr),
         "Handy Fundstelle": (mobile.source_url or "") if mobile else "",
         "Weitere Handynummern": ", ".join(_other_mobiles(enr, mobile)),
@@ -456,6 +459,17 @@ def _primary_mobile(lead: Lead, person: Person | None) -> PhoneNumber | None:
     if best and not best.person:
         return best
     return next((m for m in enr.mobiles if not m.person), None)
+
+
+def _fallback_number(company: Company, enr: Enrichment | None) -> str:
+    """Keine Handynummer? Dann die Zentrale, damit die Spalte „Nummer“ immer wählbar ist.
+
+    Betriebe mit fünf und mehr Beschäftigten haben meist eine Telefonanlage und gerade kein Handy auf
+    der Website (Liste B). Ohne diese Rückfallebene stünde bei ihnen eine leere Spalte, obwohl die
+    Festnetznummer daneben steht.
+    """
+    landline = _website_landline(enr)
+    return landline or (company.phone or "")
 
 
 def _other_mobiles(enr: Enrichment | None, primary: PhoneNumber | None) -> list[str]:

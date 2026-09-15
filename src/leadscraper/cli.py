@@ -394,6 +394,26 @@ def is_near_premium(lead: Lead) -> bool:
     return not offen and lead.enrichment.staff.headcount >= _NEAR_PREMIUM_MIN
 
 
+_OHNE_HANDY = "keine Handynummer beim Entscheider"
+
+
+def has_workforce(lead: Lead) -> bool:
+    """Liste B: Entscheider bekannt, Belegschaft belegt – aber nur die Zentrale auf der Website.
+
+    Eine Handynummer im Impressum ist erlaubt, weil ein Festnetzanschluss Einzelunternehmer
+    unverhältnismäßig belasten würde – sie ist deshalb ein Marker für sehr kleine Betriebe. Wer fünf
+    Beschäftigte hat, hat meist eine Telefonanlage mit Durchwahlen und gerade kein Handy auf der Seite.
+    Die beiden Pflichtkriterien arbeiten also gegeneinander: In den vorhandenen Daten stehen 286
+    Betrieben mit namentlicher Handynummer 1.704 gegenüber, die nur über die Zentrale erreichbar sind.
+    Diese Liste ist das Gegenstück zu Premium – ein Gespräch mehr am Empfang, dafür siebenmal so viele
+    Betriebe, die die Förderbedingung tatsächlich erfüllen.
+    """
+    if lead.enrichment is None:
+        return False
+    offen = [m for m in lead.premium_missing or [] if m != _OHNE_HANDY]
+    return not offen and lead.enrichment.staff.headcount >= (_NEAR_PREMIUM_MIN + 2)
+
+
 def _load_leads(paths: list[Path], *, exclude_chains: bool = True) -> list[Lead]:
     """Leads aus einer oder mehreren Dateien; Duplikate (place_id/Domain, z. B. Grenzregionen) einmal.
 
@@ -438,20 +458,30 @@ def export(
         "--near-premium",
         help="Premium plus Fast-Premium: Entscheider mit Handy, nur Mitarbeiterzahl/Beschäftigte unbelegt",
     ),
+    mit_belegschaft: bool = typer.Option(
+        False,
+        "--mit-belegschaft",
+        help="Liste B: Entscheider und mindestens fünf belegte Beschäftigte, Handynummer nicht nötig",
+    ),
     min_score: int = typer.Option(0, help="Mindest-Score"),
 ) -> None:
     """Excel aus gespeicherten Leads bauen (z. B. nur Premium, ohne neuen Crawl)."""
     leads = _load_leads(jsonl)
-    if near_premium:
+    if mit_belegschaft:
+        leads = [ld for ld in leads if ld.premium or has_workforce(ld)]
+    elif near_premium:
         leads = [ld for ld in leads if ld.premium or is_near_premium(ld)]
     elif premium:
         leads = [ld for ld in leads if ld.premium]
     leads = [ld for ld in leads if ld.score >= min_score]
     first = jsonl[0]
-    suffix = "_near_premium" if near_premium else ("_premium" if premium else "")
+    if mit_belegschaft:
+        suffix = "_mit_belegschaft"
+    else:
+        suffix = "_near_premium" if near_premium else ("_premium" if premium else "")
     target = out or first.with_name(first.stem + suffix + ".xlsx")
     names = ", ".join(p.name for p in jsonl)
-    spec = SearchSpec(queries=[f"Export: {names}"], premium=premium or near_premium)
+    spec = SearchSpec(queries=[f"Export: {names}"], premium=premium or near_premium or mit_belegschaft)
     write_workbook(leads, spec, target, funding_rows=funding.funding_reference_rows())
     _print_summary(leads)
     n_prem = sum(1 for ld in leads if ld.premium)
@@ -533,11 +563,18 @@ def trello(
     jsonl: list[Path] = typer.Argument(..., help="JSONL-Datei(en) aus --deutschland"),
     out: Path = typer.Option(Path("output/trello.csv"), "--out", "-o", help="Ziel-CSV für Trello-Import"),
     premium: bool = typer.Option(True, "--premium/--alle", help="Nur Premium-Leads (Default: ja)"),
+    mit_belegschaft: bool = typer.Option(
+        False,
+        "--mit-belegschaft",
+        help="Liste B: Entscheider und mindestens fünf belegte Beschäftigte, Handynummer nicht nötig",
+    ),
     limit: int | None = typer.Option(None, help="Höchstens so viele Karten (beste Scores zuerst)"),
 ) -> None:
     """CSV für den Trello-Import: Spalte 1 = Unternehmensname (Kartenname), Spalte 2 = alle Infos."""
     leads = _load_leads(jsonl)
-    if premium:
+    if mit_belegschaft:
+        leads = [ld for ld in leads if ld.premium or has_workforce(ld)]
+    elif premium:
         leads = [ld for ld in leads if ld.premium]
     if limit:
         leads = leads[:limit]

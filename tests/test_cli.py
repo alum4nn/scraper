@@ -142,3 +142,26 @@ def test_export_applies_current_chain_list(tmp_path: Path):
     assert result.exit_code == 0, result.stdout
     assert "1 Ketten/Franchise/Portale aussortiert" in result.stdout
     assert "1 Leads" in result.stdout
+
+
+def test_has_workforce_nimmt_zentrale_statt_handy():
+    """Liste B: Betriebe mit belegter Belegschaft, bei denen nur die Handynummer fehlt."""
+    from leadscraper.cli import has_workforce
+    from leadscraper.models import Company, Enrichment, Lead, StaffEvidence
+
+    def lead(missing: list[str], headcount: int) -> Lead:
+        return Lead(
+            company=Company(place_id="x", name="Muster GmbH"),
+            enrichment=Enrichment(staff=StaffEvidence(headcount=headcount)),
+            premium_missing=missing,
+        )
+
+    assert has_workforce(lead(["keine Handynummer beim Entscheider"], 7))
+    assert has_workforce(lead([], 5))
+    # Zu wenig belegte Köpfe: gehört in die zweite Reihe, nicht in Liste B
+    assert not has_workforce(lead(["keine Handynummer beim Entscheider"], 4))
+    # Andere offene Punkte bleiben Ausschluss
+    assert not has_workforce(lead(["kein Entscheider im Impressum erkannt"], 9))
+    assert not has_workforce(
+        lead(["keine Handynummer beim Entscheider", "freie Handelsvertreter/Franchise – x"], 9)
+    )

@@ -231,3 +231,32 @@ def test_many_managing_directors_is_not_a_small_business():
         ),
     )
     assert any("Konzern" in m for m in premium_check(lead, SPEC))
+
+
+def test_zu_grosser_betrieb_ist_kein_premium():
+    """Die belegte Kopfzahl ist eine Untergrenze – liegt sie über der Obergrenze, ist der Betrieb zu groß."""
+    from leadscraper.models import Company, Enrichment, Lead, Person, PhoneNumber, SearchSpec, StaffEvidence
+    from leadscraper.scoring import premium_check
+
+    handy = PhoneNumber(
+        raw="0171 1234567",
+        e164="+491711234567",
+        national="0171 1234567",
+        kind="mobile",
+        source="impressum",
+        person="Tim Gross",
+    )
+    chef = Person(name="Tim Gross", role="Geschäftsführer", role_category="geschaeftsfuehrung", mobile=handy)
+    lead = Lead(
+        company=Company(place_id="g1", name="Gross Verbund GmbH"),
+        enrichment=Enrichment(
+            website="https://gross.example",
+            pages_crawled=["https://gross.example/impressum"],
+            people=[chef],
+            phones=[handy],
+            staff=StaffEvidence(headcount=148, named=148, evidence=["148 namentlich genannte Mitarbeitende"]),
+        ),
+    )
+    spec = SearchSpec(queries=["x"], min_employees=5, max_employees=50)
+    fehlt = premium_check(lead, spec)
+    assert any("über 50" in m for m in fehlt), fehlt

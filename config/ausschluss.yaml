@@ -235,6 +235,12 @@ names:
   - "Aengevelt"
   - "Grossmann & Berger"
   - "Angermann"
+  # Netzwerk aus rechtlich eigenständigen Büros mit gemeinsamer Teamseite: Die 148 Namen dort
+  # gehören dem Verbund, nicht dem Standort mit drei Leuten.
+  - "Bauexperts"
+  - "LBS Immobilien"
+  - "LBS Südwest"
+  - "LBS Nord"
   # Neue Zielbranchen: Verbünde, Vereine und Konzerne, bei denen die Entscheidung nicht vor Ort fällt
   - "ETL "
   - "Ecovis"

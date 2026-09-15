@@ -70,3 +70,36 @@ def test_trello_csv_has_two_columns_and_all_infos(tmp_path: Path):
     for label in ("Ansprechpartner", "Handy", "Webseite", "Förderung § 82 SGB III", "Pitch"):
         assert f"**{label}:**" in body
     assert "\n" in body  # mehrzeilige Beschreibung bleibt in einer CSV-Zelle
+
+
+def test_nummer_faellt_auf_die_zentrale_zurueck():
+    """Liste B: Ohne Handynummer gehört die Festnetznummer in die Spalte „Nummer“."""
+    from leadscraper.excel import lead_rows
+    from leadscraper.models import Company, Enrichment, Lead, Person, PhoneNumber
+
+    lead = Lead(
+        company=Company(place_id="z1", name="Beispiel Verwaltung GmbH", phone="+49 221 1234560"),
+        enrichment=Enrichment(
+            website="https://beispiel.example",
+            pages_crawled=["https://beispiel.example/impressum"],
+            people=[
+                Person(
+                    name="Anna Beispiel",
+                    role="Geschäftsführerin",
+                    role_category="geschaeftsfuehrung",
+                )
+            ],
+            phones=[
+                PhoneNumber(
+                    raw="0221 1234560",
+                    e164="+492211234560",
+                    national="0221 1234560",
+                    kind="landline",
+                    source="impressum",
+                )
+            ],
+        ),
+    )
+    row = lead_rows([lead])[0]
+    assert row["Name"] == "Anna Beispiel"
+    assert row["Nummer"] == "0221 1234560"

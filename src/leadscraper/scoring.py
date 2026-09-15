@@ -154,6 +154,11 @@ def premium_check(lead: Lead, spec: SearchSpec) -> list[str]:
         missing.append(f"nur {enr.staff.headcount} Beschäftigte belegt (mindestens {mindest} gefordert)")
     if size.confidence == "high" and size.in_range(None, spec.max_employees) is False:
         missing.append(f"Betriebsgröße belegt über {spec.max_employees}")
+    # Die belegte Kopfzahl ist eine Untergrenze: Liegt schon sie über der Obergrenze, ist der Betrieb
+    # zu groß für das Förderband (unter 50 Beschäftigten: 100 % Lehrgangskosten, darüber die Hälfte).
+    # Solche Treffer sind meist Gruppen oder Netzwerke mit einer gemeinsamen Teamseite.
+    if spec.max_employees and enr.staff.headcount > spec.max_employees:
+        missing.append(f"{enr.staff.headcount} Beschäftigte belegt – über {spec.max_employees}")
     # § 82 SGB III fördert nur sozialversicherungspflichtig Beschäftigte – freie Handelsvertreter zählen nicht
     if enr.employment_signal == "frei":
         missing.append("freie Handelsvertreter/Franchise – keine förderfähigen Beschäftigten erkennbar")
