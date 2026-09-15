@@ -633,7 +633,12 @@ def osm(
             )
         )
     console.print(f"[bold]{profile}[/]: {len(filter_)} OpenStreetMap-Abfragen für {gebiet}")
-    ergebnis = fetch_branch(filter_, gebiet=gebiet, nur_mit_website=not alle)
+    from leadscraper.osm import OverpassError
+
+    try:
+        ergebnis = fetch_branch(filter_, gebiet=gebiet, nur_mit_website=not alle)
+    except OverpassError as exc:
+        raise typer.Exit(code=_err(str(exc))) from exc
     behalten, verworfen = filter_chains(ergebnis.firmen)
     if verworfen:
         console.print(f"[dim]{len(verworfen)} Ketten/Franchise/Portale aussortiert[/]")

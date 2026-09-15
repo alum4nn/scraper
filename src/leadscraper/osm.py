@@ -36,7 +36,10 @@ SPIEGEL: tuple[str, ...] = (
     "https://overpass.private.coffee/api/interpreter",
 )
 _UEBERLASTET = frozenset({429, 502, 503, 504})
-_WARTEN = (5.0, 20.0, 60.0)
+# Overpass ist häufig belegt. Lieber geduldig warten als aufgeben: Die Abfrage ist kostenlos, ein
+# Fehlschlag kostet dagegen den ganzen Branchenabruf.
+_WARTEN = (5.0, 15.0, 30.0, 60.0, 90.0)
+_RUNDEN = 3
 _ABFRAGE_TIMEOUT = 180
 _PAUSE_ZWISCHEN_TAGS = 3.0
 
@@ -55,27 +58,58 @@ def bauen(tag_filter: str, *, gebiet: str = "DE", timeout: int = _ABFRAGE_TIMEOU
     )
 
 
-def _abrufen(abfrage: str, *, client: httpx.Client, warten: tuple[float, ...] = _WARTEN) -> dict:
+def _retry_after(antwort: httpx.Response) -> float | None:
+    """Wartezeit, die der Server selbst nennt – die schlägt jede eigene Schätzung."""
+    wert = (antwort.headers.get("retry-after") or "").strip()
+    if wert.isdigit():
+        return min(float(wert), 300.0)
+    return None
+
+
+def _abrufen(
+    abfrage: str,
+    *,
+    client: httpx.Client,
+    warten: tuple[float, ...] | None = None,
+    runden: int | None = None,
+) -> dict:
+    """Eine Overpass-Abfrage über alle Spiegel, mehrere Runden lang, mit wachsender Wartezeit.
+
+    Die Vorgaben werden hier und nicht in der Signatur aufgelöst: Vorgabewerte einer Signatur werden
+    beim Import festgelegt und ließen sich in Tests nicht mehr ersetzen.
+    """
+    warten = warten if warten is not None else _WARTEN
+    runden = runden if runden is not None else _RUNDEN
     letzter_fehler = "kein Versuch"
-    for versuch, server in enumerate(SPIEGEL):
-        try:
-            antwort = client.post(server, data={"data": abfrage}, timeout=timeout_fuer(abfrage))
-        except httpx.HTTPError as exc:
-            letzter_fehler = f"{type(exc).__name__}: {str(exc)[:120]}"
-            log.debug("Overpass %s: %s", server, letzter_fehler)
-        else:
-            if antwort.status_code == 200:
-                try:
-                    return antwort.json()
-                except ValueError as exc:  # Overpass schickt bei Überlast auch mal HTML
-                    letzter_fehler = f"unlesbare Antwort: {exc}"
+    versuche = 0
+    gesamt = runden * len(SPIEGEL)
+    for _runde in range(runden):
+        for server in SPIEGEL:
+            versuche += 1
+            pause: float | None = None
+            try:
+                antwort = client.post(server, data={"data": abfrage}, timeout=timeout_fuer(abfrage))
+            except httpx.HTTPError as exc:
+                letzter_fehler = f"{type(exc).__name__}: {str(exc)[:120]}"
+                log.debug("Overpass %s: %s", server, letzter_fehler)
             else:
-                letzter_fehler = f"HTTP {antwort.status_code}"
-                if antwort.status_code not in _UEBERLASTET:
-                    raise OverpassError(f"Overpass {server}: {letzter_fehler}")
-        if versuch < len(warten):
-            time.sleep(warten[versuch])
-    raise OverpassError(f"Alle Overpass-Server ausgefallen, zuletzt: {letzter_fehler}")
+                if antwort.status_code == 200:
+                    try:
+                        return antwort.json()
+                    except ValueError as exc:  # Overpass schickt bei Überlast auch mal HTML
+                        letzter_fehler = f"unlesbare Antwort: {exc}"
+                else:
+                    letzter_fehler = f"HTTP {antwort.status_code}"
+                    if antwort.status_code not in _UEBERLASTET:
+                        raise OverpassError(f"Overpass {server}: {letzter_fehler}")
+                    pause = _retry_after(antwort)
+            if versuche < gesamt:
+                time.sleep(pause if pause is not None else warten[min(versuche - 1, len(warten) - 1)])
+    raise OverpassError(
+        f"Overpass antwortet auch nach {versuche} Versuchen auf {len(SPIEGEL)} Servern nicht "
+        f"(zuletzt: {letzter_fehler}). Die Server sind gespendete Rechenzeit und zeitweise belegt – "
+        f"später erneut versuchen, der Abruf kostet nichts."
+    )
 
 
 def timeout_fuer(abfrage: str) -> float:

@@ -96,3 +96,28 @@ def test_csv_passt_zum_importer(httpx_mock, tmp_path):
     assert [f.name for f in firmen] == ["Steuerkanzlei Meier"]
     assert firmen[0].website == "https://www.kanzlei-meier.de"
     assert firmen[0].city == "Köln"
+
+
+def test_gibt_erst_nach_mehreren_runden_auf(httpx_mock, monkeypatch):
+    """Overpass ist gespendete Rechenzeit und oft belegt – Aufgeben nach drei Versuchen wäre zu früh."""
+    from leadscraper import osm as osm_mod
+
+    monkeypatch.setattr(osm_mod, "_WARTEN", (0.0,))
+    httpx_mock.add_response(status_code=504, text="belegt", is_reusable=True)
+    with pytest.raises(OverpassError) as fehler:
+        fetch_branch(['["office"="tax_advisor"]'], pause=0)
+    assert len(httpx_mock.get_requests()) == 9  # drei Runden über drei Spiegel
+    assert "kostet nichts" in str(fehler.value)
+
+
+def test_beachtet_retry_after(httpx_mock, monkeypatch):
+    """Nennt der Server selbst eine Wartezeit, gilt sie – nicht die eigene Schätzung."""
+    from leadscraper import osm as osm_mod
+
+    gewartet: list[float] = []
+    monkeypatch.setattr(osm_mod.time, "sleep", lambda s: gewartet.append(s))
+    httpx_mock.add_response(status_code=429, headers={"Retry-After": "7"}, text="zu schnell")
+    httpx_mock.add_response(json=_antwort(BETRIEBE[:1]))
+    ergebnis = fetch_branch(['["office"="tax_advisor"]'], pause=0)
+    assert len(ergebnis.firmen) == 1
+    assert gewartet == [7.0]
