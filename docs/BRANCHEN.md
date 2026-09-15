@@ -79,6 +79,44 @@ Die stärksten Belege: Die Betriebsgrößenstruktur ist achtfach besser als bei 
 - **Beschäftigte je Zahnarztpraxis:** KZBV 8,13 ohne Inhaber [20], Destatis 10,1 tätige Personen inklusive Inhaber [21]. Kein Widerspruch, unterschiedliche Abgrenzung.
 - **Amtliche Lücke, die bleibt:** Eine veröffentlichte Tabelle „Betriebe nach WZ-Fünfsteller und Beschäftigtengrößenklasse“ existiert für keine dieser Branchen; die BA-Tabelle bricht nur bis zum Wirtschaftsabschnitt herunter, GENESIS verlangt ein Konto. **Alle Zahlen zur Klasse 5–49 in diesem Bericht sind Herleitungen, keine Messwerte.**
 
+## Gegenprobe: Das Handwerk ist nicht die Rettung
+
+Die telefonische Erreichbarkeit im Handwerk wurde im Blickwinkel „Entscheidungsweg“ als beste im Feld bewertet.
+Statt darauf zu vertrauen, wurde sie mit demselben Verfahren gegengeprüft, das auch das Werkzeug benutzt:
+Startseite laden, Impressum, Kontakt und Team folgen, Text auswerten. 66 Betriebswebsites angesteuert, davon 47
+auswertbar, gezogen über Emsland, Ostwestfalen, Mittelfranken, Schwäbische Alb, Mecklenburg, Sachsen und
+Schleswig-Holstein – bewusst keine Großstadtstichprobe.
+
+| Gewerk | geprüft | Entscheider | Handy überhaupt | Handy beim Entscheider | 5 Beschäftigte belegt | alle drei |
+|---|---:|---:|---:|---:|---:|---:|
+| Elektrotechnik | 9 | 6 | 3 | 1 | 3 | 0 |
+| Sanitär, Heizung, Klima | 9 | 5 | 1 | 0 | 3 | 0 |
+| Metallbau, Schlosserei | 10 | 8 | 2 | 1 | 6 | **1** |
+| Garten- und Landschaftsbau | 9 | 8 | 0 | 0 | 3 | 0 |
+| Zahntechnische Labore | 10 | 9 | 1 | 0 | 7 | 0 |
+| **Summe** | **47** | **36 (77 %)** | **7 (15 %)** | **2 (4 %)** | **22 (47 %)** | **1 (2 %)** |
+
+Die Kriterienkette multipliziert sich zu Tode: 77 % Entscheidername mal 47 % Belegschaftsnachweis wären zusammen
+noch tragfähig (rund 40 %), der Faktor 4 % für ein Handy beim Entscheider zieht das Ergebnis auf rund 2 %. Von den
+sieben gefundenen Mobilnummern sind vier ausdrücklich Notdienst-, Zentral- oder Außendienstnummern, zwei gehören
+Kleinstbetrieben ohne Belegschaft.
+
+**Zwei Gewinner für Liste B.** Metallbau hat die beste Belegschafts-Datenlage im Test (6 von 10, meist ausdrücklich
+und in der richtigen Größenordnung: „2 Spengler-Meister, 8 Facharbeiter, 3 Auszubildende“). Zahntechnische Labore
+liegen bei 9 von 10 für den Inhabernamen und 7 von 10 für die Belegschaft – die beste Quote des Tests, aber ohne
+Handy, weil ein Labor ein ortsfester Betrieb ohne Außendienst ist.
+
+**Zwei Fehler im eigenen Werkzeug, gefunden und behoben.** Weiche Trennstriche (`&shy;`) stehen auf vielen
+Handwerkerseiten mitten in den Wörtern, „Geschäfts­führer“ war für jede Rollen-Regex unlesbar. Und die
+Verbund-Systeme der Innungen schreiben den Geschäftsführer ihres eigenen Hauses in die Fußzeile jeder Kundenseite –
+reihenweise Betriebe bekamen denselben fremden Entscheider zugeschrieben. Beides ist repariert und mit Tests
+abgesichert. Dritter Befund ohne schnelle Lösung: 19 von 66 Websites waren nicht abrufbar, fast alle mit demselben
+Fehler desselben Massenhosters für Handwerksbetriebe.
+
+**Place-Types:** Nur `electrician` und `plumber` existieren in Table A. `locksmith` ist der Schlüsseldienst und
+nicht die Schlosserei; für Metallbau, GaLaBau und Dentallabore gibt es keinen Typ, sie brauchen zwei bis drei
+Textsuchen je Ort statt einer.
+
 ## Empfehlung für die nächsten zwei Wochen
 
 ### Schritt 0: erledigt – Liste B liegt vor
@@ -133,7 +171,7 @@ funktionieren davon unabhängig weiter.
 
 1. **Pilotlauf statt Kampagne** (sobald der Google-Zugang wieder steht)**.** `./pilot.sh pflegedienst "Ambulanter Pflegedienst" <8 Orte>` und `./pilot.sh steuerberatung "Steuerberatungsgesellschaft" <8 Orte>`. Kosten laut `pilot.sh`: eine Textsuche plus ein Geocoding je Ort, rund 4 Cent – 16 Ortsläufe also unter einem Euro. Auswertung mit `python pilot_bericht.py`, Vergleichsmaßstab ist der Makler-Trichter oben.
 2. **Entscheidungsregel nach dem Pilot:** Liefert eine Branche unter 10 % Betriebe mit mindestens fünf belegten Beschäftigten, nicht weitermachen (Makler: 1,3 %, Hausverwaltung: 21,6 %).
-3. **Danach 30 bis 50 Anrufe je Branche, und die Einwände zählen.** Lautet der dominierende Einwand „Ich kriege niemanden dafür frei“ und nicht „Was kostet das“, ist die Branche für dieses Produkt genauso tot wie die Makler – aus demselben Grund, Kapazität statt Geld, nur mit anderer Ursache. Dann als billigsten Zusatztest Metallbau/Schlosserei nehmen: Dort sitzt der Entscheider den ganzen Tag an der Betriebsadresse, 53 % der Innungsbetriebe haben 5 bis 25 Beschäftigte [22], und es ist die einzige Branche im Feld, in der die Handynummer auf der Website üblich ist – geprüft wurde sie allerdings nie.
+3. **Danach 30 bis 50 Anrufe je Branche, und die Einwände zählen.** Lautet der dominierende Einwand „Ich kriege niemanden dafür frei“ und nicht „Was kostet das“, ist die Branche für dieses Produkt genauso tot wie die Makler – aus demselben Grund, Kapazität statt Geld, nur mit anderer Ursache. Dann als billigsten Zusatztest Metallbau/Schlosserei über Liste B nehmen: 53 % der Innungsbetriebe haben 5 bis 25 Beschäftigte [22], und in der eigenen Stichprobe belegten 6 von 10 Betrieben fünf oder mehr Beschäftigte – die beste Quote im Test. Die Handynummer steht dort allerdings genauso selten wie überall sonst, siehe die Gegenprobe oben.
 
 ## Was am Pitch zu ändern ist
 
