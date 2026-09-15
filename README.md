@@ -54,10 +54,38 @@ die Rolle *Abrechnungskonto-Ersteller* bitten.
 Enterprise*: ca. 35 $ pro 1.000 Anfragen, **1.000 Anfragen pro Monat frei** (≈ 20.000 Firmen). Max. 60 Treffer
 pro Suchbegriff → Region über mehrere Orte/Stadtteile abdecken, das Tool dedupliziert.
 
+**Ausgabenbremse.** Damit die Recherche nichts kostet, zählt das Tool jede tatsächlich gesendete Anfrage gegen
+`LEADSCRAPER_GOOGLE_MONATSLIMIT` (Vorgabe **1000**, also genau das freie Monatskontingent oben). Oberhalb der
+Grenze wird nichts mehr gesendet, geprüft wird unmittelbar vor dem Senden. Treffer aus dem Zwischenspeicher
+kosten nichts und zählen nicht mit.
+```bash
+leadscraper kosten                  # Stand des laufenden Monats
+leadscraper kosten --zuruecksetzen  # Zähler auf null
+```
+`LEADSCRAPER_GOOGLE_MONATSLIMIT=0` schaltet Google vollständig ab. Vor dem Erhöhen das eigene Freikontingent in
+der Google Cloud Console nachsehen – die Stufen und Freimengen ändern sich.
+
 ### Ohne Google
-`leadscraper enrich-list firmen.csv` schickt eine eigene Liste (CSV/XLSX mit Spalten *Firma, Website*, optional
-*Telefon, PLZ, Ort*) durch dieselbe Pipeline – Google liefert nur die Firmenliste, die **Lead-Qualität entsteht
-im Website-Crawl**.
+Google liefert nur die Firmenliste; die **Lead-Qualität entsteht im Website-Crawl**. Deshalb geht es auch ganz
+ohne Google – kostenlos und ohne Konto:
+
+```bash
+# 1. Firmenliste aus OpenStreetMap holen (Tag-Filter je Profil in config/branchen.yaml)
+leadscraper osm --profile steuerberatung -o output/osm/steuerberatung.csv
+# 2. durch dieselbe Pipeline schicken
+leadscraper enrich-list output/osm/steuerberatung.csv --jsonl-out output/steuer.jsonl -o output/steuer.xlsx
+# 3. beide Anruflisten exportieren
+leadscraper export output/steuer.jsonl --premium -o output/liste_a.xlsx
+leadscraper export output/steuer.jsonl --mit-belegschaft -o output/liste_b.xlsx
+```
+
+Die Abdeckung von OpenStreetMap ist branchenabhängig und immer kleiner als die amtliche Grundgesamtheit; der
+Abruf meldet deshalb Objekte, Namen und Websites. Erste Messung: 3.933 Steuerkanzleien, davon 2.074 mit Website.
+Die Overpass-Server sind gespendete Rechenzeit – eine Abfrage je Tag, Pause dazwischen, Wiederholung bei
+Überlastung. Daten © OpenStreetMap-Mitwirkende (ODbL); bei Weitergabe die Quelle nennen.
+
+`leadscraper enrich-list firmen.csv` nimmt genauso jede eigene Liste (CSV/XLSX mit Spalten *Firma, Website*,
+optional *Telefon, PLZ, Ort*).
 
 ## Benutzung
 ```bash
@@ -70,14 +98,18 @@ leadscraper run -c Köln -c Bonn -c Leverkusen -c Bergisch\ Gladbach --radius-km
 leadscraper run -q "Immobilienbüro" -q "Hausverwaltung" -c Düsseldorf --included-type real_estate_agency
 leadscraper run --profile versicherung --city "Landkreis Rosenheim"
 
-# Eigene Firmenliste ohne Google
-leadscraper enrich-list firmen.csv --out output/liste.xlsx
+# Eigene Firmenliste ohne Google (mit Zustandsdatei für spätere Exporte)
+leadscraper enrich-list firmen.csv --out output/liste.xlsx --jsonl-out output/liste.jsonl
+# Firmenliste aus OpenStreetMap statt aus Google
+leadscraper osm --profile pflegedienst -o output/osm/pflege.csv
 
 # Bundesweit, Ort für Ort, unterbrechungssicher (erneuter Aufruf setzt fort)
 leadscraper run --deutschland -b "Nordrhein-Westfalen" --state output/de.jsonl
 
 # Ergebnisse ausgeben: Excel, nur Premium; mehrere Zustandsdateien werden zusammengeführt
 leadscraper export output/de.jsonl output/de_bayern.jsonl --premium -o output/premium.xlsx
+# Liste B: Entscheider + mindestens fünf belegte Beschäftigte, Handynummer nicht nötig (Zentrale anrufen)
+leadscraper export output/de.jsonl --mit-belegschaft -o output/liste_b.xlsx
 # CSV für den Trello-Import: Spalte 1 Unternehmensname, Spalte 2 alle Infos
 leadscraper trello output/de.jsonl -o output/trello.csv
 
@@ -134,6 +166,24 @@ leadscraper demo --out output/demo.xlsx
    Postfach und Durchwahl. Die Rechtsform allein („GmbH, also wohl 5–49“) reicht nicht mehr.
 5. Betriebsgröße nicht belegt über der Obergrenze und keine Hinweise auf ausschließlich freie
    Handelsvertreter, Franchise oder Provisionsbasis (§ 82 SGB III fördert keine Selbstständigen).
+   Liegt schon die **belegte** Kopfzahl über der Obergrenze, fällt der Betrieb ebenfalls heraus – solche
+   Treffer sind meist Verbünde mit einer gemeinsamen Teamseite.
+
+### Liste B: dieselbe Förderbedingung, ohne Handynummer
+Die Kriterien 3 und 4 arbeiten gegeneinander. Eine Handynummer im Impressum ist zulässig, weil ein
+Festnetzanschluss Einzelunternehmer unverhältnismäßig belasten würde – sie ist deshalb ein **Marker für sehr
+kleine Betriebe**. Wer fünf Beschäftigte hat, hat eine Telefonanlage mit Durchwahlen und kein Handy auf der
+Seite. In den bisherigen Daten stehen 265 Betrieben mit namentlicher Handynummer 1.430 gegenüber, die die
+Förderbedingung genauso erfüllen und nur über die Zentrale erreichbar sind.
+
+```bash
+leadscraper export output/de.jsonl --mit-belegschaft -o output/liste_b.xlsx
+leadscraper trello output/de.jsonl --mit-belegschaft -o output/liste_b.csv
+```
+
+Liste B = Entscheider namentlich **und** mindestens fünf belegte Beschäftigte, Handynummer nicht erforderlich.
+Die Spalte *Nummer* fällt dann auf die Zentrale zurück, damit jede Zeile wählbar ist. Kostet ein Gespräch mehr
+am Empfang, dafür rund sechsmal so viele Betriebe, die tatsächlich förderfähige Beschäftigte haben.
 
 Spalten **Beschäftigte belegt** und **Beleg Beschäftigte** zeigen Zahl und Fundstelle, sodass sich jeder
 Lead vor dem Anruf prüfen lässt. `leadscraper export --near-premium` nimmt zusätzlich die Fälle auf, bei
