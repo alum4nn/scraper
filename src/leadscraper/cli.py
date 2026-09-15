@@ -586,6 +586,51 @@ def trello(
 
 
 @app.command()
+def osm(
+    profile: str = typer.Option(
+        ..., "--profile", "-p", help="Profil aus config/branchen.yaml mit osm-Filtern"
+    ),
+    out: Path | None = typer.Option(None, "--out", "-o", help="Ziel-CSV für enrich-list"),
+    gebiet: str = typer.Option("DE", help="ISO-Ländercode des Suchgebiets"),
+    alle: bool = typer.Option(
+        False, "--alle", help="Auch Betriebe ohne Website aufnehmen (für die Pipeline meist wertlos)"
+    ),
+    verbose: bool = typer.Option(False, "-v", help="Debug-Logging"),
+) -> None:
+    """Firmenliste aus OpenStreetMap holen – ohne Google, ohne Kosten.
+
+    Schreibt eine CSV, die `leadscraper enrich-list` direkt liest. Die Abdeckung ist branchenabhängig
+    und kleiner als die amtliche Grundgesamtheit; die Meldung nennt deshalb Objekte, Namen und Websites.
+    """
+    logging.basicConfig(level=logging.DEBUG if verbose else logging.WARNING)
+    from leadscraper.exclusions import filter_chains
+    from leadscraper.osm import fetch_branch, write_csv
+
+    profile_config = _load_profiles()
+    if profile not in profile_config:
+        raise typer.BadParameter(f"Unbekanntes Profil „{profile}“. Verfügbar: {', '.join(profile_config)}")
+    filter_ = profile_config[profile].get("osm") or []
+    if not filter_:
+        raise typer.Exit(
+            code=_err(
+                f"Profil „{profile}“ hat keine osm-Filter. In config/branchen.yaml ergänzen, z. B.\n"
+                '  osm:\n      - \'["office"="tax_advisor"]\''
+            )
+        )
+    console.print(f"[bold]{profile}[/]: {len(filter_)} OpenStreetMap-Abfragen für {gebiet}")
+    ergebnis = fetch_branch(filter_, gebiet=gebiet, nur_mit_website=not alle)
+    behalten, verworfen = filter_chains(ergebnis.firmen)
+    if verworfen:
+        console.print(f"[dim]{len(verworfen)} Ketten/Franchise/Portale aussortiert[/]")
+    ziel = out or (get_settings().output_dir / f"osm_{profile}.csv")
+    write_csv(behalten, ziel)
+    console.print(f"{ergebnis.bericht}")
+    console.print(f"\n[green]✔[/] {len(behalten)} Firmen → [bold]{ziel}[/]")
+    console.print(f"[dim]Weiter mit: leadscraper enrich-list {ziel} --premium[/]")
+    console.print("[dim]Daten © OpenStreetMap-Mitwirkende, ODbL.[/]")
+
+
+@app.command()
 def kosten(
     zuruecksetzen: bool = typer.Option(False, "--zuruecksetzen", help="Zähler auf null setzen"),
 ) -> None:

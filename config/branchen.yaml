@@ -28,6 +28,8 @@ profiles:
       - "Steuerkanzlei"
       - "Lohnbuchhaltung Büro"
     included_types: [accounting]
+    osm:
+      - '["office"="tax_advisor"]'
   pflegedienst:
     beschreibung: "Ambulante Pflegedienste und Tagespflege – 15.549 Dienste, Ø 28,7 Beschäftigte, 68,5 % privat (Pflegestatistik 2023); Altenpflege ist mit rund einem Drittel aller Zugänge größter Nutzer der Förderung"
     # Kein included_type: „Pflegedienst“ hat in Table A keinen eigenen Typ, ein falscher Typ
@@ -38,6 +40,10 @@ profiles:
       - "Tagespflege"
       - "Intensivpflegedienst"
       - "Seniorenbetreuung Pflege"
+    osm:
+      - '["healthcare"="nurse"]'
+      - '["social_facility"="outreach"]'
+      - '["healthcare"="home_care"]'
   zahnarztpraxis:
     beschreibung: "Zahnarztpraxen – 37.423 Praxen, Ø 8,13 Beschäftigte ohne Inhaber (KZBV-Jahrbuch 2025), fast ausschließlich sozialversicherungspflichtige ZFA"
     queries:
@@ -45,12 +51,17 @@ profiles:
       - "Zahnarzt"
       - "Kieferorthopädie Praxis"
     included_types: [dentist]
+    osm:
+      - '["amenity"="dentist"]'
+      - '["healthcare"="dentist"]'
   apotheke:
     beschreibung: "Apotheken – 16.601 Betriebe, knapp 10 Beschäftigte je Betrieb, 12.802 Inhaber (ABDA Juni 2026); Fremdbesitzverbot, also fast immer inhabergeführt"
     queries:
       - "Apotheke"
       - "Stadtapotheke"
     included_types: [pharmacy]
+    osm:
+      - '["amenity"="pharmacy"]'
   kfz_betrieb:
     beschreibung: "Autohäuser und Kfz-Werkstätten – 36.030 Betriebe mit 428.000 Beschäftigten, Ø 11,9 (ZDK 2024); Kfz-Gewerbe liegt über dem Handwerksschnitt"
     queries:
@@ -59,6 +70,9 @@ profiles:
       - "Kfz-Meisterbetrieb"
       - "Autoservice Werkstatt"
     included_types: [car_repair, car_dealer]
+    osm:
+      - '["shop"="car_repair"]'
+      - '["shop"="car"]'
   spedition:
     beschreibung: "Speditionen und Logistikdienstleister – rund die Hälfte der 46.902 Güterkraftverkehrs-Unternehmen hat 5–49 Beschäftigte (BALM 2020); Berufskraftfahrer sind zweithäufigster geförderter Zielberuf"
     queries:
@@ -66,6 +80,9 @@ profiles:
       - "Transportunternehmen"
       - "Logistikunternehmen"
       - "Lagerlogistik Dienstleister"
+    osm:
+      - '["industrial"="haulage"]'
+      - '["office"="logistics"]'
   planungsbuero:
     beschreibung: "Architektur- und Ingenieurbüros – 7.558 von 34.986 Architekturbüros haben 5–49 Beschäftigte (BAK/Destatis 2023); 77 % der Architekten wünschen KI-Fortbildung"
     queries:
@@ -73,6 +90,9 @@ profiles:
       - "Ingenieurbüro"
       - "Planungsbüro Bau"
       - "Statikbüro"
+    osm:
+      - '["office"="architect"]'
+      - '["office"="engineer"]'
   elektro_shk:
     beschreibung: "Elektro- und SHK-Betriebe – 48.178 E-Betriebe (Ø 10,7) und 48.050 SHK-Betriebe (Ø 8,1); 76 % der Handwerksbetriebe sehen Digitalkompetenzbedarf, nur 4 % nutzen KI (Bitkom 2025)"
     queries:
@@ -81,6 +101,10 @@ profiles:
       - "Sanitär Heizung Klima Betrieb"
       - "Heizungsbau Betrieb"
     included_types: [electrician, plumber]
+    osm:
+      - '["craft"="electrician"]'
+      - '["craft"="plumber"]'
+      - '["craft"="hvac"]'
   metallbau:
     beschreibung: "Metallbau und Schlossereien – beste Belegschafts-Datenlage der Stichprobe (6 von 10 Betrieben belegen 5+), 53 % der Innungsbetriebe haben 5–25 Beschäftigte; Meister sitzt an der Betriebsadresse"
     # Kein included_type: „locksmith“ ist der Schlüsseldienst, nicht die Schlosserei – ein falscher Typ
@@ -90,6 +114,9 @@ profiles:
       - "Schlosserei"
       - "Metallbaumeister"
       - "Stahlbau Metallbau"
+    osm:
+      - '["craft"="metal_construction"]'
+      - '["shop"="metal_construction"]'
   dentallabor:
     beschreibung: "Zahntechnische Labore – 9 von 10 nennen den Inhaber, 7 von 10 belegen die Belegschaft (eigene Stichprobe 15.09.2026); ortsfester Betrieb, deshalb praktisch nie eine Handynummer"
     queries:
@@ -97,6 +124,8 @@ profiles:
       - "Zahntechnik"
       - "Zahntechnisches Labor"
       - "Zahntechnisches Meisterlabor"
+    osm:
+      - '["craft"="dental_technician"]'
   versicherung:
     beschreibung: "Versicherungs-/Finanzmakler – Vertriebler mit Handy, Büro-Personal mit Verwaltungsaufwand"
     queries:
