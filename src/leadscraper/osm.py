@@ -18,6 +18,7 @@ wachsendem Abstand wiederholt. Die Daten stehen unter der ODbL; wer sie weitergi
 from __future__ import annotations
 
 import logging
+import re
 import time
 from dataclasses import dataclass, field
 
@@ -30,11 +31,19 @@ from leadscraper.models import Company
 log = logging.getLogger(__name__)
 
 # Gespiegelte Overpass-Server; bei Überlastung wird der nächste genommen.
+# Bewusst NICHT dabei: overpass-api.de. Deren robots.txt sagt wörtlich „Disallow: /api/“. Gemeint sind
+# erkennbar Suchmaschinen und nicht API-Clients, aber dieses Werkzeug hält sich an robots.txt, und
+# Ausnahmen nach eigenem Gutdünken wären das Ende dieser Zusage. kumi.systems hat keine robots.txt
+# (HTTP 404), die übrigen ebenfalls keine Sperre.
 SPIEGEL: tuple[str, ...] = (
-    "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
     "https://overpass.private.coffee/api/interpreter",
 )
+# OSM-Relation 51477 = Bundesrepublik Deutschland. Die Suche über area["ISO3166-1"="DE"] kostet den
+# Server jedes Mal einen vollen Grenzen-Lookup und war die Ursache aller Zeitüberschreitungen: dieselbe
+# Abfrage lief mit fester Kennung in 14 Sekunden statt in minutenlangen Wiederholungen.
+AREA_IDS: dict[str, int] = {"DE": 3600051477, "AT": 3600016239, "CH": 3600051701}
 _UEBERLASTET = frozenset({429, 502, 503, 504})
 # Overpass ist häufig belegt. Lieber geduldig warten als aufgeben: Die Abfrage ist kostenlos, ein
 # Fehlschlag kostet dagegen den ganzen Branchenabruf.
@@ -50,12 +59,11 @@ class OverpassError(RuntimeError):
 
 def bauen(tag_filter: str, *, gebiet: str = "DE", timeout: int = _ABFRAGE_TIMEOUT) -> str:
     """Overpass-QL für einen Tag-Filter wie `["office"="tax_advisor"]` im ganzen Land."""
-    return (
-        f"[out:json][timeout:{timeout}];"
-        f'area["ISO3166-1"="{gebiet}"][admin_level=2]->.gebiet;'
-        f"(nwr{tag_filter}(area.gebiet););"
-        f"out tags center;"
+    kennung = AREA_IDS.get(gebiet.upper())
+    gebiet_zeile = (
+        f"area({kennung})->.gebiet;" if kennung else f'area["ISO3166-1"="{gebiet}"][admin_level=2]->.gebiet;'
     )
+    return f"[out:json][timeout:{timeout}];{gebiet_zeile}(nwr{tag_filter}(area.gebiet););out tags center;"
 
 
 def _retry_after(antwort: httpx.Response) -> float | None:
@@ -95,9 +103,14 @@ def _abrufen(
             else:
                 if antwort.status_code == 200:
                     try:
-                        return antwort.json()
+                        daten = antwort.json()
                     except ValueError as exc:  # Overpass schickt bei Überlast auch mal HTML
                         letzter_fehler = f"unlesbare Antwort: {exc}"
+                    else:
+                        fehler = _stiller_fehler(daten, antwort.text)
+                        if fehler is None:
+                            return daten
+                        letzter_fehler = fehler
                 else:
                     letzter_fehler = f"HTTP {antwort.status_code}"
                     if antwort.status_code not in _UEBERLASTET:
@@ -115,6 +128,23 @@ def _abrufen(
 def timeout_fuer(abfrage: str) -> float:
     """HTTP-Timeout etwas über dem Overpass-Timeout, sonst bricht die Leitung vor der Antwort ab."""
     return float(_ABFRAGE_TIMEOUT + 60) if f"timeout:{_ABFRAGE_TIMEOUT}" in abfrage else 120.0
+
+
+def _stiller_fehler(daten: object, rohtext: str) -> str | None:
+    """Overpass meldet Überlast auch mit HTTP 200 – einmal als HTML, einmal als leere Antwort.
+
+    Beides ist gefährlicher als ein klarer Fehler: Ohne Prüfung landet „0 Betriebe“ als Ergebnis im
+    Protokoll, und niemand merkt, dass die Branche nur nicht abgefragt werden konnte.
+    """
+    if not isinstance(daten, dict):
+        return "Antwort ist kein Objekt"
+    if "remark" in daten and "error" in str(daten["remark"]).lower():
+        return f"Overpass meldet: {str(daten['remark'])[:120]}"
+    if "elements" not in daten:
+        if "runtime error" in rohtext.lower() or "too busy" in rohtext.lower():
+            return "Server überlastet (Fehlertext in einer Antwort mit Status 200)"
+        return "Antwort ohne elements"
+    return None
 
 
 def _website(tags: dict[str, str]) -> str | None:
@@ -158,14 +188,16 @@ class OsmErgebnis:
     objekte: int = 0
     mit_name: int = 0
     mit_website: int = 0
+    verworfen_name: int = 0
     abfragen: list[str] = field(default_factory=list)
 
     @property
     def bericht(self) -> str:
-        return (
-            f"{self.objekte} Objekte, davon {self.mit_name} mit Name und {self.mit_website} mit Website "
-            f"→ {len(self.firmen)} Firmen (ohne Dubletten)"
-        )
+        teile = [f"{self.objekte} Objekte, davon {self.mit_name} mit Name und {self.mit_website} mit Website"]
+        if self.verworfen_name:
+            teile.append(f"{self.verworfen_name} nach Namensfilter verworfen")
+        teile.append(f"{len(self.firmen)} Firmen (ohne Dubletten)")
+        return " → ".join(teile[:1] + [", ".join(teile[1:])])
 
 
 def fetch_branch(
@@ -173,6 +205,7 @@ def fetch_branch(
     *,
     gebiet: str = "DE",
     nur_mit_website: bool = True,
+    nicht_name: str | None = None,
     client: httpx.Client | None = None,
     pause: float = _PAUSE_ZWISCHEN_TAGS,
 ) -> OsmErgebnis:
@@ -180,7 +213,11 @@ def fetch_branch(
 
     Dubletten entstehen reichlich (derselbe Betrieb als Punkt und als Gebäudeumriss, oder unter zwei
     Tags). Zusammengeführt wird über die Domain, sonst über Name und Ort.
+
+    `nicht_name` wirft Treffer heraus, deren Name das Gegenteil der gesuchten Betriebsart verrät –
+    in der ambulanten Pflege stehen Heime, Tagespflege und betreutes Wohnen unter denselben Tags.
     """
+    ausschluss = re.compile(nicht_name, re.I) if nicht_name else None
     eigener_client = client is None
     client = client or httpx.Client(headers={"User-Agent": "leadscraper/1.0 (Recherche)"})
     ergebnis = OsmErgebnis()
@@ -204,6 +241,9 @@ def fetch_branch(
                 if website:
                     ergebnis.mit_website += 1
                 if not name or (nur_mit_website and not website):
+                    continue
+                if ausschluss is not None and ausschluss.search(name):
+                    ergebnis.verworfen_name += 1
                     continue
                 strasse, plz, ort = _adresse(tags)
                 domain = normalize_domain(website)

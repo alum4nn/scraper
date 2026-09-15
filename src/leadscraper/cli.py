@@ -636,7 +636,12 @@ def osm(
     from leadscraper.osm import OverpassError
 
     try:
-        ergebnis = fetch_branch(filter_, gebiet=gebiet, nur_mit_website=not alle)
+        ergebnis = fetch_branch(
+            filter_,
+            gebiet=gebiet,
+            nur_mit_website=not alle,
+            nicht_name=profile_config[profile].get("osm_nicht_name"),
+        )
     except OverpassError as exc:
         raise typer.Exit(code=_err(str(exc))) from exc
     behalten, verworfen = filter_chains(ergebnis.firmen)

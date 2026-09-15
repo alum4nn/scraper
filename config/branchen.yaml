@@ -40,10 +40,14 @@ profiles:
       - "Tagespflege"
       - "Intensivpflegedienst"
       - "Seniorenbetreuung Pflege"
+    # Gemessen am 15.09.2026: ambulatory_care ist laut OSM-Wiki das Tag für den ambulanten Dienst
+    # (2.807 Objekte, 1.464 mit Website). healthcare=nurse hat bundesweit 23 Objekte, outreach trifft
+    # zu 95 % Beratungsstellen. Der Namensregex findet 767 Betriebe, die gar kein passendes Tag tragen.
     osm:
-      - '["healthcare"="nurse"]'
-      - '["social_facility"="outreach"]'
-      - '["healthcare"="home_care"]'
+      - '["social_facility"="ambulatory_care"]'
+      - '["name"~"Pflegedienst|Sozialstation|Diakoniestation|Pflegeteam|Ambulante Pflege|Ambulanter Pflege|Häusliche Kranken|Hauskranken|Mobile Pflege|Pflegeservice",i]'
+    # Unter denselben Tags stehen Heime, Tagespflege und betreutes Wohnen – die haben andere Entscheider
+    osm_nicht_name: 'Pflegeheim|Seniorenheim|Altenheim|Seniorenzentrum|Seniorenresidenz|Pflegezentrum|Tagespflege|Kurzzeitpflege|Betreutes Wohnen|Wohnstift|Altenpflegeheim|Hospiz'
   zahnarztpraxis:
     beschreibung: "Zahnarztpraxen – 37.423 Praxen, Ø 8,13 Beschäftigte ohne Inhaber (KZBV-Jahrbuch 2025), fast ausschließlich sozialversicherungspflichtige ZFA"
     queries:
@@ -114,9 +118,10 @@ profiles:
       - "Schlosserei"
       - "Metallbaumeister"
       - "Stahlbau Metallbau"
+    # shop=metal_construction hat bundesweit genau ein Objekt. craft=metal_construction trifft zur
+    # Hälfte: Zerspanung, Härterei und Maschinenbau tragen dasselbe Tag (eigene Messung 15.09.2026).
     osm:
       - '["craft"="metal_construction"]'
-      - '["shop"="metal_construction"]'
   dentallabor:
     beschreibung: "Zahntechnische Labore – 9 von 10 nennen den Inhaber, 7 von 10 belegen die Belegschaft (eigene Stichprobe 15.09.2026); ortsfester Betrieb, deshalb praktisch nie eine Handynummer"
     queries:

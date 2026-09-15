@@ -41,7 +41,7 @@ BETRIEBE = [
 
 def test_abfrage_umschliesst_das_land():
     abfrage = bauen('["office"="tax_advisor"]')
-    assert '["ISO3166-1"="DE"][admin_level=2]' in abfrage
+    assert "area(3600051477)->.gebiet;" in abfrage
     assert 'nwr["office"="tax_advisor"](area.gebiet)' in abfrage
     assert abfrage.endswith("out tags center;")
 
@@ -121,3 +121,45 @@ def test_beachtet_retry_after(httpx_mock, monkeypatch):
     ergebnis = fetch_branch(['["office"="tax_advisor"]'], pause=0)
     assert len(ergebnis.firmen) == 1
     assert gewartet == [7.0]
+
+
+def test_feste_gebietskennung_statt_grenzensuche():
+    """area["ISO3166-1"] zwingt den Server zu einem Grenzen-Lookup und war die Ursache aller Timeouts."""
+    assert "area(3600051477)" in bauen('["office"="tax_advisor"]')
+    assert "ISO3166-1" not in bauen('["office"="tax_advisor"]')
+    # Für unbekannte Länder bleibt der langsame, aber allgemeine Weg
+    assert 'ISO3166-1"="FR"' in bauen('["office"="tax_advisor"]', gebiet="FR")
+
+
+def test_ueberlast_mit_status_200_wird_erkannt(httpx_mock, monkeypatch):
+    """Overpass meldet Überlast auch als HTTP 200 mit Fehlertext – sonst gilt das als „0 Betriebe“."""
+    from leadscraper import osm as osm_mod
+
+    monkeypatch.setattr(osm_mod.time, "sleep", lambda s: None)
+    httpx_mock.add_response(
+        status_code=200,
+        text="<html><body>Error: runtime error: Query timed out. The server is probably too busy.</body>"
+        "</html>",
+        headers={"content-type": "text/html"},
+    )
+    httpx_mock.add_response(json=_antwort(BETRIEBE[:1]))
+    ergebnis = fetch_branch(['["office"="tax_advisor"]'], pause=0)
+    assert len(ergebnis.firmen) == 1
+    assert len(httpx_mock.get_requests()) == 2
+
+
+def test_namensfilter_wirft_heime_heraus(httpx_mock):
+    """Unter demselben Tag stehen ambulante Dienste und Heime – die haben andere Entscheider."""
+    elemente = [
+        {"type": "node", "id": 10, "tags": {"name": "Pflegedienst Sonnenschein", "website": "https://a.de"}},
+        {"type": "node", "id": 11, "tags": {"name": "Seniorenzentrum Abendrot", "website": "https://b.de"}},
+        {"type": "node", "id": 12, "tags": {"name": "Tagespflege Mittendrin", "website": "https://c.de"}},
+    ]
+    httpx_mock.add_response(json=_antwort(elemente), is_reusable=True)
+    ergebnis = fetch_branch(
+        ['["social_facility"="ambulatory_care"]'],
+        nicht_name="Seniorenzentrum|Tagespflege|Pflegeheim",
+        pause=0,
+    )
+    assert [f.name for f in ergebnis.firmen] == ["Pflegedienst Sonnenschein"]
+    assert ergebnis.verworfen_name == 2
