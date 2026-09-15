@@ -348,9 +348,19 @@ def enrich_list(
     require_mobile: bool = typer.Option(False, help="Nur Leads mit gefundener Handynummer exportieren"),
     premium: bool = typer.Option(False, "--premium", help="Nur Premium-Leads (siehe run --premium)"),
     out: Path | None = typer.Option(None, "--out", "-o", help="Ziel-Excel"),
+    jsonl_out: Path | None = typer.Option(
+        None,
+        "--jsonl-out",
+        help="Zusätzlich als JSONL speichern – nötig für rebuild, refresh und den Export von Liste B",
+    ),
     verbose: bool = typer.Option(False, "-v", help="Debug-Logging"),
 ) -> None:
-    """Eigene Firmenliste (ohne Google) durch die Pipeline schicken: Websites → Entscheider/Handy → Excel."""
+    """Eigene Firmenliste (ohne Google) durch die Pipeline schicken: Websites → Entscheider/Handy → Excel.
+
+    Mit `--jsonl-out` entsteht dieselbe Zustandsdatei wie bei einem bundesweiten Lauf. Nur dann lassen
+    sich die Ergebnisse später ohne neuen Abruf erneut auswerten (`rebuild`, `refresh`) und als Liste B
+    exportieren (`export --mit-belegschaft`).
+    """
     logging.basicConfig(level=logging.DEBUG if verbose else logging.WARNING)
     from leadscraper.cache import Cache
     from leadscraper.dedupe import dedupe_companies
@@ -379,8 +389,13 @@ def enrich_list(
         cache.close()
     target = out or _default_out(settings, input_file.stem)
     write_workbook(leads, spec, target, funding_rows=funding.funding_reference_rows())
+    if jsonl_out:
+        jsonl_out.parent.mkdir(parents=True, exist_ok=True)
+        jsonl_out.write_text("".join(ld.model_dump_json() + "\n" for ld in leads), encoding="utf-8")
     _print_summary(leads)
     console.print(f"\n[green]✔[/] Excel gespeichert: [bold]{target}[/]")
+    if jsonl_out:
+        console.print(f"[green]✔[/] Zustandsdatei: [bold]{jsonl_out}[/]  (für rebuild/refresh/Liste B)")
 
 
 _NEAR_PREMIUM_MIN = 3

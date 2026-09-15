@@ -167,3 +167,32 @@ def test_has_workforce_nimmt_zentrale_statt_handy():
     assert not has_workforce(
         lead(["keine Handynummer beim Entscheider", "freie Handelsvertreter/Franchise – x"], 9)
     )
+
+
+def test_enrich_list_schreibt_zustandsdatei(fixture_web, tmp_path: Path, monkeypatch):
+    """Ohne JSONL ließe sich für eine neue Branche weder Liste B exportieren noch später neu auswerten."""
+    import json
+
+    monkeypatch.setenv("LEADSCRAPER_REQUEST_DELAY_SECONDS", "0")
+    monkeypatch.setenv("LEADSCRAPER_CACHE_PATH", str(tmp_path / "c.sqlite"))
+    quelle = tmp_path / "firmen.csv"
+    quelle.write_text("Firma;Website\nRheinblick Immobilien;https://rheinblick.de\n", encoding="utf-8")
+    ziel_jsonl = tmp_path / "zustand.jsonl"
+
+    ergebnis = runner.invoke(
+        app,
+        [
+            "enrich-list",
+            str(quelle),
+            "-o",
+            str(tmp_path / "liste.xlsx"),
+            "--jsonl-out",
+            str(ziel_jsonl),
+        ],
+    )
+    assert ergebnis.exit_code == 0, ergebnis.stdout
+    zeilen = [z for z in ziel_jsonl.read_text(encoding="utf-8").splitlines() if z.strip()]
+    assert len(zeilen) == 1
+    lead = json.loads(zeilen[0])
+    assert lead["company"]["name"]
+    assert "enrichment" in lead
