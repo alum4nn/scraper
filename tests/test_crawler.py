@@ -302,3 +302,72 @@ def test_seo_location_pages_are_not_team_pages():
     assert classify_url("https://x.de/hausverwaltung-bonn-beuel/")[1] == "sonstige"
     # Ein eindeutiger Linktext reicht weiterhin, auch ohne sprechenden Pfad
     assert classify_url("https://x.de/x", "Unser Team") == (2, "team")
+
+
+def test_vorruebergehender_serverfehler_wird_wiederholt(httpx_mock, monkeypatch):
+    """Ein 503 beim ersten Versuch darf den Betrieb nicht kosten – eine Stichprobe fand 19 solcher
+    Ausfälle auf 66 Handwerkerwebsites, fast alle beim selben Massenhoster."""
+    from leadscraper import crawler as crawler_mod
+
+    monkeypatch.setattr(crawler_mod, "_WARTEN_VOR_WIEDERHOLUNG", (0.0, 0.0))
+    versuche: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        versuche.append(str(request.url))
+        if request.url.path == "/robots.txt":
+            return httpx.Response(404)
+        if len([v for v in versuche if v.endswith("/impressum")]) == 1:
+            return httpx.Response(503, text="Service Unavailable", headers={"content-type": "text/html"})
+        return httpx.Response(
+            200,
+            text="<html><body>Geschäftsführer: Anna Meier</body></html>",
+            headers={"content-type": "text/html; charset=utf-8"},
+        )
+
+    httpx_mock.add_callback(handler, is_reusable=True)
+
+    async def lauf():
+        c = SiteCrawler(_settings())
+        try:
+            return await c._fetch("https://beispiel.de/impressum", accept=("html",))
+        finally:
+            await c.close()
+
+    ergebnis = asyncio.run(lauf())
+    assert ergebnis is not None, "nach dem 503 hätte der zweite Versuch greifen müssen"
+    assert "Anna Meier" in ergebnis[2]
+
+
+def test_serverfehler_wird_nicht_als_uebersprungen_gemerkt(httpx_mock, monkeypatch, tmp_path):
+    """Sonst bleibt der Betrieb die gesamte Zwischenspeicherdauer unsichtbar, auch beim Neuauswerten."""
+    from leadscraper import crawler as crawler_mod
+
+    monkeypatch.setattr(crawler_mod, "_WARTEN_VOR_WIEDERHOLUNG", (0.0, 0.0))
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/robots.txt":
+            return httpx.Response(404)
+        return httpx.Response(503, text="weg", headers={"content-type": "text/html"})
+
+    httpx_mock.add_callback(handler, is_reusable=True)
+    cache = Cache(tmp_path / "c.sqlite")
+
+    async def lauf():
+        c = SiteCrawler(_settings(), cache=cache)
+        try:
+            return await c._fetch("https://beispiel.de/impressum", accept=("html",))
+        finally:
+            await c.close()
+
+    schluessel = crawler_mod._norm_key("https://beispiel.de/impressum")
+    assert asyncio.run(lauf()) is None
+    assert cache.get("html", schluessel, 14) is None
+
+    # Eine dauerhafte Absage (404) wird dagegen gemerkt
+    def weg(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(404, text="nicht da", headers={"content-type": "text/html"})
+
+    httpx_mock.reset()
+    httpx_mock.add_callback(weg, is_reusable=True)
+    assert asyncio.run(lauf()) is None
+    assert cache.get("html", schluessel, 14) == {"skip": True}

@@ -199,6 +199,13 @@ def _normalize_start(website: str) -> str:
     )
 
 
+# Serverseitige Aussetzer, die beim nächsten Versuch oft weg sind. Alles andere (404, 403, 410) ist
+# eine dauerhafte Absage und wird gemerkt.
+_VORUEBERGEHEND = frozenset({408, 425, 429, 500, 502, 503, 504})
+_WARTEN_VOR_WIEDERHOLUNG = (1.0, 3.0)
+_MAX_VERSUCHE = len(_WARTEN_VOR_WIEDERHOLUNG) + 1
+
+
 class SiteCrawler:
     def __init__(
         self, settings: Settings, *, cache: Cache | None = None, http: httpx.AsyncClient | None = None
@@ -268,17 +275,32 @@ class SiteCrawler:
             hit = self.cache.get("html", key, self.settings.html_cache_ttl_days)
             if hit is not None:
                 return None if hit.get("skip") else (hit["final_url"], hit["status"], hit["text"])
-        await self._throttle(url)
-        try:
-            resp = await self.http.get(url)
-        except httpx.HTTPError as exc:
-            self.last_error = f"{type(exc).__name__}: {str(exc)[:120]}"
-            log.debug("Fehler beim Laden von %s: %s", url, exc)
+        resp = None
+        for versuch in range(_MAX_VERSUCHE):
+            await self._throttle(url)
+            try:
+                resp = await self.http.get(url)
+            except httpx.HTTPError as exc:
+                self.last_error = f"{type(exc).__name__}: {str(exc)[:120]}"
+                log.debug("Fehler beim Laden von %s: %s", url, exc)
+                resp = None
+            if resp is not None and resp.status_code not in _VORUEBERGEHEND:
+                break
+            if versuch < _MAX_VERSUCHE - 1:
+                if resp is not None:
+                    self.last_error = f"HTTP {resp.status_code}"
+                await asyncio.sleep(_WARTEN_VOR_WIEDERHOLUNG[versuch])
+        if resp is None:
+            # Netzwerkfehler werden NICHT als „übersprungen“ gemerkt: Sonst bleibt der Betrieb
+            # vierzehn Tage lang unsichtbar, auch beim erneuten Auswerten aus dem Zwischenspeicher.
             return None
         ctype = resp.headers.get("content-type", "").lower()
         if resp.status_code >= 400 or not any(t in ctype for t in accept):
             self.last_error = f"HTTP {resp.status_code} ({ctype.split(';')[0] or 'ohne Content-Type'})"
-            if self.cache is not None:
+            # Eine Stichprobe über 66 Handwerkerwebsites fand 19 Ausfälle, fast alle mit demselben
+            # Serverfehler desselben Massenhosters. Ein vorübergehender Fehler darf den Betrieb nicht
+            # für die Dauer des Zwischenspeichers aussortieren.
+            if self.cache is not None and resp.status_code not in _VORUEBERGEHEND:
                 self.cache.set("html", key, {"skip": True})
             return None
         raw = resp.content[: self.settings.max_html_bytes]
