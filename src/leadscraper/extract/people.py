@@ -50,8 +50,10 @@ _ANSPRECH_RE = re.compile(
 )
 _YEAR_RE = re.compile(r"\b(?:19|20)\d{2}\b")
 _DECIDER_WORDS = (
-    r"geschäftsführ(?:er(?:in)?|ung)|geschäftsleitung|inhaber(?:in)?|eigentümer(?:in)?|"
-    r"vorstand|gründer(?:in)?|prokurist(?:in)?|betriebsinhaber(?:in)?"
+    # „Geschäftsführende Gesellschafter“ ist im Handwerk und in Kanzleien die übliche Form und
+    # muss vor der kürzeren Variante stehen, sonst greift diese zuerst und der Rest der Zeile fehlt.
+    r"geschäftsführende[rn]?\s+gesellschafter(?:in)?|geschäftsführ(?:er(?:in)?|ung)|geschäftsleitung|"
+    r"inhaber(?:in)?|eigentümer(?:in)?|vorstand|gründer(?:in)?|prokurist(?:in)?|betriebsinhaber(?:in)?"
 )
 # „Inhaber: Rainer Lang“ / „Geschäftsführer – Anna Schmidt“ (außerhalb des Impressums)
 _ROLE_LABEL_LINE_RE = re.compile(rf"^\s*({_DECIDER_WORDS})\s*[:\-–]\s*(.+)$", re.I)
@@ -81,6 +83,17 @@ _FREMDE_ABSCHNITTE_RE = re.compile(
     r"beirat|aufsichtsrat|kuratorium|ehemalige|in\s+memoriam)\s*[:–-]?$",
     re.I,
 )
+# Fußzeilen der Webagentur oder des Verbund-CMS. Viele Innungsbetriebe laufen über dasselbe System,
+# dessen Fußzeile auf jeder Seite „Geschäftsführer …“ des Dienstleisters nennt – ohne diese Sperre
+# bekommen reihenweise Betriebe denselben fremden Geschäftsführer zugeschrieben.
+_DIENSTLEISTER_RE = re.compile(
+    r"(?:technische\s+)?(?:realisierung|umsetzung|programmierung|gestaltung|konzeption)\s*"
+    r"(?:und\s+\w+\s*)?[:–-]|webdesign|webentwicklung|powered\s+by|erstellt\s+von|"
+    r"ein\s+(?:angebot|service)\s+der|ieq-systems",
+    re.I,
+)
+_DIENSTLEISTER_FENSTER = 3
+
 # Abschnitte, die wieder zur Belegschaft zurückführen
 _TEAM_ABSCHNITTE_RE = re.compile(
     r"^(?:unser\s+team|das\s+team|team|ihre?\s+ansprechpartner(?:in)?|ansprechpartner(?:in)?|"
@@ -111,6 +124,7 @@ def _is_staff_context(lines: list[str]) -> list[bool]:
     """
     erlaubt: list[bool] = []
     aktuell = True
+    agentur = 0  # noch so viele Zeilen gehören zur Dienstleister-Fußzeile
     for line in lines:
         kurz = line.strip()
         if len(kurz) <= _ABSCHNITT_MAXLEN:
@@ -118,9 +132,13 @@ def _is_staff_context(lines: list[str]) -> list[bool]:
                 aktuell = False
             elif _TEAM_ABSCHNITTE_RE.match(kurz):
                 aktuell = True
+                agentur = 0
         if _BEWERTUNGS_WIDGET_RE.search(line) or _GRUPPENFOTO_RE.match(kurz):
             aktuell = False
-        erlaubt.append(aktuell)
+        if _DIENSTLEISTER_RE.search(line):
+            agentur = _DIENSTLEISTER_FENSTER + 1
+        erlaubt.append(aktuell and agentur == 0)
+        agentur = max(0, agentur - 1)
     return erlaubt
 
 

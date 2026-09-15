@@ -81,6 +81,22 @@ profiles:
       - "Sanitär Heizung Klima Betrieb"
       - "Heizungsbau Betrieb"
     included_types: [electrician, plumber]
+  metallbau:
+    beschreibung: "Metallbau und Schlossereien – beste Belegschafts-Datenlage der Stichprobe (6 von 10 Betrieben belegen 5+), 53 % der Innungsbetriebe haben 5–25 Beschäftigte; Meister sitzt an der Betriebsadresse"
+    # Kein included_type: „locksmith“ ist der Schlüsseldienst, nicht die Schlosserei – ein falscher Typ
+    # verdirbt die Trefferliste. Deshalb Textsuche mit mehreren Begriffen.
+    queries:
+      - "Metallbau"
+      - "Schlosserei"
+      - "Metallbaumeister"
+      - "Stahlbau Metallbau"
+  dentallabor:
+    beschreibung: "Zahntechnische Labore – 9 von 10 nennen den Inhaber, 7 von 10 belegen die Belegschaft (eigene Stichprobe 15.09.2026); ortsfester Betrieb, deshalb praktisch nie eine Handynummer"
+    queries:
+      - "Dentallabor"
+      - "Zahntechnik"
+      - "Zahntechnisches Labor"
+      - "Zahntechnisches Meisterlabor"
   versicherung:
     beschreibung: "Versicherungs-/Finanzmakler – Vertriebler mit Handy, Büro-Personal mit Verwaltungsaufwand"
     queries:

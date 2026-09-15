@@ -228,3 +228,39 @@ def test_group_photo_caption_is_not_staff():
     alts = ["Anna Schmidt", "v.l.n.r. Hermann Emmerich, Walburga Krahl"]
     gefunden = {p.name for p in staff_from_links_and_images([], alts, source_url="https://x.de/")}
     assert gefunden == {"Anna Schmidt"}
+
+
+def test_weiche_trennstriche_zerschneiden_die_rolle_nicht():
+    """Handwerkerseiten setzen &shy; mitten in „Geschäftsführer“ – sonst findet keine Regex die Rolle."""
+    from leadscraper.extract.htmlutil import extract_lines
+    from leadscraper.extract.people import find_people
+
+    html = (
+        "<html><body><h1>Impressum</h1>"
+        "<p>Gesch&shy;&auml;fts&shy;f&uuml;hrende Gesellschafter: Tobias Behr, Wilfried Behr</p>"
+        "</body></html>"
+    )
+    leute = find_people(extract_lines(html), [], source_url=None, page_kind="impressum")
+    assert {p.name for p in leute} == {"Tobias Behr", "Wilfried Behr"}
+    assert all(p.role_category == "geschaeftsfuehrung" for p in leute)
+
+
+def test_geschaeftsfuehrer_der_webagentur_zaehlt_nicht():
+    """Verbund-CMS setzen ihren eigenen Geschäftsführer in jede Fußzeile – reihenweise falsche Entscheider."""
+    from leadscraper.extract.htmlutil import extract_lines
+    from leadscraper.extract.people import find_people
+
+    fussleiste = (
+        "<html><body><h1>Elektro Dalheim GmbH</h1><p>Wir installieren seit 1968.</p>"
+        "<footer><p>Umsetzung: ieQ-systems GmbH &amp; Co. KG</p>"
+        "<p>Gesch&auml;ftsf&uuml;hrer: Tobias Haking</p></footer></body></html>"
+    )
+    assert find_people(extract_lines(fussleiste), [], source_url=None, page_kind="startseite") == []
+
+    # Der echte Geschäftsführer im Impressum bleibt erhalten, auch wenn unten eine Agentur steht
+    echt = (
+        "<html><body><h1>Impressum</h1><p>Gesch&auml;ftsf&uuml;hrer: Anna Meier</p>"
+        "<footer><p>Webdesign: Agentur Nord</p></footer></body></html>"
+    )
+    leute = find_people(extract_lines(echt), [], source_url=None, page_kind="impressum")
+    assert [p.name for p in leute] == ["Anna Meier"]

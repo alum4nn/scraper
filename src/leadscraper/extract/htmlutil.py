@@ -106,6 +106,11 @@ def _number_from_href(href: str) -> str | None:
     return None
 
 
+# Zeichen ohne eigene Breite, die Wörter zerschneiden: weicher Trennstrich, Nullbreiten-Leerzeichen,
+# Wortverbinder, Byte-Order-Mark.
+_UNSICHTBAR = {ord(c): None for c in "\u00ad\u200b\u200c\u200d\u2060\ufeff"}
+
+
 def extract_text(html: str) -> str:
     tree = _parse(html)
     root = tree.body or tree.root
@@ -114,6 +119,10 @@ def extract_text(html: str) -> str:
     parts: list[str] = []
     _walk(root, parts)
     raw = html_mod.unescape("".join(parts))
+    # Weiche Trennstriche (&shy;) und Nullbreiten-Zeichen stehen mitten in den Wörtern:
+    # „Gesch\u00adäfts\u00adführer“ wird sonst von keiner Rollen-Regex gefunden. Eine Stichprobe
+    # über 47 Handwerkerseiten zeigte das an mehreren Impressen.
+    raw = raw.translate(_UNSICHTBAR)
     lines = []
     for line in raw.replace("\t", " · ").split("\n"):
         cleaned = _WS_RE.sub(" ", line)
