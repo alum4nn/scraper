@@ -91,14 +91,27 @@ profiles:
       - '["shop"="car_repair"]'
       - '["shop"="car"]'
   spedition:
-    beschreibung: "Speditionen und Logistikdienstleister – rund die Hälfte der 46.902 Güterkraftverkehrs-Unternehmen hat 5–49 Beschäftigte (BALM 2020); Berufskraftfahrer sind zweithäufigster geförderter Zielberuf"
+    beschreibung: "Speditionen ohne eigenen Fuhrpark (HGB-Spediteur) – 2.146 Unternehmen mit 20–49 tätigen Personen (Eurostat SBS 2023), 37 % kaufmännisches Personal, und mit 13 % die niedrigste KI-Nutzung aller Dienstleistungsbranchen"
+    # Entscheidend ist die Trennung zweier Betriebstypen, die dieselbe Firmierung tragen:
+    # Beim Frachtführer sind 73,7 % der Belegschaft Fahrpersonal und nur 14,9 % kaufmännisch
+    # (BALM USTAT 19, 2020) – eine 30-Mann-Firma hat dort 4 bis 6 schulbare Köpfe. Beim
+    # HGB-Spediteur, der organisiert statt fährt, sind es 37 % kaufmännisch plus 3 % Inhaber
+    # (DSLV-Strukturerhebung 2015), also 12 bis 13 Köpfe. Nur der zweite Typ trägt die Kampagne.
+    # An der Website erkennbar: Zollabfertigung, See- und Luftfracht, ADSp als AGB und
+    # Mitgliedschaft in einer Stückgut-Kooperation sprechen für den Spediteur; eine Fuhrparkseite
+    # mit Euro-Normen und Dauerinserate "Berufskraftfahrer CE" für den Frachtführer.
+    #
+    # Nicht mehr verwendet: Die 817 Sammelanträge aus Verkehr und Lagerei taugen als Argument
+    # nicht – 68 % kamen von Unternehmen mit 2.500 und mehr Beschäftigten, und die Bildungsziele
+    # waren überwiegend Triebfahrzeugführer und Kfz-Technik (Statistik der BA, Sept. 2023).
     queries:
       - "Spedition"
       - "Transportunternehmen"
       - "Logistikunternehmen"
       - "Lagerlogistik Dienstleister"
+    # Gemessen am 16.09.2026: industrial=haulage hat bundesweit 0 Objekte und ist damit als Tag
+    # wertlos; office=logistics trägt 1.122 Objekte, davon 1.083 mit Namen und 611 mit Website.
     osm:
-      - '["industrial"="haulage"]'
       - '["office"="logistics"]'
   planungsbuero:
     beschreibung: "Architektur- und Ingenieurbüros – 7.558 von 34.986 Architekturbüros haben 5–49 Beschäftigte (BAK/Destatis 2023); 77 % der Architekten wünschen KI-Fortbildung"
@@ -194,6 +207,35 @@ profiles:
       - "IT-Dienstleister"
       - "Softwareentwicklung"
       - "Digitalagentur"
+  grosshandel:
+    beschreibung: "Großhandel (WZ 46) – 8.676 Unternehmen mit 20–49 tätigen Personen und 262.230 Beschäftigten darin (Eurostat SBS 2023); 60,8 % davon arbeiten am Bildschirm, und nur 21 % der Handelsbetriebe nutzen KI"
+    # Warum diese Branche: Sie verbindet die drei Größen, auf die es ankommt. Masse (doppelt so
+    # viele Zielunternehmen wie IT), weißer Fleck (71 % der Handelsbetriebe nutzen KI weder noch
+    # planen sie es, IAB-Betriebspanel 2025) und Bürobelegschaft (60,8 %, gemessen über die
+    # Kreuzung Berufsgruppe × Anforderungsniveau × WZ 46 der BA zum 30.06.2025).
+    #
+    # Die größten Berufsgruppen im Großhandel sind Einkauf und Vertrieb (194.710 Beschäftigte),
+    # Büro und Sekretariat (125.080) und Unternehmensorganisation (117.860) – also genau die
+    # Berufsgruppen 713 und 714, die die Arbeitsagenturen in ihren Bildungszielplanungen 2026
+    # namentlich mit KI verknüpfen ("KI im Kontext Büro", "Anwendung KI im Arbeitskontext").
+    #
+    # OSM trägt diese Branche schlecht: shop=wholesale hat bundesweit 1.683 Objekte, davon 811 mit
+    # Website – gegen 8.676 Zielunternehmen sind das 19 % Abdeckung (gemessen 16.09.2026).
+    # office=wholesale hat genau 1 Objekt, industrial=wholesale keines, office=company trifft mit
+    # 41.169 Objekten alle Firmenbüros und damit nichts Bestimmtes. Namensfilter greifen nicht:
+    # Großhändler führen ihre Branche nicht im Namen (Bremen: 4 Treffer), bundesweit läuft die
+    # Abfrage in einen 504. Die Masse kommt deshalb über `leadscraper enrich-list` aus
+    # Verbands- und Verbundgruppenverzeichnissen, nicht über `leadscraper osm`.
+    osm:
+      - '["shop"="wholesale"]'
+    # Verbrauchermärkte mit Großhandelslizenz haben Filialleiter statt Inhaber und fallen raus
+    osm_nicht_name: 'Metro|Selgros|Handelshof|Fegro|Transgourmet|Edeka|Rewe|Lidl|Aldi'
+    queries:
+      - "Großhandel"
+      - "Technischer Handel Industriebedarf"
+      - "Elektrogroßhandel"
+      - "Sanitär Heizung Großhandel"
+      - "Baustoffhandel"
   logistik_handel:
     beschreibung: "Spedition, Großhandel, Lager – Prozessdigitalisierung"
     queries:
