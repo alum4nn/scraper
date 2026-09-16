@@ -13,7 +13,7 @@ import yaml
 from rich.console import Console
 from rich.table import Table
 
-from leadscraper import funding, pipeline
+from leadscraper import excel, funding, pipeline
 from leadscraper.excel import write_trello_csv, write_workbook
 from leadscraper.models import Company, Lead, SearchSpec
 from leadscraper.places import PlacesError, QuotaExceededError
@@ -415,7 +415,7 @@ _OHNE_HANDY = "keine Handynummer beim Entscheider"
 _LISTE_B_MIN = 5
 
 
-def has_workforce(lead: Lead, mindestens: int = _LISTE_B_MIN) -> bool:
+def has_workforce(lead: Lead, mindestens: int = _LISTE_B_MIN, hoechstens: int | None = None) -> bool:
     """Liste B: Entscheider bekannt, Belegschaft belegt – aber nur die Zentrale auf der Website.
 
     Eine Handynummer im Impressum ist erlaubt, weil ein Festnetzanschluss Einzelunternehmer
@@ -428,15 +428,16 @@ def has_workforce(lead: Lead, mindestens: int = _LISTE_B_MIN) -> bool:
     """
     if lead.enrichment is None:
         return False
-    if lead.enrichment.staff.headcount < mindestens:
+    kopfzahl = lead.enrichment.staff.headcount
+    if kopfzahl < mindestens:
         return False
-    # „nur 7 Beschäftigte belegt“ ist kein Ausschluss mehr, wenn die eigene Untergrenze erfüllt ist –
-    # dieser Punkt stammt aus der Premium-Regel und wird hier durch `mindestens` ersetzt.
-    offen = [
-        m
-        for m in lead.premium_missing or []
-        if m != _OHNE_HANDY and not m.startswith("nur ") and "Beschäftigte belegt" not in m
-    ]
+    # Die Obergrenze ist keine Geschmacksfrage, sondern die Förderschwelle: Unter 50 Beschäftigten
+    # trägt die Agentur 100 % der Lehrgangskosten, ab 50 nur noch die Hälfte.
+    if hoechstens is not None and kopfzahl > hoechstens:
+        return False
+    # „nur 7 Beschäftigte belegt“ stammt aus der Premium-Regel und wird durch `mindestens` ersetzt.
+    # Der Hinweis auf eine zu große Belegschaft bleibt dagegen ein Ausschluss.
+    offen = [m for m in lead.premium_missing or [] if m != _OHNE_HANDY and not m.startswith("nur ")]
     return not offen
 
 
@@ -494,20 +495,40 @@ def export(
         "--min-belegschaft",
         help="Untergrenze belegter Beschäftigter für --mit-belegschaft (Förderung: unter 50 voll)",
     ),
+    max_belegschaft: int | None = typer.Option(
+        None,
+        "--max-belegschaft",
+        help="Obergrenze belegter Beschäftigter (ab 50 halbiert sich die Förderung)",
+    ),
     min_score: int = typer.Option(0, help="Mindest-Score"),
+    nach_belegschaft: bool = typer.Option(
+        False,
+        "--nach-belegschaft",
+        help="Größte Belegschaft zuerst statt bester Score – wer 40 Köpfe hat, ist mehr wert als wer 6 hat",
+    ),
 ) -> None:
     """Excel aus gespeicherten Leads bauen (z. B. nur Premium, ohne neuen Crawl)."""
     leads = _load_leads(jsonl)
     if mit_belegschaft:
-        leads = [ld for ld in leads if has_workforce(ld, min_belegschaft)]
+        leads = [ld for ld in leads if has_workforce(ld, min_belegschaft, max_belegschaft)]
     elif near_premium:
         leads = [ld for ld in leads if ld.premium or is_near_premium(ld)]
     elif premium:
         leads = [ld for ld in leads if ld.premium]
     leads = [ld for ld in leads if ld.score >= min_score]
+    if nach_belegschaft:
+        leads.sort(
+            key=lambda ld: (
+                -(ld.enrichment.staff.headcount if ld.enrichment else 0),
+                -ld.score,
+                ld.display_name.lower(),
+            )
+        )
+        excel.set_sortierung(excel.SORTIERUNG_UEBERNEHMEN)
     first = jsonl[0]
     if mit_belegschaft:
-        suffix = f"_ab_{min_belegschaft}" if min_belegschaft != _LISTE_B_MIN else "_mit_belegschaft"
+        spanne = f"_ab_{min_belegschaft}" + (f"_bis_{max_belegschaft}" if max_belegschaft else "")
+        suffix = spanne if min_belegschaft != _LISTE_B_MIN or max_belegschaft else "_mit_belegschaft"
     else:
         suffix = "_near_premium" if near_premium else ("_premium" if premium else "")
     target = out or first.with_name(first.stem + suffix + ".xlsx")
@@ -602,14 +623,30 @@ def trello(
     min_belegschaft: int = typer.Option(
         _LISTE_B_MIN, "--min-belegschaft", help="Untergrenze belegter Beschäftigter für --mit-belegschaft"
     ),
+    max_belegschaft: int | None = typer.Option(
+        None,
+        "--max-belegschaft",
+        help="Obergrenze belegter Beschäftigter (ab 50 halbiert sich die Förderung)",
+    ),
     limit: int | None = typer.Option(None, help="Höchstens so viele Karten (beste Scores zuerst)"),
+    nach_belegschaft: bool = typer.Option(
+        False, "--nach-belegschaft", help="Größte Belegschaft zuerst statt bester Score"
+    ),
 ) -> None:
     """CSV für den Trello-Import: Spalte 1 = Unternehmensname (Kartenname), Spalte 2 = alle Infos."""
     leads = _load_leads(jsonl)
     if mit_belegschaft:
-        leads = [ld for ld in leads if has_workforce(ld, min_belegschaft)]
+        leads = [ld for ld in leads if has_workforce(ld, min_belegschaft, max_belegschaft)]
     elif premium:
         leads = [ld for ld in leads if ld.premium]
+    if nach_belegschaft:
+        leads.sort(
+            key=lambda ld: (
+                -(ld.enrichment.staff.headcount if ld.enrichment else 0),
+                -ld.score,
+                ld.display_name.lower(),
+            )
+        )
     if limit:
         leads = leads[:limit]
     out.parent.mkdir(parents=True, exist_ok=True)

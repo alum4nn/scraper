@@ -270,7 +270,21 @@ def lead_rows(leads: list[Lead]) -> list[dict[str, Any]]:
 # --- Zeilen ---------------------------------------------------------------------------------------
 
 
+# Wenn der Aufrufer schon sortiert hat (z. B. größte Belegschaft zuerst), darf das Blatt das nicht
+# wieder umwerfen. Der Score bewertet die Erreichbarkeit, nicht den Wert eines Abschlusses.
+SORTIERUNG_UEBERNEHMEN = "uebernehmen"
+_sortierung = "score"
+
+
+def set_sortierung(modus: str) -> None:
+    """„score“ (Vorgabe) oder „uebernehmen“ – dann bleibt die Reihenfolge des Aufrufers erhalten."""
+    global _sortierung
+    _sortierung = modus
+
+
 def _sorted_leads(leads: list[Lead]) -> list[Lead]:
+    if _sortierung == SORTIERUNG_UEBERNEHMEN:
+        return list(leads)
     return sorted(leads, key=lambda ld: (-ld.score, ld.company.name.lower()))
 
 

@@ -220,3 +220,23 @@ def test_schwelle_fuer_liste_b_ist_einstellbar():
     assert has_workforce(lead(["keine Handynummer beim Entscheider"], 7))
     # Ein echter Ausschluss bleibt einer, auch über der Schwelle
     assert not has_workforce(lead(["kein Entscheider im Impressum erkannt"], 40), 20)
+
+
+def test_obergrenze_haelt_die_foerderschwelle_ein():
+    """Ab 50 Beschäftigten halbiert sich die Förderung – solche Betriebe gehören nicht in dieselbe Liste."""
+    from leadscraper.cli import has_workforce
+    from leadscraper.models import Company, Enrichment, Lead, StaffEvidence
+
+    def lead(missing: list[str], headcount: int) -> Lead:
+        return Lead(
+            company=Company(place_id="x", name="Muster GmbH"),
+            enrichment=Enrichment(staff=StaffEvidence(headcount=headcount)),
+            premium_missing=missing,
+        )
+
+    ohne_handy = ["keine Handynummer beim Entscheider"]
+    assert has_workforce(lead(ohne_handy, 45), 20, 50)
+    assert not has_workforce(lead(ohne_handy, 85), 20, 50)
+    # Der Hinweis der Premium-Regel auf eine zu große Belegschaft bleibt ein Ausschluss
+    zu_gross = ["keine Handynummer beim Entscheider", "148 Beschäftigte belegt – über 50"]
+    assert not has_workforce(lead(zu_gross, 148), 20)

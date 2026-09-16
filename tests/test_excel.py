@@ -103,3 +103,25 @@ def test_nummer_faellt_auf_die_zentrale_zurueck():
     row = lead_rows([lead])[0]
     assert row["Name"] == "Anna Beispiel"
     assert row["Nummer"] == "0221 1234560"
+
+
+def test_reihenfolge_des_aufrufers_bleibt_erhalten():
+    """Nach Belegschaft sortiert heißt: Das Blatt sortiert nicht heimlich nach Score zurück."""
+    from leadscraper import excel
+    from leadscraper.excel import lead_rows
+    from leadscraper.models import Company, Enrichment, Lead, StaffEvidence
+
+    def lead(name: str, score: int, koepfe: int) -> Lead:
+        return Lead(
+            company=Company(place_id=name, name=name),
+            enrichment=Enrichment(staff=StaffEvidence(headcount=koepfe)),
+            score=score,
+        )
+
+    leads = [lead("Gross GmbH", 40, 48), lead("Klein GmbH", 90, 21)]
+    assert [r["Unternehmensname"] for r in lead_rows(leads)] == ["Klein GmbH", "Gross GmbH"]
+    excel.set_sortierung(excel.SORTIERUNG_UEBERNEHMEN)
+    try:
+        assert [r["Unternehmensname"] for r in lead_rows(leads)] == ["Gross GmbH", "Klein GmbH"]
+    finally:
+        excel.set_sortierung("score")
