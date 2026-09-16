@@ -35,9 +35,12 @@ log = logging.getLogger(__name__)
 # erkennbar Suchmaschinen und nicht API-Clients, aber dieses Werkzeug hält sich an robots.txt, und
 # Ausnahmen nach eigenem Gutdünken wären das Ende dieser Zusage. kumi.systems hat keine robots.txt
 # (HTTP 404), die übrigen ebenfalls keine Sperre.
+# Reihenfolge nach Messung vom 16.09.2026: maps.mail.ru antwortete auf eine bundesweite Zählung in
+# 38 Sekunden, kumi.systems und private.coffee brachen nach 70 Sekunden ohne ein Byte ab. Wer den
+# schnellsten Spiegel zuletzt fragt, wartet je Abfrage erst zweimal ins Leere.
 SPIEGEL: tuple[str, ...] = (
-    "https://overpass.kumi.systems/api/interpreter",
     "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
     "https://overpass.private.coffee/api/interpreter",
 )
 # OSM-Relation 51477 = Bundesrepublik Deutschland. Die Suche über area["ISO3166-1"="DE"] kostet den
