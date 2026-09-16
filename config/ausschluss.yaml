@@ -1,5 +1,13 @@
-# Ketten, Franchise-Systeme, Portale und Konzerne, deren Google-Treffer keine eigenständigen
-# Kleinbetriebe sind (Impressum zeigt die Zentrale, Entscheidung fällt nicht vor Ort).
+# Ketten, Franchise-Systeme, Portale und Konzerne, deren Treffer keine eigenständigen Kleinbetriebe
+# sind (Impressum zeigt die Zentrale, Entscheidung fällt nicht vor Ort).
+#
+# Wichtig zur Begründung: Der Ausschluss ist ein VERTRIEBLICHER, kein förderrechtlicher. Die Fachlichen
+# Weisungen (FW zu § 82, Ziffer 7 Abs. 1, Stand 01.01.2026) sagen ausdrücklich: „Einzelne Franchisenehmer
+# sind regelmäßig nicht dem Gesamtunternehmensverbund zuzurechnen, sondern einzeln hinsichtlich ihrer
+# KMU-Eigenschaft zu betrachten.“ Ein Franchisenehmer behält also den vollen Fördersatz – er fliegt hier
+# nur heraus, wenn vor Ort niemand über Weiterbildung entscheidet.
+# Umgekehrt zählen Filialen und Tochtergesellschaften nach § 82 Abs. 6 Satz 3 Nr. 2 SGB III mit dem
+# GANZEN Unternehmen; die erkennt der Crawler über Enrichment.mehrstandort.
 # Abgleich: Domain (registered domain, exakt) oder Firmenname (Teilstring, case-insensitiv).
 # Ausschalten: leadscraper run --no-chain-filter
 domains:

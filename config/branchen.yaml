@@ -48,6 +48,19 @@ profiles:
       - '["name"~"Pflegedienst|Sozialstation|Diakoniestation|Pflegeteam|Ambulante Pflege|Ambulanter Pflege|Häusliche Kranken|Hauskranken|Mobile Pflege|Pflegeservice",i]'
     # Unter denselben Tags stehen Heime, Tagespflege und betreutes Wohnen – die haben andere Entscheider
     osm_nicht_name: 'Pflegeheim|Seniorenheim|Altenheim|Seniorenzentrum|Seniorenresidenz|Pflegezentrum|Tagespflege|Kurzzeitpflege|Betreutes Wohnen|Wohnstift|Altenpflegeheim|Hospiz'
+  pflegeheim:
+    beschreibung: "Pflegeheime, privat und konzernfrei – rund 4.500 bis 5.000 im Zielkorridor; reißen die Förderschwelle von 50 erst bei 74 Köpfen, weil 59,7 % Teilzeit nur anteilig zählen (§ 82 Abs. 6 SGB III)"
+    # Trägerprüfung vor dem Anruf: Caritas, Diakonie, AWO, DRK und die Heimketten zählen als ein
+    # Unternehmen und fallen deshalb aus dem 100-Prozent-Band. Sie stehen in config/ausschluss.yaml.
+    osm:
+      - '["social_facility"="nursing_home"]'
+      - '["amenity"="nursing_home"]'
+    osm_nicht_name: 'Tagespflege|Kurzzeitpflege|Betreutes Wohnen|Wohngemeinschaft|Hospiz|Sozialstation|ambulant'
+    queries:
+      - "Pflegeheim"
+      - "Seniorenheim"
+      - "Altenpflegeheim"
+      - "Seniorenresidenz"
   zahnarztpraxis:
     beschreibung: "Zahnarztpraxen – 37.423 Praxen, Ø 8,13 Beschäftigte ohne Inhaber (KZBV-Jahrbuch 2025), fast ausschließlich sozialversicherungspflichtige ZFA"
     queries:
