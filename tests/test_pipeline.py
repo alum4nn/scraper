@@ -546,3 +546,28 @@ def test_jeder_betrieb_bekommt_einen_eigenen_http_client(monkeypatch):
     assert all(any(g is c for g in geschlossen) for c in gesehen), "jeder Client wird geschlossen"
     assert ergebnis[0] is not None and "Zeitüberschreitung" in ergebnis[0].errors[0]
     assert all(e is not None and e.pages_crawled == ["x"] for e in ergebnis[1:])
+
+
+def test_verschleierte_adressen_bleiben_auf_riesigen_seiten_schnell():
+    """Ein Lauf stand zwölf Minuten bei 60 Prozent Rechenlast: Die Regex für „name [at] firma [dot] de“
+    nahm jedes „ at“ als Adresse und lief über die Punkte einer 1,8 MB großen Händlerliste quadratisch.
+    Weil der Event-Loop dabei blockiert war, konnte auch die Schutzuhr je Betrieb nicht eingreifen."""
+    import time
+
+    prosa = "We met at the office. The team at Houston. Reach us at noon. " * 25_000  # rund 1,5 MB
+    liste = "Muster GmbH . Musterstr. 1 . 12345 . Berlin . Germany . " * 30_000  # Händlerliste mit Punkten
+    datenblock = "QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVo." * 10_000  # 360.000 Zeichen ohne Leerzeichen
+    for text, erwartet in (
+        (prosa, []),
+        (liste, []),
+        (prosa + " info at " + liste, []),
+        (datenblock + " Kontakt: post@firma.de " + datenblock, ["post@firma.de"]),
+    ):
+        start = time.perf_counter()
+        assert pipeline._emails_in_text(text) == erwartet
+        assert time.perf_counter() - start < 2.0
+
+    text = "Kontakt: info [at] firma [dot] de, Vertrieb: max (at) firma.de, Chef: hans at firma [dot] de"
+    assert pipeline._emails_in_text(text) == ["info@firma.de", "max@firma.de", "hans@firma.de"]
+    assert pipeline._emails_in_text("Wir sehen uns at Berlin. Wir freuen uns.") == []
+    assert pipeline._emails_in_text("Schreiben Sie an post @ firma.de") == ["post@firma.de"]

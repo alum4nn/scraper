@@ -114,18 +114,52 @@ def _drop_shared_numbers(deduped: list[PhoneNumber], alle: list[PhoneNumber]) ->
     return deduped
 
 
-_EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+", re.I)
-_OBFUSCATED_RE = re.compile(
-    r"([\w.+-]+)\s*(?:\[at\]|\(at\)|\{at\}|\s@\s|\sat\s|\[ät\])\s*([\w-]+(?:\s*(?:\[dot\]|\(dot\)|\[punkt\]|\(punkt\)|\.)\s*[\w-]+)+)",
+# E-Mail-Adressen werden am „@“ verankert, nicht von links gesucht. Ein Muster wie „[\w.+-]+@“ läuft
+# auf einem eingebetteten Datenblock ohne Leerzeichen quadratisch: Eine Händlerliste mit einem
+# 317.878 Zeichen langen Lauf hielt einen Lauf über 2.100 Betriebe zwölf Minuten bei 60 Prozent
+# Rechenlast an – und weil der Event-Loop blockiert war, konnte auch die Schutzuhr nicht eingreifen.
+# Die Längen folgen RFC 5321: Lokalteil höchstens 64 Zeichen, ein Label höchstens 63.
+_EMAIL_LOKAL_RE = re.compile(r"[\w.+-]{1,64}$", re.I)
+_EMAIL_DOMAIN_RE = re.compile(r"[\w-]{1,63}(?:\.[\w-]{1,63}){1,8}", re.I)
+# Verschleierte Adressen: „info [at] firma [dot] de“. Auch hier wird am Token verankert, und ein
+# bloßes „at“ zählt nur mit ausgeschriebenem Punkt – sonst wird jeder englische Satz zur Adresse.
+_AT_TOKEN_RE = re.compile(r"\[at\]|\(at\)|\{at\}|\[ät\]|\s@\s|\sat\s", re.I)
+_DOT_TOKEN_RE = re.compile(r"\[dot\]|\(dot\)|\[punkt\]|\(punkt\)", re.I)
+_OBF_LOKAL_RE = re.compile(r"[\w.+-]{1,64}\s{0,3}$", re.I)
+_OBF_DOMAIN_RE = re.compile(
+    r"\s{0,3}(?P<domain>[\w-]{1,63}(?:\s{0,3}(?:\[dot\]|\(dot\)|\[punkt\]|\(punkt\)|\.)\s{0,3}[\w-]{1,63}){1,6})",
     re.I,
 )
 
 
+def _plain_emails(text: str) -> list[str]:
+    found: dict[str, None] = {}
+    for i, zeichen in enumerate(text):
+        if zeichen != "@":
+            continue
+        lokal = _EMAIL_LOKAL_RE.search(text, max(0, i - 64), i)
+        domain = _EMAIL_DOMAIN_RE.match(text, i + 1)
+        if lokal and domain:
+            found.setdefault(f"{lokal.group(0)}@{domain.group(0)}".lower(), None)
+    return list(found)
+
+
+def _obfuscated_emails(text: str) -> list[str]:
+    found: dict[str, None] = {}
+    for token in _AT_TOKEN_RE.finditer(text):
+        lokal = _OBF_LOKAL_RE.search(text, max(0, token.start() - 70), token.start())
+        domain = _OBF_DOMAIN_RE.match(text, token.end())
+        if not lokal or not domain:
+            continue
+        if token.group(0).strip().lower() == "at" and not _DOT_TOKEN_RE.search(domain.group("domain")):
+            continue  # „Wir sehen uns at Berlin. Wir …“ ist Prosa
+        adresse = f"{lokal.group(0)}@{_DOT_TOKEN_RE.sub('.', domain.group('domain'))}"
+        found.setdefault(adresse.lower().replace(" ", ""), None)
+    return list(found)
+
+
 def _emails_in_text(text: str) -> list[str]:
-    found = [m.group(0).lower() for m in _EMAIL_RE.finditer(text)]
-    for m in _OBFUSCATED_RE.finditer(text):
-        domain = re.sub(r"\s*(?:\[dot\]|\(dot\)|\[punkt\]|\(punkt\))\s*", ".", m.group(2), flags=re.I)
-        found.append(f"{m.group(1)}@{domain}".lower().replace(" ", ""))
+    found = _plain_emails(text) + _obfuscated_emails(text)
     return [e for e in found if not e.endswith((".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp"))]
 
 
