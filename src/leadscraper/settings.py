@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     request_timeout_seconds: float = Field(default=15.0, alias="LEADSCRAPER_REQUEST_TIMEOUT_SECONDS")
     request_delay_seconds: float = Field(default=1.0, alias="LEADSCRAPER_REQUEST_DELAY_SECONDS")
     concurrency: int = Field(default=8, alias="LEADSCRAPER_CONCURRENCY")
+    # Schutzuhr je Betrieb: Eine hängende Verbindung darf nicht den ganzen Lauf blockieren.
+    # Großzügig bemessen, damit eine langsame, aber lebende Website nicht abgeschnitten wird.
+    site_timeout_seconds: float = Field(default=180.0, alias="LEADSCRAPER_SITE_TIMEOUT_SECONDS")
     user_agent: str = Field(
         default="LeadScraper/0.1 (+https://github.com/alum4nn/scraper; B2B-Recherche)",
         alias="LEADSCRAPER_USER_AGENT",

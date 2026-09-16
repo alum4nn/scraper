@@ -478,3 +478,27 @@ def test_license_and_franchise_wording_marks_freelancers():
     ):
         assert _FREELANCE_RE.search(satz), satz
     assert not _FREELANCE_RE.search("Unsere Mitarbeiterin Mandy Schwarz berät Sie in Festanstellung.")
+
+
+def test_haengende_website_blockiert_den_lauf_nicht(monkeypatch):
+    """Ein Lauf über 1.600 Firmen stand anderthalb Stunden still, weil eine Verbindung nie zurückkam."""
+    import asyncio
+
+    from leadscraper import pipeline as pipeline_mod
+    from leadscraper.models import Company
+    from leadscraper.settings import Settings
+
+    async def haengt(company, crawler):
+        if "langsam" in (company.website or ""):
+            await asyncio.sleep(30)
+        return pipeline_mod.Enrichment(website=company.website, pages_crawled=["x"])
+
+    monkeypatch.setattr(pipeline_mod, "enrich_company", haengt)
+    firmen = [
+        Company(place_id="1", name="Langsam GmbH", website="https://langsam.example"),
+        Company(place_id="2", name="Schnell GmbH", website="https://schnell.example"),
+    ]
+    einstellungen = Settings(concurrency=2, cache_path=None, site_timeout_seconds=0.2)
+    ergebnis = asyncio.run(pipeline_mod.enrich_all(firmen, einstellungen, None))
+    assert ergebnis[0] is not None and "Zeitüberschreitung" in ergebnis[0].errors[0]
+    assert ergebnis[1] is not None and ergebnis[1].pages_crawled == ["x"]

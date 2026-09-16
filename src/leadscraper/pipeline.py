@@ -535,7 +535,18 @@ async def enrich_all(
         nonlocal done
         async with sem:
             try:
-                results[i] = await enrich_company(c, crawler)
+                # Schutzuhr je Betrieb. Ohne sie kann eine einzige hängende Verbindung den Platz
+                # dauerhaft belegen; ein Lauf über 1.600 Firmen stand so anderthalb Stunden still,
+                # ohne Rechenlast und ohne eine einzige geladene Seite.
+                results[i] = await asyncio.wait_for(
+                    enrich_company(c, crawler), timeout=settings.site_timeout_seconds
+                )
+            except TimeoutError:
+                log.warning("Zeitüberschreitung für %s (%s)", c.name, c.website)
+                results[i] = Enrichment(
+                    website=c.website,
+                    errors=[f"Zeitüberschreitung nach {settings.site_timeout_seconds:.0f} s"],
+                )
             except Exception as exc:  # noqa: BLE001 – ein kaputter Shop darf den Lauf nicht abbrechen
                 log.warning("Enrichment fehlgeschlagen für %s (%s): %s", c.name, c.website, exc)
                 results[i] = Enrichment(website=c.website, errors=[f"{type(exc).__name__}: {exc}"])
