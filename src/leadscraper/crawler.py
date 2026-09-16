@@ -213,9 +213,19 @@ class SiteCrawler:
         self.settings = settings
         self.cache = cache
         self._own_client = http is None
+        # Der Verbindungspool muss zur eingestellten Parallelität passen. Mit den httpx-Vorgaben
+        # (100 Verbindungen, Pool-Wartezeit = Anfrage-Zeitlimit) liefen bei 24 gleichzeitigen Aufträgen
+        # und Hunderten verschiedener Hosts 1.035 von 1.174 Ausfällen als PoolTimeout auf – die Seiten
+        # waren erreichbar, nur bekam die Anfrage keine freie Verbindung. Jeder Auftrag braucht Luft für
+        # Weiterleitungen, robots.txt und Unterseiten, deshalb das Vierfache.
         self.http = http or httpx.AsyncClient(
             follow_redirects=True,
-            timeout=httpx.Timeout(settings.request_timeout_seconds),
+            timeout=httpx.Timeout(settings.request_timeout_seconds, pool=60.0),
+            limits=httpx.Limits(
+                max_connections=max(24, settings.concurrency * 4),
+                max_keepalive_connections=max(12, settings.concurrency),
+                keepalive_expiry=15.0,
+            ),
             headers={"User-Agent": settings.user_agent, "Accept-Language": "de-DE,de;q=0.9,en;q=0.5"},
             max_redirects=8,
         )
