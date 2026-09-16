@@ -88,6 +88,7 @@ LEAD_COLUMNS: tuple[str, ...] = (
     "Festnetz (Website)",
     "Beschäftigte belegt",
     "Beleg Beschäftigte",
+    "Mehrere Standorte",
     "Mitarbeiter (Schätzung)",
     "MA min",
     "MA max",
@@ -312,6 +313,9 @@ def _lead_row(lead: Lead) -> dict[str, Any]:
         "E-Mail": _email(person, enr),
         "Beschäftigte belegt": enr.staff.headcount if enr else None,
         "Beleg Beschäftigte": "\n".join(enr.staff.evidence[:4]) if enr else "",
+        # Mehrere Standorte heißt: Für die Förderung zählt das ganze Unternehmen, der Satz fällt
+        # meist von 100 auf 50 Prozent. Vor dem Gespräch sichtbar, nicht erst im Antrag.
+        "Mehrere Standorte": (enr.mehrstandort_beleg or "ja") if enr and enr.mehrstandort else "",
         "Mitarbeiter (Schätzung)": size.point_estimate,
         "MA min": size.employees_min,
         "MA max": size.employees_max,

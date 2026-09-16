@@ -171,6 +171,10 @@ class Enrichment(BaseModel):
     # Handelsvertreter/Franchise/Provisionsbasis – nicht nach § 82 SGB III förderfähig), "unklar"
     employment_signal: Literal["angestellt", "frei", "unklar"] = "unklar"
     employment_evidence: list[str] = Field(default_factory=list)
+    # Mehrere Standorte? Dann zählt für die Förderung das GANZE Unternehmen (§ 82 Abs. 6 Satz 3 Nr. 2
+    # SGB III) und der Fördersatz fällt meist von 100 auf 50 Prozent der Lehrgangskosten.
+    mehrstandort: bool = False
+    mehrstandort_beleg: str | None = None
     pages_crawled: list[str] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
 

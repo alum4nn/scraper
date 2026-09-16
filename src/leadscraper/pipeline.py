@@ -31,6 +31,7 @@ from leadscraper.extract.size import (
     is_rating_text,
 )
 from leadscraper.extract.staff import count_staff, personal_mailboxes
+from leadscraper.extract.standorte import standort_hinweise
 from leadscraper.models import (
     Company,
     Enrichment,
@@ -282,6 +283,9 @@ def build_enrichment(company: Company, crawl: CrawlResult) -> Enrichment:
     attribute_sole_mobile(enr)
     enr.employment_signal, enr.employment_evidence = employment_signal(crawl, enr)  # nach size/Zuordnung
     enr.call_indicators = call_indicators(crawl, enr)
+    alle_zeilen = [z for seite in crawl.pages for z in seite.lines]
+    anker = [link.text for seite in crawl.pages for link in seite.links if link.text]
+    enr.mehrstandort, enr.mehrstandort_beleg, _ = standort_hinweise(alle_zeilen, anker)
     if len(crawl.pages) == 1 and len(crawl.pages[0].lines) < 15 and "wenig Text" not in " ".join(enr.errors):
         enr.errors.append("wenig Text (SPA oder Cookie-Wall?)")
     return enr
