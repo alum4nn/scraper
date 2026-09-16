@@ -506,6 +506,11 @@ def export(
         "--nach-belegschaft",
         help="Größte Belegschaft zuerst statt bester Score – wer 40 Köpfe hat, ist mehr wert als wer 6 hat",
     ),
+    nur_ein_standort: bool = typer.Option(
+        False,
+        "--nur-ein-standort",
+        help="Betriebe mit Hinweis auf mehrere Standorte weglassen (dort zählt das ganze Unternehmen)",
+    ),
 ) -> None:
     """Excel aus gespeicherten Leads bauen (z. B. nur Premium, ohne neuen Crawl)."""
     leads = _load_leads(jsonl)
@@ -516,6 +521,10 @@ def export(
     elif premium:
         leads = [ld for ld in leads if ld.premium]
     leads = [ld for ld in leads if ld.score >= min_score]
+    if nur_ein_standort:
+        # § 82 Abs. 6 Satz 3 Nr. 2 SGB III: Bei mehreren Standorten zählt das ganze Unternehmen,
+        # der Fördersatz fällt dann meist von 100 auf 50 Prozent der Lehrgangskosten.
+        leads = [ld for ld in leads if not (ld.enrichment and ld.enrichment.mehrstandort)]
     if nach_belegschaft:
         leads.sort(
             key=lambda ld: (

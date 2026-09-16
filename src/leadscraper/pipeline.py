@@ -283,9 +283,10 @@ def build_enrichment(company: Company, crawl: CrawlResult) -> Enrichment:
     attribute_sole_mobile(enr)
     enr.employment_signal, enr.employment_evidence = employment_signal(crawl, enr)  # nach size/Zuordnung
     enr.call_indicators = call_indicators(crawl, enr)
-    alle_zeilen = [z for seite in crawl.pages for z in seite.lines]
+    # Adressen nur aus Impressum und Kontakt: Objekt- und Referenzseiten nennen fremde Anschriften.
+    adress_zeilen = [z for s in crawl.pages if s.kind in ("impressum", "kontakt") for z in s.lines]
     anker = [link.text for seite in crawl.pages for link in seite.links if link.text]
-    enr.mehrstandort, enr.mehrstandort_beleg, _ = standort_hinweise(alle_zeilen, anker)
+    enr.mehrstandort, enr.mehrstandort_beleg, _ = standort_hinweise(adress_zeilen, anker)
     if len(crawl.pages) == 1 and len(crawl.pages[0].lines) < 15 and "wenig Text" not in " ".join(enr.errors):
         enr.errors.append("wenig Text (SPA oder Cookie-Wall?)")
     return enr

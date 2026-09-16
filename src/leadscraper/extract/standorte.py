@@ -27,31 +27,53 @@ _STANDORT_ZAHL_RE = re.compile(
 )
 # Adressblock: „50667 Köln“ – die Postleitzahl allein genügt nicht, der Ort muss folgen
 _ADRESSE_RE = re.compile(r"\b(\d{5})\s+([A-ZÄÖÜ][\wäöüß.-]{2,}(?:[ -][A-ZÄÖÜ][\wäöüß.-]{2,})?)")
-_MIN_PLZ_FUER_VERDACHT = 3
+_MIN_ORTE_FUER_VERDACHT = 3
+# Stadtteile und Schreibweisen zusammenführen: „Frankfurt am Main“, „Frankfurt/Main“, „Frankfurt“
+_ORT_ZUSATZ_RE = re.compile(r"\s*(?:am|an der|a\.|/|\bOT\b|-).*$", re.I)
+# Wörter, die der Adress-Regex hinter dem Ort mitnimmt: „68161 Mannheim Postfach“
+_KEIN_ORT_RE = re.compile(
+    r"\b(postfach|telefon|telefax|fax|tel|mobil|e-?mail|deutschland|germany)\b.*$", re.I
+)
+# Englische Schreibweisen derselben Stadt
+_ORT_GLEICH = {"munich": "münchen", "cologne": "köln", "vienna": "wien", "hanover": "hannover"}
+
+
+def _ortsschluessel(ort: str) -> str:
+    """Ein Ort, ein Schlüssel – unabhängig von Punkt, Zusatz, Sprache und Stadtteil."""
+    kurz = _KEIN_ORT_RE.sub("", ort.strip())
+    kurz = _ORT_ZUSATZ_RE.sub("", kurz)
+    kurz = re.sub(r"[^\wäöüß]+$", "", kurz).casefold()
+    return _ORT_GLEICH.get(kurz, kurz)
 
 
 def standort_hinweise(
     lines: list[str], anchor_texts: list[str] | None = None
 ) -> tuple[bool, str | None, int]:
-    """(mehrere Standorte?, Beleg, Zahl gefundener Postleitzahlen)
+    """(mehrere Standorte?, Beleg, Zahl gefundener Orte)
 
-    Drei Postleitzahlen sind die Schwelle, nicht zwei: Viele Betriebe nennen neben der eigenen Anschrift
-    noch die des Steuerberaters, der Schlichtungsstelle oder der Kammer.
+    `lines` dürfen NUR aus Impressum und Kontakt stammen. Eine Hausverwaltung listet auf ihren
+    Objektseiten Dutzende fremder Anschriften; wer die mitzählt, hält 71 Prozent aller Betriebe für
+    Filialisten. Der Navigationshinweis darf dagegen von jeder Seite kommen.
+
+    Gezählt werden verschiedene Orte, nicht Postleitzahlen, und drei sind die Schwelle: Viele Betriebe
+    nennen neben der eigenen Anschrift noch die der Schlichtungsstelle oder der Kammer.
     """
     for text in anchor_texts or []:
         if _STANDORT_LINK_RE.match(text.strip()):
             return True, f"Navigationspunkt „{text.strip()}“", 0
 
-    plz: dict[str, str] = {}
+    # Gezählt werden verschiedene ORTE, nicht verschiedene Postleitzahlen. Ein Maklerbüro in München
+    # nennt im Impressum schnell fünf Münchner Postleitzahlen – das ist ein Standort, nicht fünf.
+    orte: dict[str, str] = {}
     for line in lines:
         for treffer in _ADRESSE_RE.finditer(line):
-            plz.setdefault(treffer.group(1), treffer.group(2))
+            orte.setdefault(_ortsschluessel(treffer.group(2)), f"{treffer.group(1)} {treffer.group(2)}")
         if m := _STANDORT_ZAHL_RE.search(line):
             anzahl = int(m.group(1))
             if 2 <= anzahl <= 300:
-                return True, f"„{m.group(0).strip()}“ auf der Website", len(plz)
+                return True, f"„{m.group(0).strip()}“ auf der Website", len(orte)
 
-    if len(plz) >= _MIN_PLZ_FUER_VERDACHT:
-        beispiele = ", ".join(f"{p} {o}" for p, o in list(plz.items())[:3])
-        return True, f"{len(plz)} verschiedene Anschriften auf der Website ({beispiele} …)", len(plz)
-    return False, None, len(plz)
+    if len(orte) >= _MIN_ORTE_FUER_VERDACHT:
+        beispiele = ", ".join(list(orte.values())[:3])
+        return True, f"Anschriften in {len(orte)} Orten ({beispiele} …)", len(orte)
+    return False, None, len(orte)
