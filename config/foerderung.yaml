@@ -7,7 +7,33 @@ bund:
   gesetz: "§ 82 SGB III"
   quelle: "https://www.gesetze-im-internet.de/sgb_3/__82.html"
   quelle_ba: "https://www.arbeitsagentur.de/unternehmen/finanziell/foerderung-von-weiterbildung"
-  # Betriebsgröße = Beschäftigte des GESAMTEN Unternehmens (inkl. verbundener Unternehmen), ohne Azubis/Minijobber.
+  # Betriebsgröße: die wichtigste und meistübersehene Regel der ganzen Förderung.
+  # § 82 Abs. 6 Satz 3 SGB III im Wortlaut (geprüft am 16.09.2026 an gesetze-im-internet.de):
+  #   „Bei der Feststellung der Zahl der Beschäftigten sind zu berücksichtigen,
+  #    1. Teilzeitbeschäftigte mit einer regelmäßigen wöchentlichen Arbeitszeit von
+  #       a) nicht mehr als zehn Stunden mit 0,25, b) nicht mehr als 20 Stunden mit 0,50
+  #       und c) nicht mehr als 30 Stunden mit 0,75 und
+  #    2. … sämtliche Beschäftigte des Unternehmens, dem der Betrieb angehört, und, falls das
+  #       Unternehmen einem Konzern angehört, die Zahl der Beschäftigten des Konzerns.“
+  # Daraus folgt für die Zielauswahl:
+  #  * Kopfzahl ist NICHT Betriebsgröße. Wer über 30 Wochenstunden arbeitet, zählt voll; darunter
+  #    gestaffelt. Auszubildende, Praktikanten und geringfügig Beschäftigte zählen nach den Fachlichen
+  #    Weisungen (Ziffer 7 Abs. 2) gar nicht mit.
+  #  * Ein Einzelbetrieb mit 60 bis 80 Köpfen und viel Teilzeit kann damit unter 50 liegen – viele
+  #    mögliche Teilnehmer bei vollem Fördersatz. Das ist das wirtschaftlich beste Ziel.
+  #  * Umgekehrt zählt bei Filialen, Tochtergesellschaften und Konzernbetrieben das GANZE Unternehmen.
+  #    Mehrstandort-Betriebe fallen deshalb fast immer aus dem 100-Prozent-Band.
+  #  * Maßgeblich ist der Stand bei Maßnahmebeginn; der Arbeitgeber erklärt ihn selbst.
+  teilzeitstaffel:
+    - bis_wochenstunden: 10
+      zaehlt: 0.25
+    - bis_wochenstunden: 20
+      zaehlt: 0.50
+    - bis_wochenstunden: 30
+      zaehlt: 0.75
+    - bis_wochenstunden: null
+      zaehlt: 1.0
+  nicht_mitgezaehlt: ["Auszubildende", "Praktikanten", "geringfügig Beschäftigte"]
   groessenklassen:
     - band: "<50"
       min: 0
