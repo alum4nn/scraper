@@ -527,7 +527,6 @@ async def enrich_all(
     cache: Cache | None,
     progress: ProgressFn | None = None,
 ) -> list[Enrichment | None]:
-    crawler = SiteCrawler(settings, cache=cache)
     sem = asyncio.Semaphore(settings.concurrency)
     results: list[Enrichment | None] = [None] * len(companies)
     done = 0
@@ -535,6 +534,13 @@ async def enrich_all(
     async def one(i: int, c: Company) -> None:
         nonlocal done
         async with sem:
+            # Ein eigener HTTP-Client je Betrieb. Die Schutzuhr unten bricht hängende Abrufe mitten
+            # in der Verbindung ab, und solche abgebrochenen Verbindungen räumt httpx nicht aus dem
+            # Pool: Nach rund dreißig Zeitüberschreitungen lief ein gemeinsamer Client mit vier
+            # statt zwölf Verbindungen weiter, bei zwei Betrieben je Minute statt 24. Verbindungen
+            # über Betriebe hinweg zu teilen bringt ohnehin nichts – jeder Betrieb ist ein anderer
+            # Host –, deshalb bekommt jeder seinen eigenen Pool und gibt ihn danach ganz zurück.
+            crawler = SiteCrawler(settings, cache=cache)
             try:
                 # Schutzuhr je Betrieb. Ohne sie kann eine einzige hängende Verbindung den Platz
                 # dauerhaft belegen; ein Lauf über 1.600 Firmen stand so anderthalb Stunden still,
@@ -551,6 +557,11 @@ async def enrich_all(
             except Exception as exc:  # noqa: BLE001 – ein kaputter Shop darf den Lauf nicht abbrechen
                 log.warning("Enrichment fehlgeschlagen für %s (%s): %s", c.name, c.website, exc)
                 results[i] = Enrichment(website=c.website, errors=[f"{type(exc).__name__}: {exc}"])
+            finally:
+                try:
+                    await crawler.close()
+                except Exception as exc:  # noqa: BLE001 – ein hakender Client kostet kein Ergebnis
+                    log.debug("Client für %s ließ sich nicht schließen: %s", c.website, exc)
             done += 1
             if progress:
                 enr = results[i]
@@ -562,10 +573,7 @@ async def enrich_all(
                 )
                 progress(f"[{done}/{len(companies)}] {c.name} – {info}")
 
-    try:
-        await asyncio.gather(*(one(i, c) for i, c in enumerate(companies)))
-    finally:
-        await crawler.close()
+    await asyncio.gather(*(one(i, c) for i, c in enumerate(companies)))
     return results
 
 

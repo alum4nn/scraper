@@ -502,3 +502,47 @@ def test_haengende_website_blockiert_den_lauf_nicht(monkeypatch):
     ergebnis = asyncio.run(pipeline_mod.enrich_all(firmen, einstellungen, None))
     assert ergebnis[0] is not None and "Zeitüberschreitung" in ergebnis[0].errors[0]
     assert ergebnis[1] is not None and ergebnis[1].pages_crawled == ["x"]
+
+
+def test_jeder_betrieb_bekommt_einen_eigenen_http_client(monkeypatch):
+    """Nach rund dreißig Zeitüberschreitungen lief ein gemeinsamer Client mit vier statt zwölf
+    Verbindungen weiter: Die Schutzuhr bricht Abrufe mitten in der Verbindung ab, und httpx räumt
+    solche Verbindungen nicht aus dem Pool. Deshalb je Betrieb ein eigener Client, der danach
+    geschlossen wird – auch der des Betriebs, der in die Zeitüberschreitung gelaufen ist."""
+    import asyncio
+
+    from leadscraper import pipeline as pipeline_mod
+    from leadscraper.crawler import SiteCrawler
+    from leadscraper.models import Company
+    from leadscraper.settings import Settings
+
+    # Objekte festhalten, nicht ihre id(): Die wird nach dem Freigeben wiederverwendet.
+    gesehen: list[object] = []
+    geschlossen: list[object] = []
+
+    async def merkt_sich_den_client(company, crawler):
+        gesehen.append(crawler)
+        if "langsam" in (company.website or ""):
+            await asyncio.sleep(30)
+        return pipeline_mod.Enrichment(website=company.website, pages_crawled=["x"])
+
+    echtes_close = SiteCrawler.close
+
+    async def merkt_sich_das_schliessen(self):
+        geschlossen.append(self)
+        await echtes_close(self)
+
+    monkeypatch.setattr(pipeline_mod, "enrich_company", merkt_sich_den_client)
+    monkeypatch.setattr(SiteCrawler, "close", merkt_sich_das_schliessen)
+    firmen = [
+        Company(place_id="1", name="Langsam GmbH", website="https://langsam.example"),
+        Company(place_id="2", name="Schnell GmbH", website="https://schnell.example"),
+        Company(place_id="3", name="Auch schnell KG", website="https://auch.example"),
+    ]
+    einstellungen = Settings(concurrency=1, cache_path=None, site_timeout_seconds=0.2)
+    ergebnis = asyncio.run(pipeline_mod.enrich_all(firmen, einstellungen, None))
+
+    assert len({id(c) for c in gesehen}) == 3, "jeder Betrieb braucht seinen eigenen Client"
+    assert all(any(g is c for g in geschlossen) for c in gesehen), "jeder Client wird geschlossen"
+    assert ergebnis[0] is not None and "Zeitüberschreitung" in ergebnis[0].errors[0]
+    assert all(e is not None and e.pages_crawled == ["x"] for e in ergebnis[1:])
