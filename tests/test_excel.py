@@ -125,3 +125,13 @@ def test_reihenfolge_des_aufrufers_bleibt_erhalten():
         assert [r["Unternehmensname"] for r in lead_rows(leads)] == ["Gross GmbH", "Klein GmbH"]
     finally:
         excel.set_sortierung("score")
+
+
+def test_steuerzeichen_landen_nicht_im_arbeitsblatt():
+    """Ein Steuerzeichen aus einer kaputt kodierten Website hat openpyxl abbrechen lassen –
+    und damit das Ergebnis eines ganzen 1.499er-Blocks gekostet."""
+    from leadscraper.excel import _cell_value
+
+    assert _cell_value("Kathrin\x05 · 6 99 26") == "Kathrin · 6 99 26"
+    assert _cell_value("Zeile\nUmbruch\tTab bleibt") == "Zeile\nUmbruch\tTab bleibt"
+    assert _cell_value(42) == 42

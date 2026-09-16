@@ -40,6 +40,7 @@ Spaltenlogik "Name" / "Nummer" (Leads-Blatt):
 from __future__ import annotations
 
 import csv
+import re
 from collections.abc import Collection, Iterable, Sequence
 from datetime import datetime
 from pathlib import Path
@@ -642,7 +643,14 @@ def _write_meta(ws: Worksheet, leads: list[Lead], spec: SearchSpec) -> None:
 # --- Zellwerte ------------------------------------------------------------------------------------
 
 
+_ILLEGAL_RE = re.compile(r"[\000-\010\013\014\016-\037]")
+
+
 def _cell_value(value: Any) -> Any:
+    # Steuerzeichen aus kaputt kodierten Websites lassen openpyxl mit IllegalCharacterError abbrechen –
+    # ein einziges Zeichen auf einer Seite von zemke.de hat so das Ergebnis von 1.499 Betrieben gekostet.
+    if isinstance(value, str):
+        value = _ILLEGAL_RE.sub("", value)
     if value == "":
         return None
     if isinstance(value, datetime) and value.tzinfo is not None:

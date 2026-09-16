@@ -388,10 +388,12 @@ def enrich_list(
     finally:
         cache.close()
     target = out or _default_out(settings, input_file.stem)
-    write_workbook(leads, spec, target, funding_rows=funding.funding_reference_rows())
+    # Erst die Zustandsdatei, dann das Excel: Ein Darstellungsproblem im Arbeitsblatt darf nie
+    # das Ergebnis eines stundenlangen Laufs kosten.
     if jsonl_out:
         jsonl_out.parent.mkdir(parents=True, exist_ok=True)
         jsonl_out.write_text("".join(ld.model_dump_json() + "\n" for ld in leads), encoding="utf-8")
+    write_workbook(leads, spec, target, funding_rows=funding.funding_reference_rows())
     _print_summary(leads)
     console.print(f"\n[green]✔[/] Excel gespeichert: [bold]{target}[/]")
     if jsonl_out:
