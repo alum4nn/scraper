@@ -412,9 +412,10 @@ def is_near_premium(lead: Lead) -> bool:
 
 
 _OHNE_HANDY = "keine Handynummer beim Entscheider"
+_LISTE_B_MIN = 5
 
 
-def has_workforce(lead: Lead) -> bool:
+def has_workforce(lead: Lead, mindestens: int = _LISTE_B_MIN) -> bool:
     """Liste B: Entscheider bekannt, Belegschaft belegt – aber nur die Zentrale auf der Website.
 
     Eine Handynummer im Impressum ist erlaubt, weil ein Festnetzanschluss Einzelunternehmer
@@ -427,8 +428,16 @@ def has_workforce(lead: Lead) -> bool:
     """
     if lead.enrichment is None:
         return False
-    offen = [m for m in lead.premium_missing or [] if m != _OHNE_HANDY]
-    return not offen and lead.enrichment.staff.headcount >= (_NEAR_PREMIUM_MIN + 2)
+    if lead.enrichment.staff.headcount < mindestens:
+        return False
+    # „nur 7 Beschäftigte belegt“ ist kein Ausschluss mehr, wenn die eigene Untergrenze erfüllt ist –
+    # dieser Punkt stammt aus der Premium-Regel und wird hier durch `mindestens` ersetzt.
+    offen = [
+        m
+        for m in lead.premium_missing or []
+        if m != _OHNE_HANDY and not m.startswith("nur ") and "Beschäftigte belegt" not in m
+    ]
+    return not offen
 
 
 def _load_leads(paths: list[Path], *, exclude_chains: bool = True) -> list[Lead]:
@@ -478,14 +487,19 @@ def export(
     mit_belegschaft: bool = typer.Option(
         False,
         "--mit-belegschaft",
-        help="Liste B: Entscheider und mindestens fünf belegte Beschäftigte, Handynummer nicht nötig",
+        help="Liste B: Entscheider und belegte Beschäftigte, Handynummer nicht nötig",
+    ),
+    min_belegschaft: int = typer.Option(
+        _LISTE_B_MIN,
+        "--min-belegschaft",
+        help="Untergrenze belegter Beschäftigter für --mit-belegschaft (Förderung: unter 50 voll)",
     ),
     min_score: int = typer.Option(0, help="Mindest-Score"),
 ) -> None:
     """Excel aus gespeicherten Leads bauen (z. B. nur Premium, ohne neuen Crawl)."""
     leads = _load_leads(jsonl)
     if mit_belegschaft:
-        leads = [ld for ld in leads if ld.premium or has_workforce(ld)]
+        leads = [ld for ld in leads if has_workforce(ld, min_belegschaft)]
     elif near_premium:
         leads = [ld for ld in leads if ld.premium or is_near_premium(ld)]
     elif premium:
@@ -493,7 +507,7 @@ def export(
     leads = [ld for ld in leads if ld.score >= min_score]
     first = jsonl[0]
     if mit_belegschaft:
-        suffix = "_mit_belegschaft"
+        suffix = f"_ab_{min_belegschaft}" if min_belegschaft != _LISTE_B_MIN else "_mit_belegschaft"
     else:
         suffix = "_near_premium" if near_premium else ("_premium" if premium else "")
     target = out or first.with_name(first.stem + suffix + ".xlsx")
@@ -583,14 +597,17 @@ def trello(
     mit_belegschaft: bool = typer.Option(
         False,
         "--mit-belegschaft",
-        help="Liste B: Entscheider und mindestens fünf belegte Beschäftigte, Handynummer nicht nötig",
+        help="Liste B: Entscheider und belegte Beschäftigte, Handynummer nicht nötig",
+    ),
+    min_belegschaft: int = typer.Option(
+        _LISTE_B_MIN, "--min-belegschaft", help="Untergrenze belegter Beschäftigter für --mit-belegschaft"
     ),
     limit: int | None = typer.Option(None, help="Höchstens so viele Karten (beste Scores zuerst)"),
 ) -> None:
     """CSV für den Trello-Import: Spalte 1 = Unternehmensname (Kartenname), Spalte 2 = alle Infos."""
     leads = _load_leads(jsonl)
     if mit_belegschaft:
-        leads = [ld for ld in leads if ld.premium or has_workforce(ld)]
+        leads = [ld for ld in leads if has_workforce(ld, min_belegschaft)]
     elif premium:
         leads = [ld for ld in leads if ld.premium]
     if limit:

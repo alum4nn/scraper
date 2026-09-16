@@ -196,3 +196,27 @@ def test_enrich_list_schreibt_zustandsdatei(fixture_web, tmp_path: Path, monkeyp
     lead = json.loads(zeilen[0])
     assert lead["company"]["name"]
     assert "enrichment" in lead
+
+
+def test_schwelle_fuer_liste_b_ist_einstellbar():
+    """Ab 20 Beschäftigten ändert sich die Rechnung: 3 bis 4 Teilnehmer je Betrieb statt einem."""
+    from leadscraper.cli import has_workforce
+    from leadscraper.models import Company, Enrichment, Lead, StaffEvidence
+
+    def lead(missing: list[str], headcount: int) -> Lead:
+        return Lead(
+            company=Company(place_id="x", name="Muster GmbH"),
+            enrichment=Enrichment(staff=StaffEvidence(headcount=headcount)),
+            premium_missing=missing,
+        )
+
+    ohne_handy = [
+        "keine Handynummer beim Entscheider",
+        "nur 12 Beschäftigte belegt (mindestens 20 gefordert)",
+    ]
+    assert has_workforce(lead(ohne_handy, 24), 20)
+    assert not has_workforce(lead(ohne_handy, 12), 20)
+    # Die Vorgabe bleibt bei fünf
+    assert has_workforce(lead(["keine Handynummer beim Entscheider"], 7))
+    # Ein echter Ausschluss bleibt einer, auch über der Schwelle
+    assert not has_workforce(lead(["kein Entscheider im Impressum erkannt"], 40), 20)
