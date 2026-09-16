@@ -31,6 +31,10 @@ Liste (`config/ausschluss.yaml`, `Enrichment.employment_signal`).
 
 ## Arbeitsweise
 - Vor jedem Commit: `pytest -q` und `ruff check src tests && ruff format src tests`.
+- `LEADSCRAPER_CONCURRENCY` höchstens 12. Der ausgehende Verkehr läuft über einen Relay, der bei 24
+  gleichzeitigen Verbindungen Tunnel abbricht (`ws_closed_mid_exchange` unter
+  `curl -sS "$HTTPS_PROXY/__agentproxy/status"`); ein Lauf bleibt dann stehen, ohne Fehler zu melden.
+  Gemessen: 12 Verbindungen ≈ 1,0 Seiten/s, 6 ≈ 0,8, 24 ≈ 0.
 - Der API-Key steht in `.env` und gehört nie in einen Commit oder eine Ausgabe.
 - Nach Änderungen an den Extraktoren wirken diese über `leadscraper rebuild` (liest aus dem HTML-Cache,
   keine Google-Anfragen) rückwirkend auf bereits abgearbeitete Orte; `leadscraper refresh` bewertet nur neu.
