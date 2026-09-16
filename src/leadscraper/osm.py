@@ -61,11 +61,19 @@ class OverpassError(RuntimeError):
 
 
 def bauen(tag_filter: str, *, gebiet: str = "DE", timeout: int = _ABFRAGE_TIMEOUT) -> str:
-    """Overpass-QL für einen Tag-Filter wie `["office"="tax_advisor"]` im ganzen Land."""
+    """Overpass-QL für einen Tag-Filter wie `["office"="tax_advisor"]` im Land oder Bundesland.
+
+    `gebiet` ist ein Ländercode (DE) oder ein Bundesland nach ISO 3166-2 (DE-BY). Große Branchen
+    wie Ingenieurbüros scheitern bundesweit an allen Spiegeln („antwortet auch nach 9 Versuchen
+    nicht“); sechzehn Landesabfragen gehen durch, wo die eine Bundesabfrage abgewiesen wird.
+    """
     kennung = AREA_IDS.get(gebiet.upper())
-    gebiet_zeile = (
-        f"area({kennung})->.gebiet;" if kennung else f'area["ISO3166-1"="{gebiet}"][admin_level=2]->.gebiet;'
-    )
+    if kennung:
+        gebiet_zeile = f"area({kennung})->.gebiet;"
+    elif "-" in gebiet:
+        gebiet_zeile = f'area["ISO3166-2"="{gebiet.upper()}"][admin_level=4]->.gebiet;'
+    else:
+        gebiet_zeile = f'area["ISO3166-1"="{gebiet}"][admin_level=2]->.gebiet;'
     return f"[out:json][timeout:{timeout}];{gebiet_zeile}(nwr{tag_filter}(area.gebiet););out tags center;"
 
 

@@ -163,3 +163,11 @@ def test_namensfilter_wirft_heime_heraus(httpx_mock):
     )
     assert [f.name for f in ergebnis.firmen] == ["Pflegedienst Sonnenschein"]
     assert ergebnis.verworfen_name == 2
+
+
+def test_bauen_kennt_bundeslaender_nach_iso_3166_2():
+    """Ingenieurbüros bundesweit scheiterten an allen drei Spiegeln – je Bundesland geht es durch."""
+    abfrage = bauen('["office"="engineer"]', gebiet="DE-BY")
+    assert 'area["ISO3166-2"="DE-BY"][admin_level=4]->.gebiet;' in abfrage
+    assert "area(3600051477)" not in abfrage
+    assert bauen('["office"="engineer"]', gebiet="de-nw").count('"DE-NW"') == 1
