@@ -641,6 +641,11 @@ def trello(
     nach_belegschaft: bool = typer.Option(
         False, "--nach-belegschaft", help="Größte Belegschaft zuerst statt bester Score"
     ),
+    nur_ein_standort: bool = typer.Option(
+        False,
+        "--nur-ein-standort",
+        help="Betriebe mit Hinweis auf mehrere Standorte weglassen (dort zählt das ganze Unternehmen)",
+    ),
 ) -> None:
     """CSV für den Trello-Import: Spalte 1 = Unternehmensname (Kartenname), Spalte 2 = alle Infos."""
     leads = _load_leads(jsonl)
@@ -648,6 +653,9 @@ def trello(
         leads = [ld for ld in leads if has_workforce(ld, min_belegschaft, max_belegschaft)]
     elif premium:
         leads = [ld for ld in leads if ld.premium]
+    if nur_ein_standort:
+        # Wie beim Excel-Export: Die Karten sollen dieselben Betriebe tragen wie die Anrufliste.
+        leads = [ld for ld in leads if not (ld.enrichment and ld.enrichment.mehrstandort)]
     if nach_belegschaft:
         leads.sort(
             key=lambda ld: (

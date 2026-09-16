@@ -240,3 +240,27 @@ def test_obergrenze_haelt_die_foerderschwelle_ein():
     # Der Hinweis der Premium-Regel auf eine zu große Belegschaft bleibt ein Ausschluss
     zu_gross = ["keine Handynummer beim Entscheider", "148 Beschäftigte belegt – über 50"]
     assert not has_workforce(lead(zu_gross, 148), 20)
+
+
+def test_trello_nur_ein_standort_laesst_filialisten_weg(tmp_path: Path):
+    """Die Trello-Karten müssen dieselben Betriebe tragen wie die Anrufliste aus `export`."""
+    from leadscraper.demo import demo_leads
+    from leadscraper.models import SearchSpec
+
+    leads = demo_leads(SearchSpec(queries=["x"]))
+    rheinblick = next(ld for ld in leads if ld.company.name == "Rheinblick Immobilien GmbH")
+    assert rheinblick.premium and rheinblick.enrichment is not None
+    rheinblick.enrichment.mehrstandort = True
+    jsonl = tmp_path / "leads.jsonl"
+    jsonl.write_text("\n".join(ld.model_dump_json() for ld in leads), encoding="utf-8")
+
+    alle = runner.invoke(app, ["trello", str(jsonl), "--out", str(tmp_path / "alle.csv")])
+    assert alle.exit_code == 0, alle.stdout
+    assert "2 Karten" in alle.stdout
+
+    ein_standort = runner.invoke(
+        app, ["trello", str(jsonl), "--nur-ein-standort", "--out", str(tmp_path / "ein.csv")]
+    )
+    assert ein_standort.exit_code == 0, ein_standort.stdout
+    assert "1 Karten" in ein_standort.stdout
+    assert "Rheinblick" not in (tmp_path / "ein.csv").read_text(encoding="utf-8")
