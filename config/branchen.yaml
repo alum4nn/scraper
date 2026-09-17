@@ -245,6 +245,44 @@ profiles:
       - '["office"="company"]["name"~"Systemhaus|EDV|Consulting|Solutions|Systems|Tech|Labs|Studio|Kommunikation|Marketing|Werbung|Concept|Kreativ|Interactive|Apps|Network|Netzwerk",i]'
       - '["shop"="computer"]["name"~"Service|Systemhaus|IT|EDV|Software|Netzwerk",i]'
       - '["office"="telecommunication"]["name"~"IT|Software|Systemhaus|EDV|Digital",i]'
+  personalagentur:
+    beschreibung: "Personalagenturen, Personalberatung, Zeitarbeit, Recruiting – Berater geben ihr Handy an, Arbeit am PC (Nachtlauf 17.09.2026)"
+    queries:
+      - "Personalvermittlung"
+      - "Personalberatung"
+    osm:
+      - '["office"="employment_agency"]'
+      - '["office"]["name"~"Personal(?:vermittlung|beratung|dienst|service|agentur|management|leasing)|Zeitarbeit|Recruit|Headhunt|Arbeitsvermittlung|Interim|Staffing",i]'
+    osm_nicht_name: 'Agentur für Arbeit|Jobcenter|Bundesagentur|Randstad|Adecco|Manpower|Hays|Persona service|Tempton|Piening|Orizon|Amadeus FiRe|Robert Half|Trenkwalder|Synergie|Unique|Akzent|Franz & Wach|Start People|Kelly|Brunel|Ferchau|Gulp|DIS AG|Studitemps|Zenjob|Timing|Job AG|Bertrandt|Airbus|Volkswagen|Siemens'
+  ecommerce:
+    beschreibung: "Onlineshops und Versandhändler nach Namen in OpenStreetMap (Nachtlauf 17.09.2026)"
+    queries:
+      - "Online-Shop Versandhandel"
+    osm:
+      - '["office"]["name"~"Onlineshop|Online-Shop|Online Shop|Onlinehandel|Online-Handel|E-?Commerce|Versandhandel|Versandhaus|Webshop|shop24|24\.de|Onlineversand|Marktplatz",i]'
+      - '["shop"]["name"~"Onlineshop|Online-Shop|Online Shop|Onlinehandel|Online-Handel|E-?Commerce|Versandhandel|Versandhaus|Webshop|shop24|24\.de|Onlineversand",i]'
+      - '["craft"]["name"~"Onlineshop|Online-Shop|Onlinehandel|E-?Commerce|Versandhandel|Webshop",i]'
+    osm_nicht_name: 'Amazon|Zalando|Otto GmbH|Otto Group|MediaMarkt|Saturn|Conrad|Cyberport|notebooksbilliger|Thomann|Douglas|About You|Home24|Westwing|Zooplus|Fressnapf|Lidl|Aldi|Rewe|Edeka|Kaufland|Tchibo|Bonprix|Baur|Klingel|Witt|Heine|Schwab|DHL|Hermes|DPD|GLS|UPS'
+  internet_sonstige:
+    beschreibung: "Sonstige Internet-Firmen: Portale, Plattformen, Hosting, SaaS, Apps, Online-Dienste (Nachtlauf 17.09.2026)"
+    queries:
+      - "Internetportal"
+    osm:
+      - '["office"="company"]["name"~"Portal|Plattform|Platform|Hosting|Cloud|SaaS|\bApp|Apps\b|Online|Internet|Netz\b|\.de\b|\.com\b|Digital|Web\b|Media|Medien|Software|Data|Daten|Tech\b|Labs|Studio|Solutions|Systems|Interactive|Network|Netzwerk|Kommunikation|Consulting|Marketing|Werbung|Design|Kreativ|Agentur",i]'
+      - '["office"="yes"]["name"~"Portal|Plattform|Platform|Hosting|Cloud|SaaS|\bApp|Apps\b|Online|Internet|Digital|Web\b|Media|Medien|Software|Data|Daten|Agentur|Marketing|Design",i]'
+      - '["office"="coworking"]'
+    osm_nicht_name: 'Telekom|Vodafone|Telefónica|1&1|United Internet|Ionos|Strato|Hetzner|SAP|Microsoft|Google|Amazon|Meta|Apple|IBM|Oracle|Adobe|Salesforce|Bertelsmann|Axel Springer|ProSieben|RTL|Funke|Burda'
+  versicherung_finanz:
+    beschreibung: "Versicherungsmakler, Finanz- und Vermögensberater – unabhängige Büros, keine Konzernagenturen (Nachtlauf 17.09.2026)"
+    queries:
+      - "Versicherungsmakler"
+      - "Finanzberatung"
+    osm:
+      - '["office"="insurance"]'
+      - '["office"="financial_advisor"]'
+      - '["office"="financial"]'
+      - '["office"]["name"~"Versicherungsmakler|Finanzmakler|Finanzberat|Vermögensberat|Finanzplan|Versicherungsbüro|Assekuranz|Finanzdienst|Baufinanzierung|Vorsorge",i]'
+    osm_nicht_name: 'Allianz|ERGO|HUK|DEVK|LVM|Provinzial|Generali|AXA|Signal Iduna|Debeka|R\+V|Württembergische|Zurich|Gothaer|Nürnberger|Continentale|Barmenia|Concordia|VGH|Sparkasse|Volksbank|Raiffeisen|Deutsche Vermögensberatung|DVAG|Swiss Life|MLP|OVB|tecis|Wüstenrot|Alte Leipziger|HDI|Basler|Helvetia|Mecklenburgische|Münchener Verein|Bayerische|Öffentliche|Itzehoer|WGV|Postbank|Commerzbank|Targobank|Santander|Bausparkasse|Schwäbisch Hall|LBS|Deutsche Bank|Hypovereinsbank|Unicredit|ING|Check24|Verivox|Interhyp|Dr\. Klein|Hüttig|Ecclesia|Aon|Marsh|Funk Gruppe|Kuhn & Bülow|Krankenkasse|AOK|Barmer|TK|DAK|KKH|IKK|BKK|Berufsgenossenschaft|Rentenversicherung|Versorgungswerk|Landesbank|KfW'
   grosshandel:
     beschreibung: "Großhandel (WZ 46) – 8.676 Unternehmen mit 20–49 tätigen Personen und 262.230 Beschäftigten darin (Eurostat SBS 2023); 60,8 % davon arbeiten am Bildschirm, und nur 21 % der Handelsbetriebe nutzen KI"
     # Warum diese Branche: Sie verbindet die drei Größen, auf die es ankommt. Masse (doppelt so
