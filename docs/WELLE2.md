@@ -82,3 +82,12 @@ Werkstätten sind komplett raus (`datenkrake.py` liest sie gar nicht mehr ein).
   'output/branchen/welle5/*.jsonl'` → neue `audit/batches_w4/batch_NN.json` (alte Batches unverändert lassen,
   der Workflow-Cache hängt am Dateipfad) → Workflow `handy-audit-w4` (Run `wf_aa7a69c6-7c6`, BATCHES im Skript
   erweitern, mit resumeFromRunId fortsetzen) → `audit/urteile_w4.py` → `datenkrake.py` → Lieferung.
+
+### Korrektur 17.09. 12:50 UTC: ausschließlich Internet-Firmen
+
+Der Auftraggeber will nur Firmen, die online arbeiten. Großhandel (OSM `shop=wholesale` liefert Stahl-,
+Schweiß- und Industrietechnik-Händler) und Planungsbüros sind deshalb aus der Datenkrake gestrichen; ihre
+Rohdaten bleiben in `output/branchen/`. `datenkrake.py` liest nur noch `welle4/` und `welle5/` und wirft per
+Namensregex (`_NICHT_ONLINE_RE`) Druckereien, Werbetechnik, Beschriftung, Fulfillment/Logistik, Verlage,
+Verbände, Elektronik und Industrie heraus (221 von rund 7.000 Firmen). In Tabelle 1/2 steht nur, was die
+Einzelprüfung als Chef-Handy bestätigt hat; ungeprüfte Nummern landen in Tabelle 7 als „ungeprüft“.
