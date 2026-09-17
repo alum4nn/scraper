@@ -91,3 +91,29 @@ Rohdaten bleiben in `output/branchen/`. `datenkrake.py` liest nur noch `welle4/`
 Namensregex (`_NICHT_ONLINE_RE`) Druckereien, Werbetechnik, Beschriftung, Fulfillment/Logistik, Verlage,
 Verbände, Elektronik und Industrie heraus (221 von rund 7.000 Firmen). In Tabelle 1/2 steht nur, was die
 Einzelprüfung als Chef-Handy bestätigt hat; ungeprüfte Nummern landen in Tabelle 7 als „ungeprüft“.
+
+### 17.09. ab 16:20 UTC: Anrufliste über vier PC-Branchen (Ziel 1.000 Kontakte)
+
+Der Auftraggeber will 1.000 Kontakte, „überwiegend Handynummern“, mehrere Branchen sind erlaubt. Zählung über
+alles Gecrawlte bei 10–50 belegten Köpfen und einem Standort: In Internet, Immobilien, Planungsbüro und
+Großhandel gibt es zusammen nur rund 340 Handynummern (89 beim GF, roh); mit den gestrichenen Branchen
+(Kfz, Elektro/SHK, Metallbau, Spedition) rund 690, davon die Hälfte Notdienst und Werkstatt. „Überwiegend
+Handy“ ist mit diesem Material also nicht erreichbar – so gemeldet.
+
+Gebaut wurde stattdessen `datenkrake.py` → Blatt **„0 Anrufliste“** und `output/branchen/anrufliste.csv`:
+eine Zeile je Firma, Stufe 1 GF-Handy einzeln geprüft, 2 Handy eines namentlichen Ansprechpartners,
+3 Firmen-Handy bei bekanntem GF, 4 GF + Festnetz. Quellen: welle4–7 (Internet, inkl. OSM-Runden 2 und 3,
+Profile `internet_erweitert` und `internet_runde3`), `welle2/planungsbuero_*`, `grosshandel.jsonl`
+(Namensfilter `_GROSSHANDEL_RAUS_RE`: kein Stahl, keine Technik, kein Bau, keine Lebensmittel),
+`output/de_*.jsonl` + `hv_*.jsonl` (Immobilien). Immobilien-GF-Handys wurden nachgeprüft
+(`audit/batches_immo`, 41 → 15 chef). Stand 17:20 UTC: 1.281 Kontakte, davon 247 mit Handy (37 GF geprüft).
+
+Fallen aus diesem Abschnitt:
+- **Prüf-Kennnummern müssen über alle Batch-Ordner eindeutig sein.** `batch_neu.py` vergab neue ids nur
+  nach `batches_w4` und kollidierte mit `batches_immo`; die Urteile wären falschen Firmen zugeordnet worden.
+  Behoben (ids über `batches_*`), veraltete Journal-Einträge stehen in `audit/stale_keys.json` und werden
+  von `urteile_w4.py` übersprungen. Das Workflow-Journal kennt nur ids, keine Dateinamen.
+- OSM-Namensfilter über `office=company` holen auch Landtechnik, Energieberatung und Baugesellschaften;
+  `_NICHT_ONLINE_RE` in `datenkrake.py` ist entsprechend gewachsen.
+- Die Welle-6c-Kette schreibt wegen eines sed-Fehlers nach `output/branchen/welle6cb/`; die Globs sind
+  darauf angepasst (`welle6c*`).
