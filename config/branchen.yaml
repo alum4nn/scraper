@@ -207,6 +207,25 @@ profiles:
       - "IT-Dienstleister"
       - "Softwareentwicklung"
       - "Digitalagentur"
+  internet:
+    beschreibung: "Internet-Firmen – E-Commerce, Onlineshops, Online-Marketing, Digital-/Webagenturen, Softwarehäuser; Belegschaft arbeitet fast vollständig am PC (Welle 4, 17.09.2026)"
+    queries:
+      - "E-Commerce Unternehmen"
+      - "Online-Shop Versandhandel"
+      - "Online-Marketing-Agentur"
+      - "Digitalagentur Webagentur"
+      - "Softwareentwicklung Softwarehaus"
+      - "Amazon Agentur Fulfillment Dienstleister"
+    # OSM-Ergänzung ohne Google: office=it und office=advertising_agency sind die dokumentierten Tags,
+    # web_design/marketing/software stehen laut Taginfo mehrere tausend Mal in Deutschland. Der Namensregex
+    # holt Shops und Agenturen, die ein anderes Tag tragen. Verworfen werden Filialen fremder Branchen.
+    osm:
+      - '["office"="it"]'
+      - '["office"="advertising_agency"]'
+      - '["office"="web_design"]'
+      - '["office"="marketing"]'
+      - '["office"="software"]'
+      - '["name"~"Digitalagentur|Webagentur|Internetagentur|Online-?Marketing|E-?Commerce|Onlineshop|Online-?Shop|Softwareentwicklung|Software GmbH|SEO|Versandhandel",i]'
   grosshandel:
     beschreibung: "Großhandel (WZ 46) – 8.676 Unternehmen mit 20–49 tätigen Personen und 262.230 Beschäftigten darin (Eurostat SBS 2023); 60,8 % davon arbeiten am Bildschirm, und nur 21 % der Handelsbetriebe nutzen KI"
     # Warum diese Branche: Sie verbindet die drei Größen, auf die es ankommt. Masse (doppelt so
