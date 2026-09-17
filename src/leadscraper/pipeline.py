@@ -265,7 +265,7 @@ def build_enrichment(company: Company, crawl: CrawlResult) -> Enrichment:
         pn = phones_mod.classify_number(company.phone, source="places", source_url=company.google_maps_uri)
         if pn:
             phones.append(pn)
-    enr.phones = _drop_shared_numbers(_dedupe_phones(phones), phones)
+    enr.phones = _sperre_gesperrte_nummern(_drop_shared_numbers(_dedupe_phones(phones), phones), phones)
     people_mod.attach_phones(people, enr.phones)
     enr.people = people
     promote_responsible_owner(enr, company.name)
@@ -382,26 +382,28 @@ def promote_responsible_owner(enr: Enrichment, company_name: str) -> None:
 
 
 def attribute_sole_mobile(enr: Enrichment) -> None:
-    """Eine einzige Handynummer auf der ganzen Website + genau ein Entscheider, sonst niemand mit Handy:
-    Dann gehört sie diesem Entscheider (Ein-Personen-Maklerbüro). Wird als Zuordnung „eindeutig“ vermerkt,
-    damit im Telefonat klar ist, dass der Name nicht direkt neben der Nummer stand."""
+    """Vermerkt, dass ein Entscheider sein Handy namentlich belegt hat – sonst nichts mehr.
+
+    Früher bekam bei genau einer Handynummer auf der Website und genau einem Entscheider dieser die
+    Nummer zugeschrieben („eindeutig“). Die Einzelprüfung von 237 Listenplätzen hat das widerlegt:
+    Von 94 so zugeordneten Nummern war eine das Handy des Chefs, 40 waren der Notdienst und 37 die
+    WhatsApp-Firmennummer im Seitenkopf. Eine Nummer ohne Namen daneben bleibt deshalb ohne Person.
+    """
     deciders = [p for p in enr.decision_makers if p.role_category in _DECIDER_ROLES]
     if any(p.mobile for p in deciders):
         enr.mobile_assignment = "namentlich"
-        return
-    if len(deciders) != 1:
-        return
-    mobiles = [m for m in enr.mobiles if m.source != "places"]
-    if len(mobiles) != 1 or mobiles[0].person:
-        return
-    decider = deciders[0]
-    mobiles[0].person = decider.name
-    decider.phones.append(mobiles[0])
-    enr.mobile_assignment = "eindeutig"
-    enr.mobile_assignment_note = (
-        f"einzige Handynummer der Website, einziger Entscheider ({decider.name}) – Name stand nicht "
-        f"unmittelbar neben der Nummer ({mobiles[0].source_url or ''})"
-    )
+
+
+def _sperre_gesperrte_nummern(dedupliziert: list[PhoneNumber], alle: list[PhoneNumber]) -> list[PhoneNumber]:
+    """Steht dieselbe Nummer auf einer Seite als Notdienst und auf einer anderen beim Chef, gewinnt der
+    Notdienst – das Zusammenführen darf die Sperre nicht durch die Person der anderen Fundstelle ersetzen."""
+    gesperrt = {ph.e164 for ph in alle if ph.label in ("Notdienst", "Dienstleister")}
+    for ph in dedupliziert:
+        if ph.e164 in gesperrt:
+            ph.person = None
+            if ph.label not in ("Notdienst", "Dienstleister"):
+                ph.label = "Notdienst"
+    return dedupliziert
 
 
 def employment_signal(crawl: CrawlResult, enr: Enrichment) -> tuple[str, list[str]]:

@@ -305,16 +305,20 @@ def test_refresh_lead_applies_indicators_without_crawl():
     assert out.enrichment.size.confidence == "medium"
     assert out.enrichment.size.employees_min == 4  # vier namentliche Personen belegen mindestens vier
     assert out.enrichment.employment_signal == "angestellt"
-    # einzige Handynummer + genau ein Entscheider → eindeutig diesem zugeordnet
-    assert out.enrichment.mobile_assignment == "eindeutig"
-    assert out.enrichment.people[0].mobile is not None
+    # Einzige Handynummer + genau ein Entscheider ist KEIN Beleg mehr: Von 94 so zugeordneten Nummern
+    # war eine das Handy des Chefs, der Rest Notdienst oder WhatsApp-Firmennummer (Prüfung 17.09.2026).
+    assert out.enrichment.mobile_assignment == "unklar"
+    assert out.enrichment.people[0].mobile is None
     # vier belegte Köpfe reichen für die Mindestgröße 5 nicht
     assert out.enrichment.staff.headcount == 4
     assert out.premium is False and out.premium_missing == [
-        "nur 4 Beschäftigte belegt (mindestens 5 gefordert)"
+        "keine Handynummer beim Entscheider",
+        "nur 4 Beschäftigte belegt (mindestens 5 gefordert)",
     ]
 
-    # mit einer fünften Person auf der Team-Seite ist die Belegschaft belegt
+    # Steht der Name neben der Nummer und kommt eine fünfte Person dazu, ist beides belegt
+    mobile.person = gf.name
+    gf.phones.append(mobile)  # so hängt der Crawler eine namentlich belegte Nummer an die Person
     lead.enrichment.people.append(Person(name="Tim Brandt", role="Innendienst", source_url=url))
     out2 = pipeline.refresh_lead(lead, spec, funding.load_funding_config())
     assert out2.enrichment.staff.headcount == 5

@@ -16,6 +16,7 @@ from phonenumbers import NumberParseException, PhoneNumberType
 
 from leadscraper.extract.htmlutil import Link
 from leadscraper.extract.names import find_plausible_names, normalize_name, surname
+from leadscraper.extract.people import _DIENSTLEISTER_FENSTER, _DIENSTLEISTER_RE
 from leadscraper.models import Person, PhoneNumber, PhoneSource, RoleCategory
 
 # Kandidaten im Fließtext: beginnt mit +49 / 0049 / 0, dann Ziffern mit üblichen Trennern
@@ -42,6 +43,14 @@ _BAD_CONTEXT_RE = re.compile(
 )
 _DATE_RE = re.compile(r"^\d{1,2}\.\d{1,2}\.(?:\d{2}|\d{4})$")
 _MAX_LOOKBACK = 4
+# Notdienst-Kontext: Eine Nummer in diesem Umfeld ist die Bereitschaftsnummer, auch wenn der Name des
+# Chefs daneben steht. Von 237 geprüften „Entscheider-Handys“ waren 51 solche Nummern; 27 trugen sogar
+# das Label „Notdienst“ und wurden trotzdem dem Chef zugeschrieben.
+_NOTDIENST_RE = re.compile(
+    r"notdienst|notfall|notruf|bereitschaft|störungs?dienst|störung|havarie|24\s?(?:h|std|stunden)|"
+    r"rund um die uhr|außerhalb der (?:geschäfts|öffnungs|büro)zeiten|abschlepp|pannen",
+    re.I,
+)
 
 
 def _kind_from_type(num_type: int) -> str:
@@ -130,8 +139,10 @@ def _normalize_label(label: str | None) -> str | None:
         return "WhatsApp"
     if "fax" in low:
         return "Fax"
-    if low.startswith("notdienst") or low.startswith("notruf") or low.startswith("bereitschaft"):
+    if low.startswith(("notdienst", "notruf", "notfall", "bereitschaft", "störung")):
         return "Notdienst"
+    if low == "dienstleister":
+        return "Dienstleister"
     if low.startswith(("tel", "fon", "phone", "zentrale", "festnetz", "büro", "durchwahl", "hotline")):
         return "Tel"
     return label
@@ -169,6 +180,16 @@ class _NameIndex:
         if idx not in self._cache:
             self._cache[idx] = find_plausible_names(self.lines[idx])
         return self._cache[idx]
+
+
+def _associate_same_line(index: _NameIndex, line_idx: int, before_text: str) -> str | None:
+    """Nur dieselbe Zeile: für WhatsApp-Nummern. Die stehen im Seitenkopf als Firmennummer, und ein
+    Rückgriff auf Namen aus den Zeilen davor machte sie in 25 von 237 geprüften Fällen zum Chef-Handy."""
+    name = index.known_in(line_idx)
+    if name:
+        return name
+    before_names = find_plausible_names(before_text) if before_text else []
+    return before_names[-1] if before_names else None
 
 
 def _associate(index: _NameIndex, line_idx: int, before_text: str) -> str | None:
@@ -210,8 +231,25 @@ def find_phones(
     index = _NameIndex(lines, known_people)
     found: list[PhoneNumber] = []
     digits_to_line: dict[str, int] = {}
+    gesperrt: set[str] = set()  # Nummern aus Notdienst- oder Agentur-Kontext: keiner Person zuordnen
+    agentur = 0
 
     for i, line in enumerate(lines):
+        # Agentur-Block wie in people.py: „Realisierung: …“, „Webdesign …“ – die Nummern darunter
+        # gehören dem Dienstleister, nicht dem Betrieb (8 von 237 geprüften „Entscheider-Handys“).
+        if _DIENSTLEISTER_RE.search(line):
+            agentur = _DIENSTLEISTER_FENSTER + 1
+        im_agentur_block = agentur > 0
+        agentur = max(0, agentur - 1)
+        # Notdienst-Kontext: diese Zeile, und eine kurze Zeile davor („24h Notdienst“ über der Nummer)
+        # Die Zeile davor zählt nur als Überschrift („24h Störungsdienst“): kurz und ohne eigene Nummer –
+        # sonst sperrt „… Notdienst: 0171 …“ auch das „Mobil: 0172 …“ in der nächsten Zeile.
+        notdienst_kontext = bool(_NOTDIENST_RE.search(line)) or (
+            i > 0
+            and len(lines[i - 1]) <= 60
+            and not _CANDIDATE_RE.search(lines[i - 1])
+            and bool(_NOTDIENST_RE.search(lines[i - 1]))
+        )
         last_end = 0
         for m in _CANDIDATE_RE.finditer(line):
             raw = m.group(0)
@@ -229,12 +267,22 @@ def find_phones(
             norm_label = _normalize_label(label)
             if norm_label == "Fax":
                 continue
+            if im_agentur_block:
+                norm_label = "Dienstleister"
+            elif notdienst_kontext:
+                norm_label = "Notdienst"
             phone = classify_number(raw, source=source, source_url=source_url, label=norm_label)
             if phone is None:
                 continue
-            phone.person = _associate(index, i, line[: m.start()])
+            key = re.sub(r"\D", "", phone.e164)
+            if norm_label in ("Notdienst", "Dienstleister"):
+                gesperrt.add(key)
+            elif norm_label == "WhatsApp":
+                phone.person = _associate_same_line(index, i, line[: m.start()])
+            else:
+                phone.person = _associate(index, i, line[: m.start()])
             found.append(phone)
-            digits_to_line.setdefault(re.sub(r"\D", "", phone.e164), i)
+            digits_to_line.setdefault(key, i)
 
     for link in links:
         if link.kind == "tel":
@@ -243,11 +291,17 @@ def find_phones(
             if raw.startswith("00"):
                 raw = "+" + raw[2:]
             label = _normalize_label(_label_before(link.text)) if link.text else None
+            if link.text and _NOTDIENST_RE.search(link.text):
+                label = "Notdienst"
             phone = classify_number(raw, source=source, source_url=source_url, label=label or "tel-link")
             if phone is None:
                 continue
             key = re.sub(r"\D", "", phone.e164)
-            if key in digits_to_line:
+            if label in ("Notdienst", "Dienstleister"):
+                gesperrt.add(key)
+            elif key in gesperrt:
+                phone.label = "Notdienst" if phone.label != "Dienstleister" else phone.label
+            elif key in digits_to_line:
                 phone.person = _associate(index, digits_to_line[key], "")
             else:
                 names = find_plausible_names(link.text) if link.text else []
@@ -263,10 +317,19 @@ def find_phones(
             if phone.kind == "unknown":
                 phone.kind = "mobile"
             key = re.sub(r"\D", "", phone.e164)
-            if key in digits_to_line:
-                phone.person = _associate(index, digits_to_line[key], "")
+            if key in gesperrt:
+                phone.label = "Notdienst"
+            elif key in digits_to_line:
+                phone.person = _associate_same_line(index, digits_to_line[key], "")
             found.append(phone)
 
+    # Eine Nummer, die irgendwo als Notdienst oder beim Dienstleister steht, bleibt es überall:
+    # Wer sie als Bereitschaftshandy nutzt, will keinen Verkaufsanruf darauf.
+    for phone in found:
+        if re.sub(r"\D", "", phone.e164) in gesperrt:
+            phone.person = None
+            if phone.label not in ("Notdienst", "Dienstleister"):
+                phone.label = "Notdienst"
     return dedupe_phones(found)
 
 

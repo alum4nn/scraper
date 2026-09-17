@@ -165,3 +165,50 @@ def test_same_surname_twice_is_not_guessed():
     # Mit vollem Namen in der Zeile ist es eindeutig
     klar = _phones(["Ralf Brandes, Prokurist", "Mobil: 0171 6444518"], known=known)
     assert klar[0].person == "Ralf Brandes"
+
+
+def test_notdienstnummer_wird_keiner_person_zugeordnet():
+    """27 von 237 geprüften „Entscheider-Handys“ trugen das Label Notdienst – die Bereitschaftsnummer
+    des Chefs ist für einen Verkaufsanruf die falsche Nummer, auch wenn sein Name daneben steht."""
+    from leadscraper.extract.phones import find_phones
+
+    lines = ["Max Müller Geschäftsführer", "Notdienst: 0171 5550123", "Mobil: 0172 5550124"]
+    phones = find_phones(lines, [], source="kontakt", source_url="https://x.de/kontakt")
+    by_num = {p.national: p for p in phones}
+    assert by_num["0171 5550123"].label == "Notdienst" and by_num["0171 5550123"].person is None
+    assert by_num["0172 5550124"].person == "Max Müller"
+
+
+def test_notdienst_in_der_zeile_darueber_sperrt_ebenfalls():
+    from leadscraper.extract.phones import find_phones
+
+    lines = ["Thomas Berg Inhaber", "24h Störungsdienst", "0160 5550125"]
+    phones = find_phones(lines, [], source="kontakt", source_url="https://x.de/k")
+    assert phones and phones[0].label == "Notdienst" and phones[0].person is None
+
+
+def test_agenturblock_gibt_keine_personennummern():
+    """Realisierung/Webdesign im Impressum: Die Nummern darunter gehören der Agentur, nicht dem Betrieb."""
+    from leadscraper.extract.phones import find_phones
+
+    lines = [
+        "Anna Weber Geschäftsführerin",
+        "Realisierung: Pixelwerk GmbH",
+        "Jonas Klein",
+        "Tel 0173 5550126",
+    ]
+    phones = find_phones(lines, [], source="impressum", source_url="https://x.de/impressum")
+    assert phones[0].label == "Dienstleister" and phones[0].person is None
+
+
+def test_whatsapp_kopfnummer_nur_bei_name_in_derselben_zeile():
+    """WhatsApp-Nummern stehen im Seitenkopf als Firmennummer; ein Name zwei Zeilen darüber macht sie
+    nicht zum Handy des Chefs (25 von 237 geprüften Fällen)."""
+    from leadscraper.extract.phones import find_phones
+
+    lines = ["Karl Vogt Inhaber", "Öffnungszeiten Mo–Fr 8–17 Uhr", "WhatsApp 0176 5550127"]
+    phones = find_phones(lines, [], source="startseite", source_url="https://x.de/")
+    assert phones[0].label == "WhatsApp" and phones[0].person is None
+    lines = ["Karl Vogt Inhaber WhatsApp 0176 5550127"]
+    phones = find_phones(lines, [], source="startseite", source_url="https://x.de/")
+    assert phones[0].person == "Karl Vogt"
