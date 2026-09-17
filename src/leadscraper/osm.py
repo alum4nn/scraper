@@ -60,13 +60,14 @@ class OverpassError(RuntimeError):
     """Overpass hat nicht geantwortet oder nur Fehler geliefert."""
 
 
-def bauen(tag_filter: str, *, gebiet: str = "DE", timeout: int = _ABFRAGE_TIMEOUT) -> str:
+def bauen(tag_filter: str, *, gebiet: str = "DE", timeout: int | None = None) -> str:
     """Overpass-QL für einen Tag-Filter wie `["office"="tax_advisor"]` im Land oder Bundesland.
 
     `gebiet` ist ein Ländercode (DE) oder ein Bundesland nach ISO 3166-2 (DE-BY). Große Branchen
     wie Ingenieurbüros scheitern bundesweit an allen Spiegeln („antwortet auch nach 9 Versuchen
     nicht“); sechzehn Landesabfragen gehen durch, wo die eine Bundesabfrage abgewiesen wird.
     """
+    timeout = timeout if timeout is not None else _ABFRAGE_TIMEOUT
     kennung = AREA_IDS.get(gebiet.upper())
     if kennung:
         gebiet_zeile = f"area({kennung})->.gebiet;"
@@ -102,6 +103,10 @@ def _abrufen(
     letzter_fehler = "kein Versuch"
     versuche = 0
     gesamt = runden * len(SPIEGEL)
+    # Ein leeres Ergebnis ist verdächtig: Ein Spiegel ohne Gebietsdaten (Areas werden getrennt gepflegt)
+    # antwortet mit HTTP 200 und „elements: []“. Leer gilt erst, wenn ein zweiter Spiegel es bestätigt.
+    leer_von: str | None = None
+    leeres_ergebnis: dict | None = None
     for _runde in range(runden):
         for server in SPIEGEL:
             versuche += 1
@@ -120,8 +125,15 @@ def _abrufen(
                     else:
                         fehler = _stiller_fehler(daten, antwort.text)
                         if fehler is None:
-                            return daten
-                        letzter_fehler = fehler
+                            if daten.get("elements"):
+                                return daten
+                            if leer_von is not None and leer_von != server:
+                                return daten  # zwei Spiegel sagen leer – dann ist es leer
+                            leer_von, leeres_ergebnis = server, daten
+                            letzter_fehler = f"leeres Ergebnis von {server}"
+                            log.debug("Overpass %s: leer, zweiter Spiegel wird gefragt", server)
+                        else:
+                            letzter_fehler = fehler
                 else:
                     letzter_fehler = f"HTTP {antwort.status_code}"
                     if antwort.status_code not in _UEBERLASTET:
@@ -129,6 +141,8 @@ def _abrufen(
                     pause = _retry_after(antwort)
             if versuche < gesamt:
                 time.sleep(pause if pause is not None else warten[min(versuche - 1, len(warten) - 1)])
+    if leeres_ergebnis is not None:
+        return leeres_ergebnis  # nur ein Spiegel hat geantwortet, und der sagt leer
     raise OverpassError(
         f"Overpass antwortet auch nach {versuche} Versuchen auf {len(SPIEGEL)} Servern nicht "
         f"(zuletzt: {letzter_fehler}). Die Server sind gespendete Rechenzeit und zeitweise belegt – "

@@ -171,3 +171,33 @@ def test_bauen_kennt_bundeslaender_nach_iso_3166_2():
     assert 'area["ISO3166-2"="DE-BY"][admin_level=4]->.gebiet;' in abfrage
     assert "area(3600051477)" not in abfrage
     assert bauen('["office"="engineer"]', gebiet="de-nw").count('"DE-NW"') == 1
+
+
+def test_leeres_ergebnis_wird_von_zweitem_spiegel_bestaetigt(httpx_mock, monkeypatch):
+    """Ein Spiegel ohne Gebietsdaten antwortet mit „elements: []“ – der nächste Spiegel entscheidet."""
+    from leadscraper import osm as osm_mod
+
+    monkeypatch.setattr(osm_mod.time, "sleep", lambda s: None)
+    httpx_mock.add_response(json=_antwort([]))
+    httpx_mock.add_response(json=_antwort(BETRIEBE[:1]))
+    ergebnis = fetch_branch(['["office"="graphic_design"]'], pause=0)
+    assert len(ergebnis.firmen) == 1
+    assert len(httpx_mock.get_requests()) == 2
+
+
+def test_leer_bleibt_leer_wenn_zwei_spiegel_zustimmen(httpx_mock, monkeypatch):
+    from leadscraper import osm as osm_mod
+
+    monkeypatch.setattr(osm_mod.time, "sleep", lambda s: None)
+    httpx_mock.add_response(json=_antwort([]))
+    httpx_mock.add_response(json=_antwort([]))
+    ergebnis = fetch_branch(['["office"="graphic_design"]'], pause=0)
+    assert ergebnis.firmen == []
+    assert len(httpx_mock.get_requests()) == 2
+
+
+def test_bauen_nimmt_den_aktuellen_timeout(monkeypatch):
+    from leadscraper import osm as osm_mod
+
+    monkeypatch.setattr(osm_mod, "_ABFRAGE_TIMEOUT", 600)
+    assert "timeout:600" in bauen('["office"="it"]')
