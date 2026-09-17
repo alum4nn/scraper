@@ -226,6 +226,16 @@ profiles:
       - '["office"="marketing"]'
       - '["office"="software"]'
       - '["name"~"Digitalagentur|Webagentur|Internetagentur|Online-?Marketing|E-?Commerce|Onlineshop|Online-?Shop|Softwareentwicklung|Software GmbH|SEO|Versandhandel",i]'
+  internet_erweitert:
+    beschreibung: "Zweite OSM-Runde für Internet-Firmen (17.09.2026): Grafikdesign, IT-Systemhäuser, Software- und Medienfirmen, die unter office=company oder ohne Branchentag stehen; Namensregex"
+    queries:
+      - "IT-Systemhaus"
+      - "Webdesign Agentur"
+    osm:
+      - '["office"="graphic_design"]'
+      - '["office"="company"]["name"~"Digital|Media|Medien|Web|Online|Software|Internet|Agentur|Design|Cloud|Data|Systemhaus|IT-|EDV|App",i]'
+      - '["office"="consulting"]["name"~"IT|Digital|Software|Web|Online|Data",i]'
+      - '["office"]["name"~"Systemhaus|IT-Service|IT Service|EDV|Softwarehaus|Webdesign|Web-Design|Mediendesign|Medienagentur|Werbeagentur|Kommunikationsagentur|Kreativagentur|Marketingagentur|Onlinehandel|Online-Handel|Cloud|App-Entwicklung",i]'
   grosshandel:
     beschreibung: "Großhandel (WZ 46) – 8.676 Unternehmen mit 20–49 tätigen Personen und 262.230 Beschäftigten darin (Eurostat SBS 2023); 60,8 % davon arbeiten am Bildschirm, und nur 21 % der Handelsbetriebe nutzen KI"
     # Warum diese Branche: Sie verbindet die drei Größen, auf die es ankommt. Masse (doppelt so
