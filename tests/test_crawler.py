@@ -371,3 +371,62 @@ def test_serverfehler_wird_nicht_als_uebersprungen_gemerkt(httpx_mock, monkeypat
     httpx_mock.add_callback(weg, is_reusable=True)
     assert asyncio.run(lauf()) is None
     assert cache.get("html", schluessel, 14) == {"skip": True}
+
+
+def test_team_page_guess_when_not_linked(httpx_mock):
+    """Team-Seite ohne Link im Menü: /team/ wird geraten; Soft-404 (Startseite als Antwort) zählt nicht."""
+    home = (
+        '<html><body><nav><a href="/impressum">Impressum</a></nav>'
+        "<p>Willkommen bei Beispiel</p></body></html>"
+    )
+    team = (
+        "<html><body><h1>Unser Team</h1>"
+        + "".join(f"<p>Person {i} Mitarbeiter</p>" for i in range(12))
+        + "</body></html>"
+    )
+    pages = {"/": home, "/impressum": "<html><body><h1>Impressum</h1></body></html>", "/team/": team}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        if path == "/robots.txt":
+            return httpx.Response(404)
+        if path in pages:
+            return httpx.Response(200, text=pages[path], headers={"content-type": "text/html"})
+        return httpx.Response(404)
+
+    httpx_mock.add_callback(handler, is_reusable=True)
+    crawler = SiteCrawler(_settings())
+    try:
+        result = asyncio.run(crawler.crawl("https://team.example/"))
+    finally:
+        asyncio.run(crawler.close())
+    assert [p.kind for p in result.pages if p.kind == "team"] == ["team"]
+    assert any(httpx.URL(p.final_url).path == "/team/" for p in result.pages)
+
+
+def test_team_page_guess_drops_soft_404(httpx_mock):
+    """Server antwortet auf /team/ mit der Startseite (Soft-404): keine Team-Seite behalten."""
+    home = (
+        '<html><body><nav><a href="/impressum">Impressum</a></nav>'
+        "<p>Unser Team freut sich auf Sie</p></body></html>"
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        if path == "/robots.txt":
+            return httpx.Response(404)
+        if path == "/impressum":
+            return httpx.Response(
+                200,
+                text="<html><body><h1>Impressum</h1></body></html>",
+                headers={"content-type": "text/html"},
+            )
+        return httpx.Response(200, text=home, headers={"content-type": "text/html"})
+
+    httpx_mock.add_callback(handler, is_reusable=True)
+    crawler = SiteCrawler(_settings())
+    try:
+        result = asyncio.run(crawler.crawl("https://soft.example/"))
+    finally:
+        asyncio.run(crawler.close())
+    assert not any(p.kind == "team" for p in result.pages)

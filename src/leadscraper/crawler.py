@@ -110,6 +110,13 @@ _IMPRESSUM_CONTENT_RE = re.compile(
     r"umsatzsteuer|ust[\s.-]*id|handelsregister|\bHR[AB]\b|verantwortlich",
     re.I,
 )
+# Übliche Team-Adressen, falls keine Team-/Über-uns-Seite verlinkt ist (Menü per JavaScript, Seite nur
+# im Footer einer Unterseite). Ohne Team-Seite bleibt die Belegschaft unbelegt, obwohl sie da ist.
+_TEAM_GUESSES = ("/team/", "/ueber-uns/", "/about-us/", "/unternehmen/", "/agentur/")
+_TEAM_CONTENT_RE = re.compile(
+    r"\bteam\b|mitarbeiter|ansprechpartner|geschäftsführ|gründer|inhaber|\bceo\b|kolleg|unser[e]?\s+(?:leute|köpfe)",
+    re.I,
+)
 
 
 @dataclass
@@ -431,6 +438,7 @@ class SiteCrawler:
             result.pending.sort(key=lambda t: t[0])
         await self._drain(result, budget=self.settings.max_pages_per_site, name_hints=name_hints or [])
         await self._guess_impressum(result)
+        await self._guess_team(result)
         await self._load_vcards(result)
         if len(result.pages) == 1 and len(home.lines) < 15:
             result.errors.append("wenig Text (SPA oder Cookie-Wall?)")
@@ -503,6 +511,31 @@ class SiteCrawler:
             if _IMPRESSUM_CONTENT_RE.search("\n".join(page.lines[:80])):
                 return
             result.pages.remove(page)  # Server antwortet auf alles mit 200 (Soft-404)
+
+    async def _guess_team(self, result: CrawlResult) -> None:
+        """Keine Team-Seite verlinkt? Übliche Adressen probieren; Soft-404 und Seiten ohne
+        Team-Inhalt fliegen wieder raus. Höchstens eine Treffer-Seite, damit das Budget hält."""
+        if any(p.kind == "team" for p in result.pages) or not result.pages:
+            return
+        home = result.pages[0]
+        parts = _split(result.website)
+        base = f"{parts.scheme}://{parts.netloc}"
+        for path in _TEAM_GUESSES:
+            url = base + path
+            if _norm_key(url) in result.loaded or _norm_key(url.rstrip("/")) in result.loaded:
+                continue
+            page = await self._load_page(url, "team", result)
+            if page is None:
+                continue
+            kopf = "\n".join(page.lines[:200])
+            if (
+                page.status == 200
+                and _TEAM_CONTENT_RE.search(kopf)
+                and page.text[:2000] != home.text[:2000]
+                and len(page.lines) >= 10
+            ):
+                return
+            result.pages.remove(page)  # Soft-404, Weiterleitung auf die Startseite oder ohne Team-Inhalt
 
     async def _load_vcards(self, result: CrawlResult) -> None:
         have = {v.url for v in result.vcards}
