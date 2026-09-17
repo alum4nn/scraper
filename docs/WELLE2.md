@@ -123,3 +123,24 @@ Planungsbüro 140); Stufe 1 GF-Handy geprüft 36, Stufe 2 Ansprechpartner-Handy 
 Stufe 4 GF + Festnetz 1.073. Insgesamt 93 GF-Handys einzeln geprüft, 39 bestätigt. Alle Ketten beendet, kein
 Crawler aktiv. Nächste Hebel, wenn mehr Handys gewünscht: Google-Kontingent ab Oktober (1.000 Anfragen),
 Korridor 5–9 Köpfe (+135 Handys in den vier Branchen), oder neue Branchen mit derselben Kette.
+
+### Nachtlauf 17./18.09. (Welle 8): Ziel 1.000 Handynummern, Stand 22:45 UTC 269
+
+Auftrag 20:50 UTC: 1.000 Handynummern bei Firmen mit 10–50 belegten Köpfen, Festnetz nebenbei, Branchen
+Personalagenturen, E-Commerce, sonstige Internet-Firmen plus eine Wahlbranche; Lieferung je 100 Handys,
+Zwischenziel 400 in der Nacht. Verlauf:
+- `welle8/sammeln.py` (OSM je Profil, Marken im Log) + `welle8/anreichern.sh` (wartet je Profil, Blöcke
+  à 1.000) + `welle8/nachlese.sh <profil>` (Firmen aus nachgeholten Filtern als eigener Block).
+- Personalagenturen: 503 Firmen, davon nur 22 im Korridor 10–50 → 8 Handys (6 GF bestätigt).
+- E-Commerce über OSM gescheitert: kein Tag, Namens-Regex bundesweit bricht auf allen Spiegeln ab, je
+  Bundesland einstellige Treffer. Aus der Kette genommen; Quelle dafür ist Google ab 1. Oktober.
+- Sonstige Internet-Firmen: 2.036 gesammelt, 1.610 schon bekannt, 426 angereichert → +9 Handys.
+- Wahlbranche Versicherung/Finanz vom Auftraggeber gestrichen (22:30), ebenso Steuerberater/Anwälte als
+  Ersatz abgelehnt. Teilergebnisse liegen in `welle8/verworfen/`.
+- Overpass-Regex ist POSIX-ERE: keine `(?:…)`-Gruppen, kein `\b` (HTTP 400). Schwere Namensabfragen laufen
+  nur je Bundesland (`sammeln_laender.py`), bundesweit brechen die Spiegel ab.
+- Nie `kill $(ps | grep muster)` mit einem Muster, das in der eigenen Kommandozeile steht – das killt die
+  eigene Shell (zweimal passiert). Sicher: `awk '/muster/ && !/awk/'`.
+Ergebnis: Anrufliste 1.362 (Handys 269: Internet 133, Großhandel 65, Immobilien 44, Planungsbüro 19,
+Personalagentur 8). Das Ziel 400 wurde ohne vierte Branche nicht erreicht; offen ist die Branchenwahl des
+Auftraggebers oder Google im Oktober.
