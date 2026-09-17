@@ -72,8 +72,10 @@ FIELD_MASK = ",".join(
         "places.websiteUri",
         "places.primaryType",
         "places.types",
-        "places.rating",
-        "places.userRatingCount",
+        # Bewusst NICHT dabei: places.rating und places.userRatingCount. Das ist bei Google die
+        # Datenklasse „Atmosphere“ (teurerer SKU); ein Konto ohne diese Freigabe bekommt für die ganze
+        # Anfrage PERMISSION_DENIED – gemessen am 17.09.2026: mit den beiden Feldern abgelehnt, ohne sie
+        # angenommen. Für die Anrufliste sind Bewertungen ohnehin ohne Bedeutung.
         "places.businessStatus",
         "places.googleMapsUri",
         "nextPageToken",
