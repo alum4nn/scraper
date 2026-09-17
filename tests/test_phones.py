@@ -212,3 +212,16 @@ def test_whatsapp_kopfnummer_nur_bei_name_in_derselben_zeile():
     lines = ["Karl Vogt Inhaber WhatsApp 0176 5550127"]
     phones = find_phones(lines, [], source="startseite", source_url="https://x.de/")
     assert phones[0].person == "Karl Vogt"
+
+
+def test_telefonzentrale_und_datenschutzbeauftragter_geben_keine_personennummer():
+    """„Telefonzentrale 0171 …“ neben dem Namen des Chefs ist die Firmennummer; der externe
+    Datenschutzbeauftragte im Impressum gehört nicht zum Betrieb (Prüfung 17.09.2026)."""
+    from leadscraper.extract.phones import find_phones
+
+    lines = ["Tilo Keubler Geschäftsführung", "Telefonzentrale 0171 2020508"]
+    phones = find_phones(lines, [], source="kontakt", source_url="https://x.de/k")
+    assert phones[0].label == "Zentrale" and phones[0].person is None
+    lines = ["Michael Eidenmüller Geschäftsführer", "Datenschutzbeauftragter: Jan Roth", "Mobil 0170 5550128"]
+    phones = find_phones(lines, [], source="impressum", source_url="https://x.de/i")
+    assert phones[0].label == "Dienstleister" and phones[0].person is None

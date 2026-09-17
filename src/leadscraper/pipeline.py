@@ -397,11 +397,15 @@ def attribute_sole_mobile(enr: Enrichment) -> None:
 def _sperre_gesperrte_nummern(dedupliziert: list[PhoneNumber], alle: list[PhoneNumber]) -> list[PhoneNumber]:
     """Steht dieselbe Nummer auf einer Seite als Notdienst und auf einer anderen beim Chef, gewinnt der
     Notdienst – das Zusammenführen darf die Sperre nicht durch die Person der anderen Fundstelle ersetzen."""
-    gesperrt = {ph.e164 for ph in alle if ph.label in ("Notdienst", "Dienstleister")}
+    gesperrt = {
+        ph.e164
+        for ph in alle
+        if ph.label in ("Notdienst", "Dienstleister") or (ph.label == "Zentrale" and ph.is_mobile)
+    }
     for ph in dedupliziert:
         if ph.e164 in gesperrt:
             ph.person = None
-            if ph.label not in ("Notdienst", "Dienstleister"):
+            if ph.label not in ("Notdienst", "Dienstleister", "Zentrale"):
                 ph.label = "Notdienst"
     return dedupliziert
 

@@ -30,8 +30,8 @@ _TEL_LABEL_RE = re.compile(
     re.I,
 )
 _LABEL_WORD_RE = re.compile(
-    r"(mobil(?:e|nummer|telefon)?|handy(?:nummer)?|cell(?:phone)?|whats\s?app|telefax|fax|telefon|tel\.?|fon|phone|"
-    r"festnetz|zentrale|büro|durchwahl|notdienst|notruf|bereitschaft|hotline)",
+    r"(mobil(?:e|nummer|telefon)?|handy(?:nummer)?|cell(?:phone)?|whats\s?app|telefax|fax|telefonzentrale|telefon|"
+    r"tel\.?|fon|phone|festnetz|zentrale|büro|durchwahl|notdienst|notruf|bereitschaft|hotline)",
     re.I,
 )
 # Kontext, in dem Ziffernfolgen keine Telefonnummern sind
@@ -46,6 +46,8 @@ _MAX_LOOKBACK = 4
 # Notdienst-Kontext: Eine Nummer in diesem Umfeld ist die Bereitschaftsnummer, auch wenn der Name des
 # Chefs daneben steht. Von 237 geprüften „Entscheider-Handys“ waren 51 solche Nummern; 27 trugen sogar
 # das Label „Notdienst“ und wurden trotzdem dem Chef zugeschrieben.
+# Fremde Stellen im Impressum, deren Nummern nicht dem Betrieb gehören – zusätzlich zum Agentur-Block
+_FREMDE_STELLE_RE = re.compile(r"datenschutzbeauftragte", re.I)
 _NOTDIENST_RE = re.compile(
     r"notdienst|notfall|notruf|bereitschaft|störungs?dienst|störung|havarie|24\s?(?:h|std|stunden)|"
     r"rund um die uhr|außerhalb der (?:geschäfts|öffnungs|büro)zeiten|abschlepp|pannen",
@@ -143,7 +145,11 @@ def _normalize_label(label: str | None) -> str | None:
         return "Notdienst"
     if low == "dienstleister":
         return "Dienstleister"
-    if low.startswith(("tel", "fon", "phone", "zentrale", "festnetz", "büro", "durchwahl", "hotline")):
+    # „Telefonzentrale 0171 …“ ist die Firmennummer, auch wenn ein Name in der Nähe steht (16 von 237
+    # geprüften Fällen) – das Label bleibt deshalb erhalten und sperrt die Zuordnung zu einer Person.
+    if low.startswith(("zentrale", "telefonzentrale", "hotline")):
+        return "Zentrale"
+    if low.startswith(("tel", "fon", "phone", "festnetz", "büro", "durchwahl")):
         return "Tel"
     return label
 
@@ -237,7 +243,7 @@ def find_phones(
     for i, line in enumerate(lines):
         # Agentur-Block wie in people.py: „Realisierung: …“, „Webdesign …“ – die Nummern darunter
         # gehören dem Dienstleister, nicht dem Betrieb (8 von 237 geprüften „Entscheider-Handys“).
-        if _DIENSTLEISTER_RE.search(line):
+        if _DIENSTLEISTER_RE.search(line) or _FREMDE_STELLE_RE.search(line):
             agentur = _DIENSTLEISTER_FENSTER + 1
         im_agentur_block = agentur > 0
         agentur = max(0, agentur - 1)
@@ -275,7 +281,11 @@ def find_phones(
             if phone is None:
                 continue
             key = re.sub(r"\D", "", phone.e164)
-            if norm_label in ("Notdienst", "Dienstleister"):
+            # Die Sperre für „Zentrale“ gilt nur Handynummern: Eine Festnetz-Zentrale mit Durchwahl beim
+            # Chef bleibt ihm zugeordnet, nur eine Mobilnummer als Firmenzentrale ist kein Chef-Handy.
+            if norm_label == "Zentrale" and phone.kind != "mobile":
+                norm_label = phone.label = "Tel"
+            if norm_label in ("Notdienst", "Dienstleister", "Zentrale"):
                 gesperrt.add(key)
             elif norm_label == "WhatsApp":
                 phone.person = _associate_same_line(index, i, line[: m.start()])
@@ -296,6 +306,11 @@ def find_phones(
             phone = classify_number(raw, source=source, source_url=source_url, label=label or "tel-link")
             if phone is None:
                 continue
+            if label == "Zentrale":
+                if phone.kind == "mobile":
+                    gesperrt.add(re.sub(r"\D", "", phone.e164))
+                else:
+                    label = phone.label = "Tel"
             key = re.sub(r"\D", "", phone.e164)
             if label in ("Notdienst", "Dienstleister"):
                 gesperrt.add(key)
@@ -328,7 +343,7 @@ def find_phones(
     for phone in found:
         if re.sub(r"\D", "", phone.e164) in gesperrt:
             phone.person = None
-            if phone.label not in ("Notdienst", "Dienstleister"):
+            if phone.label not in ("Notdienst", "Dienstleister", "Zentrale"):
                 phone.label = "Notdienst"
     return dedupe_phones(found)
 
