@@ -117,3 +117,9 @@ Fallen aus diesem Abschnitt:
   `_NICHT_ONLINE_RE` in `datenkrake.py` ist entsprechend gewachsen.
 - Die Welle-6c-Kette schreibt wegen eines sed-Fehlers nach `output/branchen/welle6cb/`; die Globs sind
   darauf angepasst (`welle6c*`).
+
+**Abschluss 17.09. 17:40 UTC:** Anrufliste 1.325 Kontakte (Internet 790, Immobilien 234, Großhandel 161,
+Planungsbüro 140); Stufe 1 GF-Handy geprüft 36, Stufe 2 Ansprechpartner-Handy 121, Stufe 3 Firmen-Handy 95,
+Stufe 4 GF + Festnetz 1.073. Insgesamt 93 GF-Handys einzeln geprüft, 39 bestätigt. Alle Ketten beendet, kein
+Crawler aktiv. Nächste Hebel, wenn mehr Handys gewünscht: Google-Kontingent ab Oktober (1.000 Anfragen),
+Korridor 5–9 Köpfe (+135 Handys in den vier Branchen), oder neue Branchen mit derselben Kette.
