@@ -236,6 +236,15 @@ profiles:
       - '["office"="company"]["name"~"Digital|Media|Medien|Web|Online|Software|Internet|Agentur|Design|Cloud|Data|Systemhaus|IT-|EDV|App",i]'
       - '["office"="consulting"]["name"~"IT|Digital|Software|Web|Online|Data",i]'
       - '["office"]["name"~"Systemhaus|IT-Service|IT Service|EDV|Softwarehaus|Webdesign|Web-Design|Mediendesign|Medienagentur|Werbeagentur|Kommunikationsagentur|Kreativagentur|Marketingagentur|Onlinehandel|Online-Handel|Cloud|App-Entwicklung",i]'
+  internet_runde3:
+    beschreibung: "Dritte OSM-Runde für Internet-Firmen (17.09.2026): office=yes und weitere Namensmuster unter office=company, shop=computer mit IT-Service-Namen"
+    queries:
+      - "IT-Service"
+    osm:
+      - '["office"="yes"]["name"~"Systemhaus|IT-Service|IT Service|EDV|Software|Webdesign|Web-Design|Mediendesign|Medienagentur|Werbeagentur|Kommunikationsagentur|Kreativagentur|Marketingagentur|Digital|Online|Cloud|App",i]'
+      - '["office"="company"]["name"~"Systemhaus|EDV|Consulting|Solutions|Systems|Tech|Labs|Studio|Kommunikation|Marketing|Werbung|Concept|Kreativ|Interactive|Apps|Network|Netzwerk",i]'
+      - '["shop"="computer"]["name"~"Service|Systemhaus|IT|EDV|Software|Netzwerk",i]'
+      - '["office"="telecommunication"]["name"~"IT|Software|Systemhaus|EDV|Digital",i]'
   grosshandel:
     beschreibung: "Großhandel (WZ 46) – 8.676 Unternehmen mit 20–49 tätigen Personen und 262.230 Beschäftigten darin (Eurostat SBS 2023); 60,8 % davon arbeiten am Bildschirm, und nur 21 % der Handelsbetriebe nutzen KI"
     # Warum diese Branche: Sie verbindet die drei Größen, auf die es ankommt. Masse (doppelt so
