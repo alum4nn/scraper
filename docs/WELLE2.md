@@ -59,3 +59,26 @@ und die Zustandsdateien werden per `rebuild` neu bewertet.
 - Bei ~99 % Nutzungslimit: `./pause.sh` (hält die bundesweiten `run --deutschland`-Läufe an), laufende
   `enrich-list`/`rebuild`-Prozesse nach PID beenden; fertige Blöcke liegen als JSONL vor, der
   Zwischenspeicher macht jeden Neustart billig.
+
+## Welle 4 und 5 (17.09.2026): nur noch Firmen, die am PC arbeiten
+
+Neue Zielgruppe seit 17.09.: Internet-Firmen (E-Commerce, Onlineshops, Online-Marketing, Digital-/Webagenturen,
+Softwarehäuser) zuerst, dann Planungsbüros und Großhandel. Autohäuser, Speditionen, Elektro/SHK, Metallbau und
+Werkstätten sind komplett raus (`datenkrake.py` liest sie gar nicht mehr ein).
+
+- **Welle 4 (Google Places, Profil `internet`)**: 58 größte Städte × 6 Suchen → 3.683 Firmen mit Website
+  (`welle4/internet.csv`, Spalte Rubrik), 4 Blöcke → `output/branchen/welle4/internet_0N.jsonl`. Ergebnis:
+  3.328 angereicherte Firmen, 13 GF-Handys bei 10–50 Köpfen, davon 6 nach Einzelprüfung bestätigt.
+  Google-Zähler danach 994/1000 – im September keine weiteren Google-Anfragen möglich.
+- **Befund**: Internet-Firmen ab 10 Köpfen veröffentlichen das GF-Handy fast nie (87 GF-Handys in 1.783
+  Firmen, fast alle bei Ein- bis Zwei-Personen-Agenturen). Tabelle 4 der Datenkrake (GF namentlich, Festnetz,
+  10–50 Köpfe belegt) ist dort die Arbeitsliste.
+- **Welle 5 (OpenStreetMap, ohne Google)**: `leadscraper osm --profile internet` (office=it,
+  advertising_agency, web_design, marketing, software, Namensregex). Achtung: Der erste Lauf lieferte für
+  office=it stillschweigend 0 Objekte; die direkte Abfrage bringt 5.060 Objekte / 3.666 mit Website
+  (`welle5/internet_osm_it.csv`, getrennt nachgeholt). Kette `welle5/anreichern.sh`: 5.476 neue Firmen in
+  6 Blöcken → `output/branchen/welle5/internet_osm_0N.jsonl`, etwa 40 Minuten je Block.
+- **Prüfkette je Block**: `audit/kontext.py audit/handys_welle4.json 'output/branchen/welle4/*.jsonl'
+  'output/branchen/welle5/*.jsonl'` → neue `audit/batches_w4/batch_NN.json` (alte Batches unverändert lassen,
+  der Workflow-Cache hängt am Dateipfad) → Workflow `handy-audit-w4` (Run `wf_aa7a69c6-7c6`, BATCHES im Skript
+  erweitern, mit resumeFromRunId fortsetzen) → `audit/urteile_w4.py` → `datenkrake.py` → Lieferung.
