@@ -59,3 +59,36 @@ Git-Historie praktisch nicht mehr umsetzen. Leaddaten gehören daher nicht in di
 Zur Nutzung gilt der Rahmen aus dem README (§ 7 UWG: Telefonwerbung B2B nur bei mutmaßlicher
 Einwilligung; Art. 14/21 DSGVO: Informationspflicht beim Erstkontakt). Kalt-E-Mails, SMS und
 WhatsApp-Nachrichten an diese Kontakte sind ohne ausdrückliche Einwilligung unzulässig.
+
+## Zweiter Durchgang: Workflow-Lauf (Fan-out über 34 Branchen-/Regions-Slices)
+
+Nach dem manuellen Lauf wurde die Suche als Multi-Agenten-Workflow wiederholt.
+
+**Aufbau.** Pipeline statt Barriere: Jede Slice wird sofort nach Abschluss ihrer Suche geprüft
+und gegengeprüft, damit laufend fertige Leads anfallen und ein Abbruch nicht das Ergebnis kostet.
+Drei Phasen: Suche (WebSearch + `tools/impressum_probe.py` + eigene Tiefen-Sonden der Agenten),
+Prüfung (Impressum und Fundstelle selbst laden, Footer-Gegenprobe, Mitarbeiterzahl wörtlich belegen),
+Gegenprüfung (Skeptiker unter zwei Blickwinkeln: Zuordnung der Nummer / Unternehmensart und Größe;
+im Zweifel gilt widerlegt).
+
+**Ergebnis.** 15 von 34 Slices abgeschlossen, **32.512 Domains gescreent**, 44 Rohtreffer,
+davon nach Prüfung und Gegenprüfung **34 bestätigte Kontakte in 26 Unternehmen**.
+3 Kandidaten fielen in der Prüfung durch, 8 wurden von den Skeptikern gekippt.
+
+**Trefferquote je Branche** (bestätigte Kontakte / gescreente Domains):
+Immobilien und Hausverwaltung sowie Versicherung/Finanz tragen den Lauf. Steuerberatung und IT
+liefern praktisch nichts: die Slice `stb-nrw` crawlte 337 Domains und 2.970 Seiten, fand dabei
+14 Mobilnummern und musste jede einzelne verwerfen (Footer-Nummern, Fotografen aus dem
+Bildnachweis, externe Datenschutzbeauftragte, Ein-Personen-Kanzleien).
+
+**Betriebliche Lehren.**
+- Die Maschine hat 4 CPUs, der Workflow läuft also mit Nebenläufigkeit 2. Prüfung und Skeptiker
+  müssen je Slice gebündelt werden statt je Kandidat, sonst ist der Lauf nicht zu Ende zu bringen.
+- Ein erster Anlauf lief ins Session-Limit und verlor dabei ausgerechnet alle Prüf-Agenten.
+  Deshalb: Rohtreffer sofort auf Platte sichern und Prüfung vor weiterer Suche priorisieren.
+- Dedup muss über die normalisierte Rufnummer laufen, nicht über Domain plus Nummer – dieselbe
+  Firma wird von zwei Slices mit unterschiedlich geschriebener Website-URL gefunden.
+
+**Offen.** 19 Such-Slices sind noch nicht gelaufen, darunter die laut Befund aussichtsreichen
+Gewerke mit Außendienst-Geschäftsführern: Bau/Tiefbau, SHK, Elektro, Spedition, Metallbau,
+GaLaBau, Produktion, Handel, Kfz, Gebäudereinigung, Facility Management.
