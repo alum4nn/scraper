@@ -144,3 +144,27 @@ Zwischenziel 400 in der Nacht. Verlauf:
 Ergebnis: Anrufliste 1.362 (Handys 269: Internet 133, Großhandel 65, Immobilien 44, Planungsbüro 19,
 Personalagentur 8). Das Ziel 400 wurde ohne vierte Branche nicht erreicht; offen ist die Branchenwahl des
 Auftraggebers oder Google im Oktober.
+
+### 19.09.: Gesamtexport aller Kontakte, getrennt nach Handy und Festnetz
+
+Auftrag: alle je gesammelten Kontakte, nach Handy und Festnetz aufgeteilt, Branche in jeder Zeile.
+Gebaut mit `scratchpad/kontakte.py` (Schalter `--nur-korridor` für 10–50 Köpfe) nach
+`output/branchen/kontakte/`: eine Zeile je Mobilnummer, eine Zeile je Firma beim Festnetz (weitere
+Anschlüsse in einer Spalte, sonst wären es 184.000 Zeilen). Je Branche ein Handy- und ein Festnetz-Blatt
+plus eigene CSVs. Dedupliziert wird je Domain, wobei der reichhaltigste Datensatz gewinnt (Köpfe × 3 +
+Personen × 2 + Nummern + Seiten) – vorher gewann die zuerst gelesene, oft ältere Fassung.
+
+Ergebnis: 21.914 Handynummern, 48.545 Firmen mit Festnetz, 52.441 Firmen gesamt; im Korridor 10–50
+Köpfe 4.753 Handynummern und 4.930 Festnetz-Firmen.
+
+**Branchencheck (Workflow `wf_f43f455e-94a`, 80 Agenten).** Die OSM-Namensfilter hatten Handwerks- und
+Industriebetriebe in die Internet-Rubrik gezogen. 1.522 verdächtige plus 450 zufällige Internet-Firmen
+wurden mit dem Startseitentext aus dem HTML-Cache eingeordnet (kein neuer Netzzugriff), jede Umlabelung
+von einem Skeptiker gegengeprüft: 1.186 umgelabelt, 221 vom Skeptiker zurückgeholt, 564 bestätigt.
+Die frei formulierten Feinlabel (1.040 Schreibweisen für 1.186 Firmen) normalisiert `einarbeiten.py`
+über eine Regex-Tabelle zu festen Oberbranchen; das Feinlabel bleibt als Unterbranche stehen.
+
+Im Export markierte Restschwächen: `Beleg prüfen` (Belegschaftszahl stammt aus einem Werbetext über
+Kundengrößen oder von einer fremden Domain – 227 Zeilen im Korridor), `Nummernformat` (735 Auslands-,
+15 unklare Nummern), `Prüfung` (nur 310 Handys haben ein Einzelurteil, davon 120 bestätigte Chef-Handys).
+In Autohaus/Kfz und Elektro/SHK sind viele ungeprüfte Handys Notdienstnummern.
