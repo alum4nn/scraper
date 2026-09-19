@@ -92,3 +92,30 @@ Bildnachweis, externe Datenschutzbeauftragte, Ein-Personen-Kanzleien).
 **Offen.** 19 Such-Slices sind noch nicht gelaufen, darunter die laut Befund aussichtsreichen
 Gewerke mit Außendienst-Geschäftsführern: Bau/Tiefbau, SHK, Elektro, Spedition, Metallbau,
 GaLaBau, Produktion, Handel, Kfz, Gebäudereinigung, Facility Management.
+
+## Stand beim Stopp am 19.09.2026
+
+**Ergebnis: 41 verifizierte Kontakte in 32 Unternehmen** (`output/leads-gesamt-2026-09-19.csv`).
+Davon 34 aus dem Workflow, 3 nachträglich über LinkedIn zurückgeholt, 4 aus dem manuellen Lauf.
+
+**Warum abgebrochen.** Der dritte Durchgang war auf 50 Slices erweitert worden (18 offene Gewerke
+plus 32 regional vertiefte Slices in den ergiebigen Branchen). Bei Nebenläufigkeit 2 entspricht das
+rund einem Tag reiner Suchzeit; der Lauf wurde auf Wunsch gestoppt.
+
+**Wo die Ausbeute verloren geht** (Auszählung über alle 15 Slice-Berichte aus Durchgang 1):
+Footer-/allgemeine Firmennummer 46×, Nummer gehört einem Mitarbeiter statt dem Geschäftsführer 44×,
+Firma zu klein bzw. Ein-Personen-Betrieb 39×, Verband/Portal/Franchise 24×, gar keine Mobilnummer 13×,
+Firma zu groß 7×. Auf 44 akzeptierte Rohtreffer kommen also rund 130 Ablehnungen. Die Obergrenze von
+50 Mitarbeitenden kostet praktisch nichts — der Engpass sitzt bei der Personenzuordnung und der
+Untergrenze von 10.
+
+**Fortsetzen.** Das Skript liegt unter
+`~/.claude/projects/-home-user-scraper/.../workflows/scripts/gf-handynummern-kmu-wf_07a572da-14a.js`
+mit 66 definierten und 50 aktiven Slices. Resume mit `resumeFromRunId: wf_07a572da-14a`; abgeschlossene
+Agenten kommen aus dem Cache, nur Offenes läuft neu. Offene Rohtreffer ohne abgeschlossene Prüfung
+stehen in `output/rohtreffer-offen-2026-09-19.csv` (u. a. Speedline Spedition und Multi Freight
+Solutions aus der ersten Spedition-Slice).
+
+**Ergiebigkeit je Branche** (Rohtreffer je Slice, Durchgang 1): Immobilien 11/5/4, Versicherung 6,
+Finanz 6, Beratung 5, Kanzleien 3, Hausverwaltung 3 — gegenüber Steuerberatung 1/0 und IT 1/0/0.
+Eine Fortsetzung sollte regional in den erstgenannten Branchen vertiefen, nicht neue Branchen raten.
