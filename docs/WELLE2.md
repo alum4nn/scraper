@@ -168,3 +168,23 @@ Im Export markierte Restschwächen: `Beleg prüfen` (Belegschaftszahl stammt aus
 Kundengrößen oder von einer fremden Domain – 227 Zeilen im Korridor), `Nummernformat` (735 Auslands-,
 15 unklare Nummern), `Prüfung` (nur 310 Handys haben ein Einzelurteil, davon 120 bestätigte Chef-Handys).
 In Autohaus/Kfz und Elektro/SHK sind viele ungeprüfte Handys Notdienstnummern.
+
+### 19.09., Nachtrag: Geschäftsführer-Filter und Nachprüfung der offenen Nummern
+
+`kontakte.py` schreibt zusätzlich Blatt „A Geschäftsführer-Handys" und `gf_handy*.csv`: nur Nummern mit
+Kontaktart GF-Handy, GF-Handy geprüft oder Entscheider-Handy, also einer Person mit Entscheiderrolle
+zugeordnet. 5.236 Nummern, davon 575 in Betrieben mit 10–50 belegten Köpfen.
+
+Die 265 im Korridor noch ungeprüften Nummern wurden nachgeprüft (Workflow `wf_ac4b0498-8d4`, 46 Agenten,
+Textfenster aus dem HTML-Cache über `audit/kontext_gf.py`, Skeptiker je Chef-Einstufung). Ergebnis
+ernüchternd: nur 53 echte Chef-Handys, dagegen 123 Mitarbeiter (Niederlassungs- und Betriebsleiter,
+Recruiter), 57 Zweifel, 9 Zentrale, 8 Agentur, 5 Notdienst. Die Kontaktart „Entscheider-Handy" des
+Extraktors trägt also kaum: Sie stuft Standortleitungen regelmäßig als Entscheider ein.
+
+**Fehler dabei gefunden und behoben:** Prüfurteile waren auf die Domain gekeyt, nicht auf die Nummer.
+119 Betriebe haben mehrere geprüfte Nummern; deren Urteile haben sich gegenseitig überschrieben, wodurch
+15 bestätigte Chef-Handys aus der Liste fielen. Schlüssel ist jetzt (Domain, Nummernziffern), und jede
+Nummer bekommt ihr eigenes Urteil – auch Ansprechpartner- und Firmen-Handys, die vorher leer blieben.
+
+Stand im Korridor 10–50: 173 bestätigte Chef-Handys, 401 aussortiert, 1 ohne Urteil.
+Offen: die 4.662 Geschäftsführer-Handys außerhalb des Korridors sind ungeprüft (rund vier Stunden Prüfung).
