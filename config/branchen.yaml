@@ -301,6 +301,17 @@ profiles:
       - '["shop"="travel_agency"]'
       - '["office"]["name"~"Kanzlei|Rechtsanwalt|Steuerberat|Wirtschaftspruef|Wirtschaftsprüf|Buchhaltung|Lohnbuero|Lohnbüro|Unternehmensberatung|Managementberatung|Marktforschung|Callcenter|Call-Center|Kundenservice|Uebersetzung|Übersetzung|Dolmetsch|Verlag|Redaktion|Lektorat|Patentanwalt|Notariat|Inkasso|Controlling|Treuhand",i]'
     osm_nicht_name: 'Agentur für Arbeit|Jobcenter|Bundesagentur|Finanzamt|Amtsgericht|Landgericht|Rathaus|Stadtverwaltung|Gemeinde|Landkreis|Ministerium|Kammer|Innung|Hochschule|Universität|Fachhochschule|Berufsschule|Schule|Kita|Krankenkasse|AOK|Barmer|Techniker Krankenkasse|DAK|IKK|BKK|Berufsgenossenschaft|Rentenversicherung|Arbeitsagentur|Sparkasse|Volksbank|Raiffeisenbank|Deutsche Bank|Commerzbank|Postbank|Allianz|ERGO|HUK|Debeka|Generali|AXA|Signal Iduna|DVAG|MLP|OVB|Caritas|Diakonie|AWO|DRK|Malteser|Johanniter'
+  verlage:
+    beschreibung: "Verlage und Medienhäuser, digital und print (22.09.2026): Buch-, Fach-, Zeitschriften- und Zeitungsverlage, Redaktionen, Lektorat, Satz, Content-Produktion – Bildschirmarbeit, kein Druckhandwerk"
+    queries:
+      - "Verlag"
+    osm:
+      - '["office"="publisher"]'
+      - '["office"="newspaper"]'
+      - '["office"]["name"~"Verlag|Verlagsgesellschaft|Verlagshaus|Fachverlag|Buchverlag|Zeitschriften|Zeitung|Redaktion|Medienhaus|Publishing|Edition|Lektorat|Korrektorat|Satzstudio|Content",i]'
+      - '["shop"="books"]["name"~"Verlag|Edition|Publishing",i]'
+      - '["office"="company"]["name"~"Verlag|Publishing|Medienhaus|Redaktion|Edition",i]'
+    osm_nicht_name: 'Axel Springer|Bertelsmann|Burda|Funke|Madsack|DuMont|Holtzbrinck|Bauer Media|Gruner|Spiegel|Zeit Verlag|FAZ|Süddeutsche|Handelsblatt|Cornelsen|Klett|Westermann|Haufe|Beck|Wolters Kluwer|Springer Nature|Elsevier|Thieme|Random House|Piper|Rowohlt|Universität|Hochschule|Bibliothek|Kirche|Bistum|Landeskirche'
   grosshandel:
     beschreibung: "Großhandel (WZ 46) – 8.676 Unternehmen mit 20–49 tätigen Personen und 262.230 Beschäftigten darin (Eurostat SBS 2023); 60,8 % davon arbeiten am Bildschirm, und nur 21 % der Handelsbetriebe nutzen KI"
     # Warum diese Branche: Sie verbindet die drei Größen, auf die es ankommt. Masse (doppelt so
