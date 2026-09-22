@@ -77,6 +77,9 @@ def fast_settings(tmp_path):
 
     return Settings(
         google_places_api_key="test-key",
+        # Ausdrücklich setzen: sonst zieht pydantic-settings den Wert aus der lokalen .env, und ein dort
+        # auf 0 gesetztes Monatslimit (Kostensperre) lässt Tests ohne echte Ursache fehlschlagen.
+        google_monatslimit=1000,
         request_delay_seconds=0.0,
         max_pages_per_site=8,
         cache_path=tmp_path / "cache.sqlite",

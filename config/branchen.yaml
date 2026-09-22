@@ -283,6 +283,24 @@ profiles:
       - '["office"="financial"]'
       - '["office"]["name"~"Versicherungsmakler|Finanzmakler|Finanzberat|Vermögensberat|Finanzplan|Versicherungsbüro|Assekuranz|Finanzdienst|Baufinanzierung|Vorsorge",i]'
     osm_nicht_name: 'Allianz|ERGO|HUK|DEVK|LVM|Provinzial|Generali|AXA|Signal Iduna|Debeka|R\+V|Württembergische|Zurich|Gothaer|Nürnberger|Continentale|Barmenia|Concordia|VGH|Sparkasse|Volksbank|Raiffeisen|Deutsche Vermögensberatung|DVAG|Swiss Life|MLP|OVB|tecis|Wüstenrot|Alte Leipziger|HDI|Basler|Helvetia|Mecklenburgische|Münchener Verein|Bayerische|Öffentliche|Itzehoer|WGV|Postbank|Commerzbank|Targobank|Santander|Bausparkasse|Schwäbisch Hall|LBS|Deutsche Bank|Hypovereinsbank|Unicredit|ING|Check24|Verivox|Interhyp|Dr\. Klein|Hüttig|Ecclesia|Aon|Marsh|Funk Gruppe|Kuhn & Bülow|Krankenkasse|AOK|Barmer|TK|DAK|KKH|IKK|BKK|Berufsgenossenschaft|Rentenversicherung|Versorgungswerk|Landesbank|KfW'
+  bueroberufe:
+    beschreibung: "Bürobranchen mit hohem Bildschirmanteil ohne Handwerk (22.09.2026): Kanzleien, Steuerberatung, Wirtschaftsprüfung, Unternehmens- und Personalberatung, Verlage, Marktforschung, Callcenter, Buchhaltung, Reisebüros, Übersetzung"
+    queries:
+      - "Rechtsanwaltskanzlei"
+      - "Unternehmensberatung"
+    osm:
+      - '["office"="lawyer"]'
+      - '["office"="tax_advisor"]'
+      - '["office"="accountant"]'
+      - '["office"="notary"]'
+      - '["office"="consulting"]'
+      - '["office"="research"]'
+      - '["office"="newspaper"]'
+      - '["office"="publisher"]'
+      - '["office"="travel_agent"]'
+      - '["shop"="travel_agency"]'
+      - '["office"]["name"~"Kanzlei|Rechtsanwalt|Steuerberat|Wirtschaftspruef|Wirtschaftsprüf|Buchhaltung|Lohnbuero|Lohnbüro|Unternehmensberatung|Managementberatung|Marktforschung|Callcenter|Call-Center|Kundenservice|Uebersetzung|Übersetzung|Dolmetsch|Verlag|Redaktion|Lektorat|Patentanwalt|Notariat|Inkasso|Controlling|Treuhand",i]'
+    osm_nicht_name: 'Agentur für Arbeit|Jobcenter|Bundesagentur|Finanzamt|Amtsgericht|Landgericht|Rathaus|Stadtverwaltung|Gemeinde|Landkreis|Ministerium|Kammer|Innung|Hochschule|Universität|Fachhochschule|Berufsschule|Schule|Kita|Krankenkasse|AOK|Barmer|Techniker Krankenkasse|DAK|IKK|BKK|Berufsgenossenschaft|Rentenversicherung|Arbeitsagentur|Sparkasse|Volksbank|Raiffeisenbank|Deutsche Bank|Commerzbank|Postbank|Allianz|ERGO|HUK|Debeka|Generali|AXA|Signal Iduna|DVAG|MLP|OVB|Caritas|Diakonie|AWO|DRK|Malteser|Johanniter'
   grosshandel:
     beschreibung: "Großhandel (WZ 46) – 8.676 Unternehmen mit 20–49 tätigen Personen und 262.230 Beschäftigten darin (Eurostat SBS 2023); 60,8 % davon arbeiten am Bildschirm, und nur 21 % der Handelsbetriebe nutzen KI"
     # Warum diese Branche: Sie verbindet die drei Größen, auf die es ankommt. Masse (doppelt so
