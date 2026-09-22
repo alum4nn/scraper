@@ -188,3 +188,81 @@ Nummer bekommt ihr eigenes Urteil – auch Ansprechpartner- und Firmen-Handys, d
 
 Stand im Korridor 10–50: 173 bestätigte Chef-Handys, 401 aussortiert, 1 ohne Urteil.
 Offen: die 4.662 Geschäftsführer-Handys außerhalb des Korridors sind ungeprüft (rund vier Stunden Prüfung).
+
+## 22.09. – Der Engpass ist nicht die Handynummer, sondern der Größenbeleg
+
+Gemessen über 52.095 angereicherte Firmen. 4.991 haben belegte 10–50 Köpfe, aber nur 469 davon tragen
+ein Handy, das einer Chef-Person hängt. Umgekehrt liegen 4.431 Chef-Handys im Bestand, von denen die
+allermeisten in Firmen stehen, deren Größe die Website nicht verrät.
+
+**Ausbeute je Branche** (Firmen / veröffentlicht Chef-Handy / belegte 10–50 / beides):
+
+| Branche | Firmen | Chef-Handy | Korridor | DIA-Quote |
+|---|---:|---:|---:|---:|
+| Großhandel | 1.710 | 4,4 % | 22,0 % | 2,16 % |
+| Personalagentur | 404 | 5,7 % | 13,4 % | 1,98 % |
+| Planungsbüro | 2.017 | 4,3 % | 13,4 % | 1,04 % |
+| Immobilien | 12.314 | 17,7 % | 5,7 % | 0,62 % |
+| Internet/Agentur | 12.099 | 4,6 % | 11,0 % | 0,45 % |
+| Steuerberatung | 1.586 | 0,2 % | 4,3 % | 0,06 % |
+| Bürobranchen (Welle 9) | 2.848 | 0,8 % | 6,5 % | 0,04 % |
+
+Zwei Folgerungen. **Welle 9 wurde nach Block 5 abgebrochen** – Kanzleien und Steuerberater
+veröffentlichen keine Handynummern, über 2.848 Firmen kam genau ein Kandidat heraus. Und Quellen
+entscheiden mehr als Branchen: Großhandel kam aus Verbands-Mitgliederverzeichnissen (VTH, VCH, BDS,
+DG Haustechnik, Soennecken) und konvertiert damit sechsmal besser als alles aus OpenStreetMap.
+
+### Geprüft und verworfen (damit es niemand zweimal versucht)
+
+- **Übersehene Handynummern im Zwischenspeicher:** 250 Korridorfirmen ohne Handy durchsucht, **0**
+  gefunden. Der Telefon-Extraktor übersieht nichts; diese Firmen nennen schlicht keine Nummer.
+- **Chef taucht bei einer anderen Firma mit Handy auf:** nur 7 belastbare Treffer bundesweit.
+- **`leadscraper rebuild` über den Bestand:** an `de_hb.jsonl` getestet, 32 Firmen gewinnen, 30
+  verlieren, Korridor 18 → 16. Der erneute Abruf verliert Personen, weil sich die Seiten geändert
+  haben. **Ausnahme:** `output/de.jsonl` (1.687 Firmen, erste Welle) hatte gar kein `staff`-Feld, weil
+  sie vor der Belegschaftszählung entstand. Dafür rechnet `tiefe/staff_nachtragen.py` die Belegschaft
+  aus den gespeicherten Personen, Postfächern und Durchwahlen nach, ohne Netzzugriff
+  (→ `output/branchen/rebuild/de_nachgetragen.jsonl`, 95 Korridorfirmen, 14 davon mit Chef-Handy).
+- **Größenbeleg aus fremden Quellen:** northdata.de erlaubt es laut robots.txt, implisense.com
+  ausdrücklich auch für ClaudeBot; europages.de, wlw.de und companyhouse.de sperren. Nicht weiter
+  verfolgt, weil kleine GmbHs nach § 288 HGB keine Beschäftigtenzahl offenlegen müssen.
+
+### Was heute dazukam
+
+- **Korridor-Handys zugeordnet:** 1.572 Nummern in Korridorfirmen hingen an keiner Person. Vorfilter:
+  nur wo der Nachname eines Chefs im Textfenster neben der Nummer steht, kann „chef" herauskommen –
+  das sind 233 statt 1.572. Ungefiltert brachten 72 Nummern 0 Treffer, gefiltert 229 Nummern **17
+  bestätigte** (`wf_439e98af-cec`, `wf_b65376ec-7ad`, Nachschlag `wf_67e86919-0f2` mit 13 weiteren).
+- **Liste B angelegt:** Chef-Handys in Firmen mit 5–9 belegten Köpfen, 259 Nummern geprüft, **113
+  bestätigt** (`wf_dd07c4a2-a42`). Die Gegenprüfung kippte nur 10 – Nummern, die der Extraktor bereits
+  einer Chef-Person zugeordnet hat, halten zu rund 92 %.
+- **Stand:** 212 bestätigte Chef-Handys in Bildschirmbranchen, davon 138 mit belegten 10–50 Köpfen.
+  Ausgabe über `scratchpad/dia.py` (Excel, fünf Blätter) und `scratchpad/trello_dia.py` (Trello-CSV,
+  Kartenname plus Beschreibung).
+
+### Offen – hier geht es weiter
+
+1. **Zwei Prüfungen abbrechen, nicht vergessen:** Größenbelege (`wf_81e086fd-f98`, Stufe 1 fertig: 76
+   von 102 halten das Band 10–50) und Branchencheck (`wf_aa7f0c32-758`, Stufe 1 fertig: **39 von 160
+   Firmen gehören nicht in die Liste**). Beide mit `resumeFromRunId` fortsetzen, dann `dia.py` und
+   `trello_dia.py` neu bauen. Erst danach ist die gelieferte Trello-Datei belastbar.
+2. **Liste B füllen:** `audit/batches_c/` hält 68 Stapel mit 1.010 ungeprüften Chef-Handys aus
+   PC-Branchen, bei denen die Firma Anzeichen für Substanz zeigt (mehrere Personen, Postfächer oder
+   Durchwahlen). Workflow `wf/liste_b.js`, Konsolidierung `audit/urteile_c_einarbeiten.py`. Erwartung
+   nach den heutigen Quoten: 400 bis 450 neue bestätigte Nummern.
+3. **Welle 11 zu Ende holen:** `welle11/sammeln.py` hat drei von vier Filtern (2.637 Firmen mit
+   Website), der Namensfilter fehlt noch; fertige Filter werden übersprungen. Danach `enrich-list`.
+4. **Welle 10 anreichern fertig** (535 eco-Mitglieder, `output/branchen/welle10/eco.jsonl`) – Chef-Handys
+   daraus noch ungeprüft.
+5. **Quellensuche** (`wf_d3558fde-0e0`) war erst bei 2 von 12 Branchen; sie sucht öffentliche
+   Mitgliederverzeichnisse und prüft jedes technisch nach (robots.txt, HTML statt JavaScript, Website je
+   Eintrag). Das ist der Weg für Liste A, weil dort der Korridor-Anteil zählt.
+
+### Rechnung für 3.000 Leads
+
+Bei der besten gemessenen Quote (Großhandel, 2,16 %) braucht ein Ziel von 3.000 belegten Leads rund
+139.000 Firmen, realistisch gemischt eher 300.000. Der Relay schafft etwa 8.600 Firmen am Tag, das sind
+fünf Wochen Dauerbetrieb. Zählt dagegen das bestätigte Chef-Handy und wird die Größe am Telefon geklärt,
+sind 3.000 in ein bis zwei Wochen erreichbar: 212 liegen vor, rund 430 stecken in `audit/batches_c/`,
+und Immobilien liefert mit 17,7 % dicht genug Nummern für den Rest. Der Auftraggeber will beide Listen
+getrennt geführt bekommen.
