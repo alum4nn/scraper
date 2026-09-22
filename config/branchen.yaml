@@ -357,6 +357,19 @@ profiles:
       - "Kunststoffverarbeitung"
       - "Werkzeugbau"
       - "Feinmechanik"
+  immobilien_osm:
+    beschreibung: "Immobilienmakler und Hausverwaltungen aus OpenStreetMap (22.09.2026) – die erste Welle kam über Google Places, OSM war für diese Branche nie abgefragt. Gemessen: Makler veröffentlichen mit 17,7 % häufiger ein Chef-Handy als jede andere Branche, dafür haben nur 5,7 % belegte 10–50 Köpfe (96,8 % der Niederlassungen unter zehn Beschäftigten, Destatis-Unternehmensregister 2024). Diese Welle füttert deshalb die Handy-Liste, nicht die Korridor-Liste."
+    queries:
+      - "Immobilienmakler"
+      - "Hausverwaltung"
+    osm:
+      - '["office"="estate_agent"]'
+      - '["office"="property_management"]'
+      - '["shop"="estate_agent"]'
+      - '["office"]["name"~"Immobilien|Hausverwaltung|Immobilienverwaltung|WEG-Verwaltung|Grundbesitz|Real Estate|Realty|Makler",i]'
+    # Ketten und Franchise-Systeme haben Filialleiter statt Inhaber; Genossenschaften und
+    # Wohnungsgesellschaften zählen als Gesamtunternehmen und fallen aus dem Förderband.
+    osm_nicht_name: 'Engel & Völkers|Engel und Völkers|von Poll|VON POLL|RE/?MAX|Century 21|McMakler|Homeday|PlanetHome|Immobilienscout|ImmoScout|Immowelt|Sparkasse|Volksbank|Raiffeisen|LBS|Postbank|Commerzbank|Deutsche Bank|Vonovia|Deutsche Wohnen|LEG |GAG |GEWOBA|GEWOFAG|SAGA|Wohnungsgenossenschaft|Baugenossenschaft|Wohnungsbaugesellschaft|Wohnungsgesellschaft|Siedlungswerk|Stadtwerke|Kreisbau|Volkswohnung|Gemeinnützige'
   immobilien_finanzen:
     beschreibung: "Makler, Hausverwaltungen, Versicherungsbüros"
     queries:
