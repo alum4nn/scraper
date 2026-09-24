@@ -266,3 +266,35 @@ fünf Wochen Dauerbetrieb. Zählt dagegen das bestätigte Chef-Handy und wird di
 sind 3.000 in ein bis zwei Wochen erreichbar: 212 liegen vor, rund 430 stecken in `audit/batches_c/`,
 und Immobilien liefert mit 17,7 % dicht genug Nummern für den Rest. Der Auftraggeber will beide Listen
 getrennt geführt bekommen.
+
+## 23./24.09. – Nachtlauf: 385 neue Chef-Handys aus Verbandsverzeichnissen
+
+Lehre vom 23.09. vormittags: Alles, was seit dem 19.09. als „DIA-Liste" geliefert wurde, stand schon in
+der Lieferung vom 19.09. (205 von 212 Nummern) – geprüft, aber nicht neu. Neue Kontakte entstehen nur
+aus neuen Firmen. Seitdem gleicht `scratchpad/lieferung_neu.py` jede Nummer gegen alle früheren Dateien
+(`output/branchen/kontakte/`, `dia/`, `lieferungen/`) ab und schreibt jede Lieferung nach
+`output/branchen/lieferungen/`, damit die nächste sie kennt. Maklerbüros kommen nur mit mindestens
+fünf belegten Beschäftigten hinein (96,8 % der Makler haben unter zehn, Destatis).
+
+Quellensuche (`wf_d3558fde-0e0`): 72 Verzeichnisse technisch geprüft, 56 brauchbar (Liste in
+`scratchpad/quellen_brauchbar.json`). Ergebnis je Quelle, nur neue, geprüfte Chef-Handys:
+
+| Quelle | neue Firmen | Chef-Handys bestätigt |
+|---|---:|---:|
+| personalberater.de | 2.315 | 112 |
+| Verbände (BDU, TOP CONSULTANT, BFW, BVI, BVDW, CCV, Verlage, Planer …) | 4.941 | 122 |
+| OSM Immobilien (Welle 11) | 2.014 | 101 (davon 30 mit ≥ 5 Köpfen gezählt) |
+| wer-zu-wem.de, vorab gefiltert auf PC-Branchen mit 10–60 MA | 1.075 | 29 |
+| IVD (nur Makler ≥ 5 Köpfe und Verwaltungen geprüft) | 1.613 | 30 |
+| VBI Ingenieurbüros | 911 | 25 |
+| BDVI Vermessung + BVM Marktforschung | 608 | 16 |
+| VDIV NRW Hausverwaltungen | 512 | 6 |
+| Shopauskunft Onlinehändler | 10.140 | 16 |
+
+Gezählt auf das Ziel von 400: **385** (137 mit belegten 10–50 Köpfen, 7 mit 10–60 laut Verzeichnis,
+99 mit 5–9, 132 offen, 10 über 50). Gesamtdatei: `output/branchen/lieferungen/2026-09-24_alle_neuen_leads.csv`.
+
+Befunde: Onlinehändler sind wertlos (16 aus 10.140 – das Handy ist bei Kleinstshops die Firmennummer).
+Hausverwalter zeigen selten ein Handy. Personalberatungen und Unternehmensberatungen sind die besten
+Quellen. wer-zu-wem.de lässt sich schnell abrufen (40.000 Seiten in 90 Minuten) und liefert Branche,
+Mitarbeiterzahl und Geschäftsführer vorab, ist aber industrielastig (1.541 von 40.000 passen).
