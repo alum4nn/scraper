@@ -29,6 +29,9 @@ Bundesweite Liste von Immobilienmaklern für die telefonische Terminierung gefö
 Ketten, Franchise-Systeme und Betriebe mit ausschließlich freien Handelsvertretern gehören nicht in die
 Liste (`config/ausschluss.yaml`, `Enrichment.employment_signal`).
 
+**Branchen (Auftraggeber, 25.09.):** Nur PC-lastige Betriebe. Handwerk bleibt draußen (auch Kfz, Elektro/SHK,
+Metallbau, Spedition, ausführender Bau, Gastronomie, Ladengeschäfte). Produktion darf bleiben.
+
 **Sperrgebiet Nordwesten (Auftraggeber, 25.09., „ganz wichtig“):** Keine Firma aus dem Nordwesten von Ahaus bis vor
 Hamburg (Emsland, Grafschaft Bentheim, Ostfriesland, Oldenburger Land, Osnabrück, Münsterland, Bremen mit Umland,
 Elbe-Weser-Dreieck). Maßgeblich ist die PLZ der Impressumsadresse (Firmensitz). Ausschließen, wenn die PLZ mit 26, 27,
@@ -41,7 +44,7 @@ bestimmbar: Firma drinlassen, „📍 Ort unklar – bitte prüfen“. Ausgeschl
 **Ausgabeformat Trello:** Kartenname nur der Firmenname. Adresse als eigene Zeile direkt unter der 🌐-Zeile:
 „📍 Straße Hausnummer, PLZ Ort“ (nur Ort: „📍 PLZ Ort“, nichts: „📍 Adresse nicht gefunden“), Quelle Impressum,
 dann Datenschutzerklärung, dann Kontaktseite – nichts raten. CSV mit allen Feldern in Anführungszeichen, UTF-8,
-„&“ statt „&“.
+„&“ statt „\u0026“ oder „&amp;“.
 
 ## Arbeitsweise
 - Vor jedem Commit: `pytest -q` und `ruff check src tests && ruff format src tests`.
