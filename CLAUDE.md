@@ -29,6 +29,11 @@ Bundesweite Liste von Immobilienmaklern für die telefonische Terminierung gefö
 Ketten, Franchise-Systeme und Betriebe mit ausschließlich freien Handelsvertretern gehören nicht in die
 Liste (`config/ausschluss.yaml`, `Enrichment.employment_signal`).
 
+**Sperrgebiet Emsland und Umgebung (Auftraggeber, 25.09., „ganz wichtig“):** Keine Firma aus dem Landkreis
+Emsland oder einem angrenzenden Kreis darf in eine Lieferung – Grafschaft Bentheim, Landkreis Leer, Landkreis
+Cloppenburg, Landkreis und Stadt Osnabrück, Kreis Steinfurt. Geprüft wird über die PLZ (Kreiszuordnung aus
+OpenStreetMap/GeoNames), ersatzweise über Ort aus Liste oder Impressum und die Festnetzvorwahl der Zentrale.
+
 ## Arbeitsweise
 - Vor jedem Commit: `pytest -q` und `ruff check src tests && ruff format src tests`.
 - `LEADSCRAPER_CONCURRENCY` höchstens 12. Der ausgehende Verkehr läuft über einen Relay, der bei 24
