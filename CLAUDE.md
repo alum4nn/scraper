@@ -59,8 +59,8 @@ höchstens 5000 Zeilen je Datei. Unbekanntes leer lassen, nie Platzhalter („-�
   getrennt mit „ / “.
 - branche und groesse nur aus den vorgegebenen Listen des Auftraggebers, im Zweifel leer; ki_hebel = genau sechs
   Punkte aus dem Branchenkatalog, getrennt mit „ | “, je höchstens 120 Zeichen.
-- Nur geschäftliche, selbst veröffentlichte Angaben. Firmen, die im Impressum oder auf der Website Werbung oder Anrufe
-  ausdrücklich ablehnen (auch der übliche Widerspruch gegen „nicht ausdrücklich angeforderte Werbung“), weglassen.
+- Nur geschäftliche, selbst veröffentlichte Angaben. Werbewidersprüche im Impressum führen NICHT zum Ausschluss
+  (Auftraggeber, 26.09.: „das ist egal, mach es so wie davor“) – weder der Standardsatz noch andere Formulierungen.
 - Die Datei ohne Erklärungen davor oder danach ausliefern.
 
 ## Arbeitsweise
