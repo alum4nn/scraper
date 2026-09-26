@@ -1,0 +1,118 @@
+{
+  "_hinweis": "Vorgaben für das CRM-Format (Auftraggeber 26.09.: selbst erstellen). branchen: erlaubte Werte für 'branche' mit je genau sechs KI-Hebeln; groessenklassen: erlaubte Werte für 'groesse' (nach belegten Köpfen, KMU-Stufen).",
+  "groessenklassen": ["1–4", "5–9", "10–49", "50–249", "250+"],
+  "branchen": {
+    "Architektur & Planung": [
+      "Ausschreibungstexte und Leistungsverzeichnisse per KI vorformulieren und prüfen",
+      "Baubeschreibungen, Erläuterungsberichte und Protokolle aus Stichpunkten erstellen",
+      "Bauvorschriften, Normen und Bebauungspläne mit KI schneller durchsuchen",
+      "Visualisierungen und Entwurfsvarianten mit Bild-KI für Kundengespräche erzeugen",
+      "Mängel- und Baustellenberichte aus Fotos und Sprachnotizen zusammenfassen",
+      "Honorarangebote und Wettbewerbsbeiträge mit KI-Textbausteinen beschleunigen"
+    ],
+    "Ingenieurbüro": [
+      "Technische Berichte, Gutachten und Nachweise aus Rohdaten vorformulieren",
+      "Normen, Richtlinien und Regelwerke per KI-Suche schneller auswerten",
+      "Berechnungsergebnisse plausibilisieren und verständlich für Bauherren aufbereiten",
+      "Ausschreibungen und Leistungsverzeichnisse mit KI erstellen und abgleichen",
+      "Besprechungs- und Baustellenprotokolle automatisch aus Sprachaufnahmen erzeugen",
+      "Angebote und Projektdokumentation mit KI-Vorlagen standardisieren"
+    ],
+    "Personaldienstleistung": [
+      "Stellenanzeigen zielgruppengerecht per KI texten und für Portale variieren",
+      "Lebensläufe automatisch sichten, anonymisieren und mit Profilen abgleichen",
+      "Kandidatenprofile und Kundenexposés in Minuten statt Stunden erstellen",
+      "Bewerberkommunikation und Terminabstimmung mit KI-Vorlagen beschleunigen",
+      "Arbeitsverträge, Einsatzmeldungen und Zeitnachweise per KI vorprüfen",
+      "Aktive Ansprache von Kandidaten und Kunden mit personalisierten KI-Texten"
+    ],
+    "IT & Software": [
+      "Code-Assistenten für schnellere Entwicklung, Tests und Code-Reviews einsetzen",
+      "Technische Dokumentation und Handbücher automatisch aus dem Code erzeugen",
+      "Support-Tickets mit KI vorsortieren, beantworten und Wissensdatenbank pflegen",
+      "Angebote, Lastenhefte und Projektberichte per KI vorformulieren",
+      "Eigene KI-Funktionen in Kundenprodukte integrieren und neu verkaufen",
+      "Mitarbeitende zu Datenschutz und sicherem KI-Einsatz nach EU AI Act schulen"
+    ],
+    "Unternehmensberatung": [
+      "Recherchen, Markt- und Wettbewerbsanalysen mit KI in einem Bruchteil der Zeit",
+      "Präsentationen, Konzepte und Berichte aus Stichpunkten erstellen lassen",
+      "Interviews und Workshops transkribieren und Ergebnisse automatisch verdichten",
+      "Angebote und Projektskizzen mit KI-Vorlagen schneller an Kunden bringen",
+      "Kundendaten und Kennzahlen mit KI auswerten und visualisieren",
+      "KI-Beratung als neues Leistungsangebot für die eigenen Kunden aufbauen"
+    ],
+    "Marketing & Agentur": [
+      "Texte, Posts und Kampagnenvarianten mit KI schneller erstellen und testen",
+      "Bilder, Grafiken und Videos mit generativer KI für Entwürfe erzeugen",
+      "SEO-Analysen, Keyword-Recherche und Content-Planung automatisieren",
+      "Kundenbriefings, Angebote und Reportings per KI vorbereiten",
+      "Kampagnendaten auswerten und Optimierungsvorschläge automatisch ableiten",
+      "Social-Media-Betreuung mit KI-Redaktionsplänen und Antwortvorschlägen skalieren"
+    ],
+    "Immobilien": [
+      "Exposés und Objektbeschreibungen in Minuten per KI erstellen",
+      "Anfragen von Interessenten automatisch beantworten und vorqualifizieren",
+      "Immobilienbilder aufbereiten und virtuelles Home Staging mit KI nutzen",
+      "Marktpreise, Vergleichsobjekte und Lagedaten mit KI schneller auswerten",
+      "Eigentümerkorrespondenz, Protokolle und Verwalterschreiben per KI entwerfen",
+      "Social-Media-Beiträge und Akquise-Mailings für Eigentümer automatisieren"
+    ],
+    "Recht & Steuern": [
+      "Schriftsätze, Verträge und Mandantenschreiben mit KI vorformulieren",
+      "Rechtsprechung, Gesetze und Fachliteratur per KI-Recherche schneller finden",
+      "Belege, Kontoauszüge und Unterlagen automatisch auslesen und zuordnen",
+      "Mandantenanfragen vorsortieren und Standardantworten automatisieren",
+      "Fristen, Akten und Besprechungsnotizen mit KI zusammenfassen",
+      "Kanzleiteam zum datenschutzkonformen Einsatz von KI-Werkzeugen schulen"
+    ],
+    "Finanzen & Versicherung": [
+      "Kundenunterlagen und Verträge automatisch auslesen und vergleichen",
+      "Beratungsprotokolle und Dokumentationspflichten per KI vorbereiten",
+      "Kundenanfragen und Schadenmeldungen mit KI vorsortieren und beantworten",
+      "Markt- und Produktvergleiche für Kunden schneller aufbereiten",
+      "Personalisierte Kundenansprache und Newsletter mit KI erstellen",
+      "Compliance- und Geldwäscheprüfungen durch KI-gestützte Auswertung beschleunigen"
+    ],
+    "Verlag & Medien": [
+      "Artikel, Zusammenfassungen und Newsletter mit KI vorbereiten und redigieren",
+      "Recherche, Faktenprüfung und Quellenauswertung mit KI beschleunigen",
+      "Übersetzungen und Lektorat mit KI-Werkzeugen vorbereiten",
+      "Bilder, Grafiken und Audioformate mit generativer KI produzieren",
+      "Archivinhalte verschlagworten und neu für Online-Formate aufbereiten",
+      "Anzeigenkunden und Leser mit personalisierten KI-Texten ansprechen"
+    ],
+    "Produktion & Handel": [
+      "Angebote, Produktbeschreibungen und Datenblätter per KI erstellen",
+      "Bestellungen, Lieferscheine und Rechnungen automatisch auslesen und erfassen",
+      "Bedarfs- und Absatzprognosen mit KI für Einkauf und Lager erstellen",
+      "Kundenanfragen und Reklamationen mit KI vorsortieren und beantworten",
+      "Arbeitsanweisungen, Schulungs- und QM-Unterlagen mit KI pflegen",
+      "Vertrieb mit KI-gestützter Kundenanalyse und Angebotsnachverfolgung stärken"
+    ],
+    "Bildung, Verbände & Forschung": [
+      "Lernmaterialien, Kursinhalte und Prüfungsfragen mit KI erstellen",
+      "Mitgliederanfragen und Verwaltungsschreiben per KI vorbereiten",
+      "Förderanträge, Berichte und Protokolle aus Stichpunkten formulieren",
+      "Fachliteratur und Studien mit KI schneller sichten und zusammenfassen",
+      "Veranstaltungen, Newsletter und Mitgliederkommunikation mit KI planen",
+      "Wissen aus Dokumentenarchiven über KI-Suche für alle zugänglich machen"
+    ],
+    "Gesundheit & Pflege": [
+      "Dokumentation und Berichte aus Sprachnotizen automatisch erstellen",
+      "Terminvergabe und Patientenanfragen mit KI-Assistenten entlasten",
+      "Dienstpläne und Einsatzplanung mit KI-Unterstützung optimieren",
+      "Befunde, Arztbriefe und Formulare per KI vorformulieren",
+      "Abrechnung und Verwaltungsaufgaben durch automatische Erfassung beschleunigen",
+      "Mitarbeitende zu Datenschutz und sicherem KI-Einsatz schulen"
+    ],
+    "Reise & Tourismus": [
+      "Reiseangebote und Beschreibungen per KI in mehreren Sprachen erstellen",
+      "Kundenanfragen rund um die Uhr mit KI-Assistenten beantworten",
+      "Reiserouten und individuelle Angebote aus Kundenwünschen zusammenstellen",
+      "Buchungsunterlagen, Rechnungen und Belege automatisch verarbeiten",
+      "Preis- und Nachfrageentwicklung mit KI auswerten",
+      "Newsletter und Social-Media-Inhalte für Reiseziele mit KI produzieren"
+    ]
+  }
+}

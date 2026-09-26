@@ -57,8 +57,8 @@ höchstens 5000 Zeilen je Datei. Unbekanntes leer lassen, nie Platzhalter („-�
   website ohne „https://“ und ohne Unterseite; plz immer fünfstellig als Text; koepfe_belegt = Zahl namentlich genannter
   Personen (nur zählen); quelle = URL der Angaben (Pflicht, DSGVO-Auskunft); weitere_personen „Name (Rolle) Nummer“,
   getrennt mit „ / “.
-- branche und groesse nur aus den vorgegebenen Listen des Auftraggebers, im Zweifel leer; ki_hebel = genau sechs
-  Punkte aus dem Branchenkatalog, getrennt mit „ | “, je höchstens 120 Zeichen.
+- branche, groesse und ki_hebel nur aus `config/crm_katalog.json` (Branchenliste, Größenklassen und je Branche genau
+  sechs KI-Hebel; auf Wunsch des Auftraggebers selbst erstellt), im Zweifel leer; ki_hebel getrennt mit „ | “.
 - Nur geschäftliche, selbst veröffentlichte Angaben. Werbewidersprüche im Impressum führen NICHT zum Ausschluss
   (Auftraggeber, 26.09.: „das ist egal, mach es so wie davor“) – weder der Standardsatz noch andere Formulierungen.
 - Die Datei ohne Erklärungen davor oder danach ausliefern.
