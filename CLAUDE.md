@@ -46,6 +46,23 @@ bestimmbar: Firma drinlassen, „📍 Ort unklar – bitte prüfen“. Ausgeschl
 dann Datenschutzerklärung, dann Kontaktseite – nichts raten. CSV mit allen Feldern in Anführungszeichen, UTF-8,
 „&“ statt „\u0026“ oder „&amp;“.
 
+**CRM-Format (Auftraggeber, 26.09., gilt für jede Lead-Liste; ersetzt Trello-CSV und Excel als Liefersatz):**
+CSV, UTF-8, Trennzeichen `;`, Kopfzeile genau
+`firma;person;rolle;handynummer;zentrale;email;website;strasse;plz;ort;branche;groesse;koepfe_belegt;ki_hebel;quelle;weitere_personen`.
+Felder mit `;`, `"` oder Zeilenumbruch in Anführungszeichen, `"` verdoppeln. Eine Zeile = eine Firma, keine Firma doppelt,
+höchstens 5000 Zeilen je Datei. Unbekanntes leer lassen, nie Platzhalter („-“, „k. A.“, „n/a“, „unbekannt“).
+- firma mit Rechtsform wie im Impressum; person = wichtigste Person (Geschäftsführer/Inhaber vor Prokurist vor allen
+  anderen), rolle genau dieser Person; handynummer nur von der Firma selbst veröffentlicht (Impressum, Kontakt, Team),
+  Format „0170 1234567“, jede Nummer nur einmal in der Datei; zentrale „040 1234560“; email = allgemeine Adresse (info@…);
+  website ohne „https://“ und ohne Unterseite; plz immer fünfstellig als Text; koepfe_belegt = Zahl namentlich genannter
+  Personen (nur zählen); quelle = URL der Angaben (Pflicht, DSGVO-Auskunft); weitere_personen „Name (Rolle) Nummer“,
+  getrennt mit „ / “.
+- branche und groesse nur aus den vorgegebenen Listen des Auftraggebers, im Zweifel leer; ki_hebel = genau sechs
+  Punkte aus dem Branchenkatalog, getrennt mit „ | “, je höchstens 120 Zeichen.
+- Nur geschäftliche, selbst veröffentlichte Angaben. Firmen, die im Impressum oder auf der Website Werbung oder Anrufe
+  ausdrücklich ablehnen (auch der übliche Widerspruch gegen „nicht ausdrücklich angeforderte Werbung“), weglassen.
+- Die Datei ohne Erklärungen davor oder danach ausliefern.
+
 ## Arbeitsweise
 - Vor jedem Commit: `pytest -q` und `ruff check src tests && ruff format src tests`.
 - `LEADSCRAPER_CONCURRENCY` höchstens 12. Der ausgehende Verkehr läuft über einen Relay, der bei 24
